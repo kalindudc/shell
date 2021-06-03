@@ -1,0 +1,56 @@
+#!/bin/sh
+
+CURRENT_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+
+[[ $CURRENT_DIR/.env ]] && source $CURRENT_DIR/.env
+
+slackapi="https://slack.com/api/users.profile.set"
+
+
+message=""
+emoji=""
+declare -i duration
+declare -i total_duration
+duration=0
+
+
+# Other contidional statuses
+if [[ $1 == "brb" ]]; then
+    message="Be right back."
+    emoji=":brb:"
+    duration=30*60
+fi
+
+if [[ $1 == "lunch" ]]; then
+    message="Lunch break."
+    emoji=":hamburger:"
+    duration=60*60
+fi
+
+if [[ $1 == "focus" ]]; then
+    message="Focus time."
+    emoji=":computer:"
+    duration=60*60
+fi
+
+if [[ $1 == "meeting" ]]; then
+    message="In a meeting."
+    emoji=":date:"
+    duration=60*60
+fi
+
+
+total_duration=$(date +%s -d "$(date) + $duration seconds")
+
+res=$(curl -s \
+-H "Authorization: Bearer $SLACKTOKEN" \
+-H "Content-type: application/json; charset=utf-8" \
+-d "{\"profile\":{\"status_text\":\"$message\",\"status_emoji\": \"$emoji\",\"status_expiration\": \"$total_duration\"}}" \
+$slackapi)
+
+if echo "$res" | grep -q "\"ok\":true"; then
+    echo "Status set: {$message, $emoji, $total_duration}"
+else
+    echo "Could not set status: ERROR"
+    echo "\n$res\n"
+fi
