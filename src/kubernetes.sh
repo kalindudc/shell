@@ -7,7 +7,6 @@ CURRENT_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 command -v kubecolor >/dev/null 2>&1 && alias kubectl="kubecolor"
 
 alias kcl='kubectl $@'
-alias kcla='kubectl --all-namespaces $@'
 alias kcln='kubectl --namespace $@'
 alias kclc='kubectl --context $@'
 
