@@ -19,4 +19,6 @@ kclcn() {
         
 }
 
-
+kcla() {
+    kubectl $@ -A
+}
