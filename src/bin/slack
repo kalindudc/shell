@@ -1,56 +1,84 @@
 #!/bin/sh
 
+# get the full path of the current directory
 CURRENT_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
-[[ $CURRENT_DIR/.env ]] && source $CURRENT_DIR/.env
+SLACK_API_URL="https://slack.com/api/users.profile.set"
+[[ $SLACK_STATUS_JSON_LOC ]] && SLACK_STATUS_LOC=$SLACK_STATUS_JSON_LOC || SLACK_STATUS_LOC=$CURRENT_DIR/conf/slack_status.json
 
-slackapi="https://slack.com/api/users.profile.set"
+help() {
+    echo "slack - command line helper for slack"
+    echo "\nusage: \tslack [options]"
+    echo "\nslack is a tool for processing basic commands for slack. \n\tCurrently, only status changes are supported."
+    echo "\nSet the following env variables prior to using slack:\n\tSLACK_TOKEN = <user token with users.profile:write scope>"
+    echo "\tSLACK_STATUS_JSON_LOC = <location of json file appropriate slack status information>"
+    echo "\nAlternatively, see src/bin/conf/.env.template and src/bin/cong/slack_status.json"
+    echo "\nRunning 'slack' without any options will clear the current slack status"
 
+    if [[ ! -f $SLACK_STATUS_LOC ]]; then 
+        echo "\nCurrent json file location is INVALID. "
+    fi
 
-message=""
-emoji=""
+}
+
+# help output
+if [[ $1 == "-h" || $1 == "--help" ]]; then 
+    help
+    if [[ -f $SLACK_STATUS_LOC ]]; then 
+        echo "\nCurrent json file location: \n\tSLACK_STATUS_JSON_LOC=$SLACK_STATUS_LOC"
+        
+        keys=$(jq keys -c -C $SLACK_STATUS_LOC)
+        echo "\nAvialable options: $keys"
+    fi
+    exit 0
+fi
+
+if [[ $1 == "-hv" || $1 == "--help-verbose" ]]; then 
+    help
+    if [[ -f $SLACK_STATUS_LOC ]]; then 
+        echo "\nCurrent json file location: \n\tSLACK_STATUS_JSON_LOC=$SLACK_STATUS_LOC"
+        
+        keys=$(jq '.' -C $SLACK_STATUS_LOC)
+        echo "\nAvialable options: \n$keys"
+    fi
+    exit 0
+fi
+
+# set all necessary env variables
+[[ $CURRENT_DIR/conf/.env ]] && source $CURRENT_DIR/conf/.env
+
 declare -i duration
 declare -i total_duration
+
+message="\"\""
+emoji="\"\""
 duration=0
 
-
 # Other contidional statuses
-if [[ $1 == "brb" ]]; then
-    message="Be right back."
-    emoji=":brb:"
-    duration=30*60
-fi
-
-if [[ $1 == "lunch" ]]; then
-    message="Lunch break."
-    emoji=":hamburger:"
-    duration=60*60
-fi
-
-if [[ $1 == "focus" ]]; then
-    message="Focus time."
-    emoji=":computer:"
-    duration=60*60
-fi
-
-if [[ $1 == "meeting" ]]; then
-    message="In a meeting."
-    emoji=":date:"
-    duration=60*60
+if [[ $# -gt 0 && -e $SLACK_STATUS_LOC ]]; then
+    data=$(jq .$1 $SLACK_STATUS_LOC)
+    if [[ $data != "null" ]]; then 
+        message=$(jq .$1.msg $SLACK_STATUS_LOC)
+        emoji=$(jq .$1.emoji $SLACK_STATUS_LOC)
+        duration=$(jq .$1.dur $SLACK_STATUS_LOC)
+    fi
 fi
 
 
 total_duration=$(date +%s -d "$(date) + $duration seconds")
+json_data="{\"profile\":{\"status_text\":$message,\"status_emoji\": $emoji,\"status_expiration\": \"$total_duration\"}}" 
 
 res=$(curl -s \
--H "Authorization: Bearer $SLACKTOKEN" \
+-H "Authorization: Bearer $SLACK_TOKEN" \
 -H "Content-type: application/json; charset=utf-8" \
--d "{\"profile\":{\"status_text\":\"$message\",\"status_emoji\": \"$emoji\",\"status_expiration\": \"$total_duration\"}}" \
-$slackapi)
+-d "$json_data" \
+$SLACK_API_URL)
 
 if echo "$res" | grep -q "\"ok\":true"; then
     echo "Status set: {$message, $emoji, $total_duration}"
 else
-    echo "Could not set status: ERROR"
+    echo "Could not set status: ERROR\n"
+    echo "Tried to set: {$message, $emoji, $total_duration}"
+    echo "JSON Data: $json_data"
     echo "\n$res\n"
 fi

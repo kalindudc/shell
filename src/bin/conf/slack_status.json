@@ -1,0 +1,27 @@
+{
+    "clear": {
+        "msg": "",
+        "emoji": "",
+        "dur": 0
+    }, 
+    "brb" : {
+        "msg": "Be right back.",
+        "emoji": ":coffee:",
+        "dur": 1800
+    },
+    "lunch" : {
+        "msg": "Lunch break.",
+        "emoji": ":hamburger:",
+        "dur": 3600
+    },
+    "focus" : {
+        "msg": "Focus time.",
+        "emoji": ":computer:",
+        "dur": 5400
+    },
+    "meeting" : {
+        "msg": "In a meeting.",
+        "emoji": ":date:",
+        "dur": 3600
+    }
+}
