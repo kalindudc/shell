@@ -11,8 +11,9 @@ Shared and common aliases and functions for all machines.
 └── src
     ├── aliases.sh
     ├── base.sh             // source this in profile, includes aliasses and functions
-    ├── bin/
-    │   └── .keep           // quick scripts to run
+    ├── bin/                // quick scripts to run
+    │   ├── conf/           // any configuration and properties file required by the scripts
+    │   └── ...           
     └── functions.sh
 ```
 
