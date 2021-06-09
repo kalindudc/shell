@@ -7,7 +7,7 @@
     "brb" : {
         "msg": "Be right back.",
         "emoji": ":coffee:",
-        "dur": 1800
+        "dur": 900
     },
     "lunch" : {
         "msg": "Lunch break.",

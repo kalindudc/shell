@@ -22,3 +22,5 @@ kclcn() {
 kcla() {
     kubectl $@ -A
 }
+
+alias kclgc='kubectl config get-contexts'
