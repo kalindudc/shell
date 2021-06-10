@@ -2,6 +2,8 @@
 
 CURRENT_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 
+alias grepn='grep -n'
+
 # terminal multiplexers
 alias tmux='tmux -CC'
 
@@ -12,7 +14,7 @@ alias lsg='lsa --color=yes | grep -i $@ '
 alias cpv='rsync -ah --info=progress2'
 
 alias mnt='mount | grep -E ^/dev | column -t'
-alias gh='history|grep'
+alias gh='history -i |grep'
 alias cl='clear'
 alias psg='ps -ef | grep'
 alias myip='curl ip.me'
