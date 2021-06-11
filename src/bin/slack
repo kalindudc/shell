@@ -6,6 +6,8 @@ CURRENT_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
 SLACK_API_URL="https://slack.com/api/users.profile.set"
 [[ $SLACK_STATUS_JSON_LOC ]] && SLACK_STATUS_LOC=$SLACK_STATUS_JSON_LOC || SLACK_STATUS_LOC=$CURRENT_DIR/conf/slack_status.json
 
+log="false"
+
 help() {
     echo "slack - command line helper for slack"
     echo "\nusage: \tslack [options]"
@@ -20,28 +22,28 @@ help() {
         echo "\nCurrent json file location is INVALID. "
     fi
 
+    if [[ -f $SLACK_STATUS_LOC ]]; then 
+        echo "\nCurrent json file location: \n\tSLACK_STATUS_JSON_LOC=$SLACK_STATUS_LOC"        
+        echo "\nAvialable options: $keys"
+        echo "ex: slack <option>"
+    fi
+
 }
 
 # help output
 if [[ $1 == "-h" || $1 == "--help" || $1 == "help" ]]; then 
-    help
-    if [[ -f $SLACK_STATUS_LOC ]]; then 
-        echo "\nCurrent json file location: \n\tSLACK_STATUS_JSON_LOC=$SLACK_STATUS_LOC"
-        
+    if [[ -f $SLACK_STATUS_LOC ]]; then         
         keys=$(jq keys -c -C $SLACK_STATUS_LOC)
-        echo "\nAvialable options: $keys"
     fi
+    help
     exit 0
 fi
 
 if [[ $1 == "-hv" || $1 == "--help-verbose" ]]; then 
-    help
-    if [[ -f $SLACK_STATUS_LOC ]]; then 
-        echo "\nCurrent json file location: \n\tSLACK_STATUS_JSON_LOC=$SLACK_STATUS_LOC"
-        
+    if [[ -f $SLACK_STATUS_LOC ]]; then         
         keys=$(jq '.' -C $SLACK_STATUS_LOC)
-        echo "\nAvialable options: \n$keys"
     fi
+    help
     exit 0
 fi
 
@@ -55,8 +57,14 @@ message="\"\""
 emoji="\"\""
 duration=0
 
+[[ $log == "true" ]] && echo "slack: working ...\n"
+
 # Other contidional statuses
 if [[ $# -gt 0 && -e $SLACK_STATUS_LOC ]]; then
+
+    [[ $log == "true" ]] && echo "Using status JSON file: $SLACK_STATUS_LOC"
+    [[ $log == "true" ]] && echo "Using status $1\n"
+
     data=$(jq .$1 $SLACK_STATUS_LOC 2> /dev/null)
     if [[ $data != "null" && $data != "" ]]; then 
         message=$(jq ".$1.msg" $SLACK_STATUS_LOC 2> /dev/null)
@@ -82,6 +90,8 @@ if [[ $# -gt 0 && -e $SLACK_STATUS_LOC ]]; then
     fi
 fi
 
+[[ $log == "true" ]] && echo "using parameters: \n{\n  \"msg\":$message,\n  \"emoji\":$emoji,\n  \"dur\":$duration\n}\n"
+
 
 total_duration=$(date +%s -d "$(date) + $duration seconds")
 json_data="{\"profile\":{\"status_text\":$message,\"status_emoji\": $emoji,\"status_expiration\": \"$total_duration\"}}" 
@@ -93,7 +103,7 @@ res=$(curl -s \
 $SLACK_API_URL)
 
 if echo "$res" | grep -q "\"ok\":true"; then
-    echo "Status set: {$message, $emoji, $total_duration}"
+    echo "Status Updated with $message and $emoji for $duration seconds."
 else
     echo "Could not set status: ERROR\n"
     echo "Tried to set: {$message, $emoji, $total_duration}"
