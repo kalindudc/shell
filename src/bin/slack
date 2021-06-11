@@ -13,6 +13,7 @@ help() {
     echo "\nSet the following env variables prior to using slack:\n\tSLACK_TOKEN = <user token with users.profile:write scope>"
     echo "\tSLACK_STATUS_JSON_LOC = <location of json file appropriate slack status information>"
     echo "\nAlternatively, see src/bin/conf/.env.template and src/bin/cong/slack_status.json"
+    echo "ex: slack custom <status message> <status emoji> <duration in seconds>"
     echo "\nRunning 'slack' without any options will clear the current slack status"
 
     if [[ ! -f $SLACK_STATUS_LOC ]]; then 
@@ -22,7 +23,7 @@ help() {
 }
 
 # help output
-if [[ $1 == "-h" || $1 == "--help" ]]; then 
+if [[ $1 == "-h" || $1 == "--help" || $1 == "help" ]]; then 
     help
     if [[ -f $SLACK_STATUS_LOC ]]; then 
         echo "\nCurrent json file location: \n\tSLACK_STATUS_JSON_LOC=$SLACK_STATUS_LOC"
@@ -56,11 +57,28 @@ duration=0
 
 # Other contidional statuses
 if [[ $# -gt 0 && -e $SLACK_STATUS_LOC ]]; then
-    data=$(jq .$1 $SLACK_STATUS_LOC)
-    if [[ $data != "null" ]]; then 
-        message=$(jq .$1.msg $SLACK_STATUS_LOC)
-        emoji=$(jq .$1.emoji $SLACK_STATUS_LOC)
-        duration=$(jq .$1.dur $SLACK_STATUS_LOC)
+    data=$(jq .$1 $SLACK_STATUS_LOC 2> /dev/null)
+    if [[ $data != "null" && $data != "" ]]; then 
+        message=$(jq ".$1.msg" $SLACK_STATUS_LOC 2> /dev/null)
+        emoji=$(jq .$1.emoji $SLACK_STATUS_LOC 2> /dev/null)
+        duration=$(jq .$1.dur $SLACK_STATUS_LOC 2> /dev/null)
+    else 
+
+        if [[ $1 == "custom" ]]; then
+            if [[ $# -ge 4 ]]; then 
+                message="\"$2\""
+                emoji="\"$3\""
+                duration=$4
+            else
+                echo "Invalid use of, slack custom\n"
+                echo "slack custom <status message> <status emoji> <duration in seconds>"
+                exit -1;
+            fi
+        else
+            echo "Unknown commnad"
+            echo "`slack -h`"
+            exit -1;
+        fi        
     fi
 fi
 
