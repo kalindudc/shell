@@ -26,5 +26,17 @@ checkout() {
 }
 
 gitpush() {
-  git push origin $BRANCH
+
+  if [[ $# -eq 2 ]]; then
+    echo "adding $1 and commiting with $2"
+    git add $1
+    git commit -m $2
+  fi
+
+  if [[ $# -eq 1 ]]; then
+    echo "commiting with $1"
+    git commit -m $1
+  fi
+
+  git push origin $(git branch --show-current)
 }
