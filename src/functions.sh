@@ -28,7 +28,7 @@ checkout() {
 gitpush() {
 
   if [[ $# -eq 2 ]]; then
-    echo "adding $1 and commiting with $2"
+    echo "adding \'$1\' and commiting with \'$2\'"
     git add $1
     git commit -m $2
   fi
