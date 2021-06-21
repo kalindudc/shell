@@ -24,3 +24,7 @@ checkout() {
     echo "Invalid use of \`checkout\`. Please provide a name for the new branch."
   fi
 }
+
+gitpush() {
+  git push origin $BRANCH
+}
