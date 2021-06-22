@@ -7,3 +7,4 @@ export HISTTIMEFORMAT="%d/%m/%y %T "
 
 source $CURRENT_DIR/aliases.sh
 source $CURRENT_DIR/functions.sh
+source $CURRENT_DIR/git.sh
