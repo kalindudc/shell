@@ -13,3 +13,22 @@ git config --global alias.rv 'remote -v'
 git config --global alias.d 'diff'
 git config --global alias.dv 'difftool -t vimdiff -y'
 git config --global alias.gl 'config --global -l'
+git config --global alias.p 'push origin $(git branch --show-current)'
+git config --global alias.co 'checkout'
+git config --global alias.nb 'checkout -b'
+
+gacp() {
+
+  if [[ $# -eq 2 ]]; then
+    echo "adding \`$1\` and commiting with \`$2\`"
+    git add $1
+    git commit -m $2
+  fi
+
+  if [[ $# -eq 1 ]]; then
+    echo "commiting with $1"
+    git commit -m $1
+  fi
+
+  git push origin $(git branch --show-current)
+}
