@@ -16,6 +16,7 @@ git config --global alias.gl 'config --global -l'
 git config --global alias.p 'push origin $(git branch --show-current)'
 git config --global alias.co 'checkout'
 git config --global alias.nb 'checkout -b'
+git config --global core.excludesfile ~/.gitignore
 
 gacp() {
 
