@@ -18,12 +18,12 @@ help() {
     echo "ex: slack custom <status message> <status emoji> <duration in seconds>"
     echo "\nRunning 'slack' without any options will clear the current slack status"
 
-    if [[ ! -f $SLACK_STATUS_LOC ]]; then 
+    if [[ ! -f $SLACK_STATUS_LOC ]]; then
         echo "\nCurrent json file location is INVALID. "
     fi
 
-    if [[ -f $SLACK_STATUS_LOC ]]; then 
-        echo "\nCurrent json file location: \n\tSLACK_STATUS_JSON_LOC=$SLACK_STATUS_LOC"        
+    if [[ -f $SLACK_STATUS_LOC ]]; then
+        echo "\nCurrent json file location: \n\tSLACK_STATUS_JSON_LOC=$SLACK_STATUS_LOC"
         echo "\nAvialable options: $keys"
         echo "ex: slack <option>"
     fi
@@ -31,16 +31,16 @@ help() {
 }
 
 # help output
-if [[ $1 == "-h" || $1 == "--help" || $1 == "help" ]]; then 
-    if [[ -f $SLACK_STATUS_LOC ]]; then         
+if [[ $1 == "-h" || $1 == "--help" || $1 == "help" ]]; then
+    if [[ -f $SLACK_STATUS_LOC ]]; then
         keys=$(jq keys -c -C $SLACK_STATUS_LOC)
     fi
     help
     exit 0
 fi
 
-if [[ $1 == "-hv" || $1 == "--help-verbose" ]]; then 
-    if [[ -f $SLACK_STATUS_LOC ]]; then         
+if [[ $1 == "-hv" || $1 == "--help-verbose" ]]; then
+    if [[ -f $SLACK_STATUS_LOC ]]; then
         keys=$(jq '.' -C $SLACK_STATUS_LOC)
     fi
     help
@@ -66,14 +66,14 @@ if [[ $# -gt 0 && -e $SLACK_STATUS_LOC ]]; then
     [[ $log == "true" ]] && echo "Using status $1\n"
 
     data=$(jq .$1 $SLACK_STATUS_LOC 2> /dev/null)
-    if [[ $data != "null" && $data != "" ]]; then 
+    if [[ $data != "null" && $data != "" ]]; then
         message=$(jq ".$1.msg" $SLACK_STATUS_LOC 2> /dev/null)
         emoji=$(jq .$1.emoji $SLACK_STATUS_LOC 2> /dev/null)
-        duration=$(jq .$1.dur $SLACK_STATUS_LOC 2> /dev/null)
-    else 
+        [[ $2 ]] && duration=$2 || duration=$(jq .$1.dur $SLACK_STATUS_LOC 2> /dev/null)
+    else
 
         if [[ $1 == "custom" ]]; then
-            if [[ $# -ge 4 ]]; then 
+            if [[ $# -ge 4 ]]; then
                 message="\"$2\""
                 emoji="\"$3\""
                 duration=$4
@@ -86,7 +86,7 @@ if [[ $# -gt 0 && -e $SLACK_STATUS_LOC ]]; then
             echo "Unknown commnad"
             echo "`slack -h`"
             exit -1;
-        fi        
+        fi
     fi
 fi
 
@@ -94,7 +94,7 @@ fi
 
 
 total_duration=$(date +%s -d "$(date) + $duration seconds")
-json_data="{\"profile\":{\"status_text\":$message,\"status_emoji\": $emoji,\"status_expiration\": \"$total_duration\"}}" 
+json_data="{\"profile\":{\"status_text\":$message,\"status_emoji\": $emoji,\"status_expiration\": \"$total_duration\"}}"
 
 res=$(curl -s \
 -H "Authorization: Bearer $SLACK_TOKEN" \
