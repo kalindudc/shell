@@ -1,7 +1,10 @@
 #!/bin/sh
 
 # get the full path of the current directory
-CURRENT_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+CURRENT_DIR="$(
+  cd -- "$(dirname "$0")" >/dev/null 2>&1
+  pwd -P
+)"
 
 SLACK_API_URL="https://slack.com/api/users.profile.set"
 [[ $SLACK_STATUS_JSON_LOC ]] && SLACK_STATUS_LOC=$SLACK_STATUS_JSON_LOC || SLACK_STATUS_LOC=$CURRENT_DIR/conf/slack_status.json
@@ -9,46 +12,66 @@ SLACK_API_URL="https://slack.com/api/users.profile.set"
 log="false"
 
 help() {
-    echo "slack - command line helper for slack"
-    echo "\nusage: \tslack [options]"
-    echo "\nslack is a tool for processing basic commands for slack. \n\tCurrently, only status changes are supported."
-    echo "\nSet the following env variables prior to using slack:\n\tSLACK_TOKEN = <user token with users.profile:write scope>"
-    echo "\tSLACK_STATUS_JSON_LOC = <location of json file appropriate slack status information>"
-    echo "\nAlternatively, see src/bin/conf/.env.template and src/bin/cong/slack_status.json"
-    echo "ex: slack [custom,c] <status message> <status emoji> <duration in seconds>"
-    echo "\nRunning 'slack' without any options will clear the current slack status"
+  echo "slack - command line helper for slack"
+  echo "\nusage: \tslack [options]"
+  echo "\nslack is a tool for processing basic commands for slack. \n\tCurrently, only status changes are supported."
+  echo "\nSet the following env variables prior to using slack:\n\tSLACK_TOKEN = <user token with users.profile:write scope>"
+  echo "\tSLACK_STATUS_JSON_LOC = <location of json file appropriate slack status information>"
+  echo "\nAlternatively, see src/bin/conf/.env.template and src/bin/cong/slack_status.json"
+  echo "ex: slack [custom,c] <status message> <status emoji> <duration in seconds>"
+  echo "\nRunning 'slack' without any options will clear the current slack status\n"
+  echo "\nTo schedule a slack status use the option [-s] followed by the time and date"
+  echo "ex: slack -s \"9:00am July 30 2021\" custom \"Out of the office\" :vacation: 432000"
 
-    if [[ ! -f $SLACK_STATUS_LOC ]]; then
-        echo "\nCurrent json file location is INVALID. "
-    fi
+  if [[ ! -f $SLACK_STATUS_LOC ]]; then
+    echo "\nCurrent json file location is INVALID. "
+  fi
 
-    if [[ -f $SLACK_STATUS_LOC ]]; then
-        echo "\nCurrent json file location: \n\tSLACK_STATUS_JSON_LOC=$SLACK_STATUS_LOC"
-        echo "\nAvialable options: $keys"
-        echo "ex: slack <option> <duration?>"
-    fi
+  if [[ -f $SLACK_STATUS_LOC ]]; then
+    echo "\nCurrent json file location: \n\tSLACK_STATUS_JSON_LOC=$SLACK_STATUS_LOC"
+    echo "\nAvialable options: $keys"
+    echo "ex: slack <option> <duration?>"
+  fi
 
 }
 
 # help output
 if [[ $1 == "-h" || $1 == "--help" || $1 == "help" ]]; then
-    if [[ -f $SLACK_STATUS_LOC ]]; then
-        keys=$(jq keys -c -C $SLACK_STATUS_LOC)
-    fi
-    help
-    exit 0
+  if [[ -f $SLACK_STATUS_LOC ]]; then
+    keys=$(jq keys -c -C $SLACK_STATUS_LOC)
+  fi
+  help
+  exit 0
 fi
 
 if [[ $1 == "-hv" || $1 == "--help-verbose" ]]; then
-    if [[ -f $SLACK_STATUS_LOC ]]; then
-        keys=$(jq '.' -C $SLACK_STATUS_LOC)
-    fi
-    help
-    exit 0
+  if [[ -f $SLACK_STATUS_LOC ]]; then
+    keys=$(jq '.' -C $SLACK_STATUS_LOC)
+  fi
+  help
+  exit 0
 fi
 
 # set all necessary env variables
 [[ $CURRENT_DIR/conf/.env ]] && source $CURRENT_DIR/conf/.env
+
+if [[ $1 == "-s" ]]; then
+  if [[ $# -le 1 ]]; then
+    echo "Invalid use of , slack -s"
+    help
+    exit -1
+  fi
+
+  schedule=$2
+
+  shift
+  shift
+
+  job="export PATH=$CURRENT_DIR:$PATH && export SLACK_STATUS_LOC=$SLACK_STATUS_LOC && slack $@ > /tmp/slack.log"
+  at $schedule <<< "$job"
+  echo "slack status scheduled for $schedule"
+  exit 0
+fi
 
 declare -i duration
 declare -i total_duration
@@ -59,54 +82,45 @@ duration=0
 
 [[ $log == "true" ]] && echo "slack: working ...\n"
 
-# Other contidional statuses
-if [[ $# -gt 0 && -e $SLACK_STATUS_LOC ]]; then
+if [[ $1 == "custom" || $1 == "c" ]]; then
+  if [[ $# -ge 4 ]]; then
+    message="\"$2\""
+    emoji="\"$3\""
+    duration=$4
+  else
+    echo "Invalid use of, slack custom\n"
+    echo "slack custom <status message> <status emoji> <duration in seconds>"
+    exit -1
+  fi
+elif [[ $# -gt 0 && -e $SLACK_STATUS_LOC ]]; then
 
-    [[ $log == "true" ]] && echo "Using status JSON file: $SLACK_STATUS_LOC"
-    [[ $log == "true" ]] && echo "Using status $1\n"
+  [[ $log == "true" ]] && echo "Using status JSON file: $SLACK_STATUS_LOC"
+  [[ $log == "true" ]] && echo "Using status $1\n"
 
-    data=$(jq .$1 $SLACK_STATUS_LOC 2> /dev/null)
-    if [[ $data != "null" && $data != "" ]]; then
-        message=$(jq ".$1.msg" $SLACK_STATUS_LOC 2> /dev/null)
-        emoji=$(jq .$1.emoji $SLACK_STATUS_LOC 2> /dev/null)
-        [[ $2 ]] && duration=$2 || duration=$(jq .$1.dur $SLACK_STATUS_LOC 2> /dev/null)
-    else
-
-        if [[ $1 == "custom" || $1 == "c" ]]; then
-            if [[ $# -ge 4 ]]; then
-                message="\"$2\""
-                emoji="\"$3\""
-                duration=$4
-            else
-                echo "Invalid use of, slack custom\n"
-                echo "slack custom <status message> <status emoji> <duration in seconds>"
-                exit -1;
-            fi
-        else
-            echo "Unknown commnad"
-            echo "`slack -h`"
-            exit -1;
-        fi
-    fi
+  data=$(jq .$1 $SLACK_STATUS_LOC 2>/dev/null)
+  if [[ $data != "null" && $data != "" ]]; then
+    message=$(jq ".$1.msg" $SLACK_STATUS_LOC 2>/dev/null)
+    emoji=$(jq .$1.emoji $SLACK_STATUS_LOC 2>/dev/null)
+    [[ $2 ]] && duration=$2 || duration=$(jq .$1.dur $SLACK_STATUS_LOC 2>/dev/null)
+  fi
 fi
 
 [[ $log == "true" ]] && echo "using parameters: \n{\n  \"msg\":$message,\n  \"emoji\":$emoji,\n  \"dur\":$duration\n}\n"
-
 
 total_duration=$(date +%s -d "$(date) + $duration seconds")
 json_data="{\"profile\":{\"status_text\":$message,\"status_emoji\": $emoji,\"status_expiration\": \"$total_duration\"}}"
 
 res=$(curl -s \
--H "Authorization: Bearer $SLACK_TOKEN" \
--H "Content-type: application/json; charset=utf-8" \
--d "$json_data" \
-$SLACK_API_URL)
+  -H "Authorization: Bearer $SLACK_TOKEN" \
+  -H "Content-type: application/json; charset=utf-8" \
+  -d "$json_data" \
+  $SLACK_API_URL)
 
 if echo "$res" | grep -q "\"ok\":true"; then
-    echo "Status Updated with $message and $emoji for $duration seconds."
+  echo "Status Updated with $message and $emoji for $duration seconds."
 else
-    echo "Could not set status: ERROR\n"
-    echo "Tried to set: {$message, $emoji, $total_duration}"
-    echo "JSON Data: $json_data"
-    echo "\n$res\n"
+  echo "Could not set status: ERROR\n"
+  echo "Tried to set: {$message, $emoji, $total_duration}"
+  echo "JSON Data: $json_data"
+  echo "\n$res\n"
 fi
