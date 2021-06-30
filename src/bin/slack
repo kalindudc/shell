@@ -15,7 +15,7 @@ help() {
     echo "\nSet the following env variables prior to using slack:\n\tSLACK_TOKEN = <user token with users.profile:write scope>"
     echo "\tSLACK_STATUS_JSON_LOC = <location of json file appropriate slack status information>"
     echo "\nAlternatively, see src/bin/conf/.env.template and src/bin/cong/slack_status.json"
-    echo "ex: slack custom <status message> <status emoji> <duration in seconds>"
+    echo "ex: slack [custom,c] <status message> <status emoji> <duration in seconds>"
     echo "\nRunning 'slack' without any options will clear the current slack status"
 
     if [[ ! -f $SLACK_STATUS_LOC ]]; then
@@ -25,7 +25,7 @@ help() {
     if [[ -f $SLACK_STATUS_LOC ]]; then
         echo "\nCurrent json file location: \n\tSLACK_STATUS_JSON_LOC=$SLACK_STATUS_LOC"
         echo "\nAvialable options: $keys"
-        echo "ex: slack <option>"
+        echo "ex: slack <option> <duration?>"
     fi
 
 }
@@ -72,7 +72,7 @@ if [[ $# -gt 0 && -e $SLACK_STATUS_LOC ]]; then
         [[ $2 ]] && duration=$2 || duration=$(jq .$1.dur $SLACK_STATUS_LOC 2> /dev/null)
     else
 
-        if [[ $1 == "custom" ]]; then
+        if [[ $1 == "custom" || $1 == "c" ]]; then
             if [[ $# -ge 4 ]]; then
                 message="\"$2\""
                 emoji="\"$3\""

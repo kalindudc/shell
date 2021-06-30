@@ -3,7 +3,7 @@
         "msg": "",
         "emoji": "",
         "dur": 0
-    }, 
+    },
     "brb" : {
         "msg": "Be right back.",
         "emoji": ":coffee:",
@@ -22,6 +22,11 @@
     "meeting" : {
         "msg": "In a meeting.",
         "emoji": ":date:",
+        "dur": 3600
+    },
+    "errand" : {
+        "msg": "Running and errand.",
+        "emoji": ":run_fast:",
         "dur": 3600
     }
 }
