@@ -1,5 +1,7 @@
 #!/bin/sh
 
+ALIAS_SCRIPT="yes"
+
 CURRENT_DIR="$(
   cd -- "$(dirname "$0")" >/dev/null 2>&1
   pwd -P

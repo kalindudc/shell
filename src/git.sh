@@ -1,5 +1,7 @@
 #!/bin/sh
 
+GIT_SCRIPT="yes"
+
 alias g='git'
 
 git config --global alias.st 'status'
