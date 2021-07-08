@@ -25,8 +25,13 @@
     "dur": 3600
   },
   "errand": {
-    "msg": "Running and errand.",
+    "msg": "Running an errand.",
     "emoji": ":run_fast:",
     "dur": 3600
+  },
+  "doctor": {
+    "msg": "At the Doctor.",
+    "emoji": ":dog-doctor-doge:",
+    "dur": 7200
   }
 }

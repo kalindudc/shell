@@ -69,7 +69,7 @@ if [[ $1 == "-s" ]]; then
 
   job="export PATH=$CURRENT_DIR:$PATH && export SLACK_STATUS_LOC=$SLACK_STATUS_LOC && slack $@ > /tmp/slack.log"
   at $schedule <<< "$job"
-  echo "slack status scheduled for $schedule"
+  echo "slack status scheduled for $schedule with 'slack $@'"
   exit 0
 fi
 
