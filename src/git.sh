@@ -4,6 +4,8 @@ GIT_SCRIPT="yes"
 
 alias g='git'
 
+git config --global user.name "Kalindu De Costa"
+git config --global user.email "kalinduk.decosta@gmail.com"
 git config --global alias.st 'status'
 git config --global alias.b 'branch --show-current'
 git config --global alias.c 'commit -m'
@@ -15,7 +17,7 @@ git config --global alias.rv 'remote -v'
 git config --global alias.d 'diff'
 git config --global alias.dv 'difftool -t vimdiff -y'
 git config --global alias.gl 'config --global -l'
-git config --global alias.p 'push origin $(git branch --show-current)'
+git config --global alias.p 'push origin $(git rev-parse --abbrev-ref HEAD)'
 git config --global alias.co 'checkout'
 git config --global alias.nb 'checkout -b'
 git config --global core.excludesfile ~/.gitignore
@@ -33,5 +35,5 @@ gacp() {
     git commit -m $1
   fi
 
-  git push origin $(git branch --show-current)
+  git push origin $(git rev-parse --abbrev-ref HEAD)
 }
