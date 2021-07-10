@@ -1,8 +1,10 @@
-#!/bin/sh
+#!/bin/bash
 
 GIT_SCRIPT="yes"
 
 alias g='git'
+
+GIT_PROJECTS_PATH="/home/kalindu/src/github.com/"
 
 git config --global user.name "Kalindu De Costa"
 git config --global user.email "kalinduk.decosta@gmail.com"
@@ -36,4 +38,39 @@ gacp() {
   fi
 
   git push origin $(git rev-parse --abbrev-ref HEAD)
+}
+
+# functions
+gitcd() {
+  dir=""
+
+  if [[ $# -gt 0  ]]; then
+    dir=$(ls -a $GIT_PROJECTS_PATH | grep $@ | sed 's/\x1b\[[0-9;]*m//g' | head -n 1)
+    [[ -z $dir  ]] && echo "Could not find matching directory" || echo "Found matching directory: $dir"
+  fi
+
+  cd "${GIT_PROJECTS_PATH}${dir}"
+}
+
+clone() {
+  if [[ $# -le 0 ]]; then
+    echo "You must specify a repository to clone.\n"
+    echo "usage: clone <repo> [<path> || $GIT_PROJECT_PATH]\n"
+    return -1
+  fi
+
+  repo="$1"
+  [[ $# -gt 2 ]] && root_path="$2" || root_path="$GIT_PROJECTS_PATH"
+  # default to kalindudc/<repo>
+  if [[ $repo =~ (^[^\/]+)[^.git]$ ]]; then
+    repo="git@github.com:kalindudc/${repo}.git"
+  # otherwise try <org>/<repo>
+  elif [[ $repo =~ (.+)\/(.+)[^.git]$ ]]; then
+    repo="git@github.com:${repo}.git"
+  fi
+
+  echo "Cloning: $repo"
+
+  # else clone with given repo
+  git -C "$root_path" clone "$repo" && gitcd "$(basename "$repo" .git)"
 }

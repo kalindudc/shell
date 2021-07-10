@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 KUBERNETES_SCRIPT="yes"
 

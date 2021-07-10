@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 ALIAS_SCRIPT="yes"
 
@@ -23,6 +23,3 @@ alias gh='history -i |grep'
 alias cl='clear'
 alias psg='ps -ef | grep'
 alias myip='curl ip.me'
-
-# modify this to point to your projects directory
-alias cdg='cd ~/src/github.com/ && cd $@'
