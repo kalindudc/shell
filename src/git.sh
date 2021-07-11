@@ -27,13 +27,13 @@ git config --global core.excludesfile ~/.gitignore
 gacp() {
 
   if [[ $# -eq 2 ]]; then
-    echo "adding \`$1\` and commiting with \`$2\`"
+    printf "adding \`$1\` and commiting with \`$2\`\n"
     git add $1
     git commit -m $2
   fi
 
   if [[ $# -eq 1 ]]; then
-    echo "commiting with $1"
+    printf "commiting with $1\n"
     git commit -m $1
   fi
 
@@ -46,7 +46,7 @@ gitcd() {
 
   if [[ $# -gt 0  ]]; then
     dir=$(ls -a $GIT_PROJECTS_PATH | grep $@ | sed 's/\x1b\[[0-9;]*m//g' | head -n 1)
-    [[ -z $dir  ]] && echo "Could not find matching directory" || echo "Found matching directory: $dir"
+    [[ -z $dir  ]] && printf "Could not find matching directory\n" || printf "Found matching directory: $dir\n"
   fi
 
   cd "${GIT_PROJECTS_PATH}${dir}"
@@ -54,8 +54,8 @@ gitcd() {
 
 clone() {
   if [[ $# -le 0 ]]; then
-    echo "You must specify a repository to clone.\n"
-    echo "usage: clone <repo> [<path> || $GIT_PROJECT_PATH]\n"
+    printf "You must specify a repository to clone.\n\n"
+    printf "usage: clone <repo> [<path> || $GIT_PROJECT_PATH]\n\n"
     return -1
   fi
 
@@ -69,8 +69,14 @@ clone() {
     repo="git@github.com:${repo}.git"
   fi
 
-  echo "Cloning: $repo"
+  printf "Cloning: $repo\n"
 
   # else clone with given repo
   git -C "$root_path" clone "$repo" && gitcd "$(basename "$repo" .git)"
+}
+
+ghopen() {
+  url_to_open="$(git remote get-url origin | sed -e's/:/\//' -e 's/git@/http:\/\//')"
+  printf "$url_to_open\n"
+  python -mwebbrowser "$url_to_open"
 }
