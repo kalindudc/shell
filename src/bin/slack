@@ -31,15 +31,10 @@ help() {
     printf "\nCurrent json file location: \n\tSLACK_STATUS_JSON_LOC=$SLACK_STATUS_LOC\n"
     printf "\nAvialable options: $keys\n"
     printf "ex: slack <option> <duration?>\n"
+    printf "    slack <option> <custom message?> <duration?>\n"
   fi
 
 }
-
-if [[ -z $SLACK_TOKEN ]]; then
-  printf "SLACK_TOKEN is empty\n\n"
-  help
-  exit 0
-fi
 
 # help output
 if [[ $1 == "-h" || $1 == "--help" || $1 == "help" ]]; then
@@ -60,6 +55,12 @@ fi
 
 # set all necessary env variables
 [[ -f $CURRENT_DIR/conf/.env ]] && source $CURRENT_DIR/conf/.env
+
+if [[ -z "$SLACK_TOKEN" ]]; then
+  printf "SLACK_TOKEN is empty\n\n"
+  help
+  exit 0
+fi
 
 if [[ $1 == "-s" ]]; then
   if [[ $# -le 1 ]]; then
@@ -107,7 +108,14 @@ elif [[ $# -gt 0 && -e $SLACK_STATUS_LOC ]]; then
   if [[ $data != "null" && $data != "" ]]; then
     message=$(jq ".$1.msg" $SLACK_STATUS_LOC 2>/dev/null)
     emoji=$(jq .$1.emoji $SLACK_STATUS_LOC 2>/dev/null)
-    [[ $2 ]] && duration=$2 || duration=$(jq .$1.dur $SLACK_STATUS_LOC 2>/dev/null)
+    duration=$(jq .$1.dur $SLACK_STATUS_LOC 2>/dev/null)
+
+    if [[ $3 ]]; then
+      message="\"$2\""
+      duration=$3
+    elif [[ $2 ]]; then
+      duration=$2
+    fi
   fi
 fi
 

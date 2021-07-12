@@ -33,5 +33,10 @@
     "msg": "At the Doctor.",
     "emoji": ":dog-doctor-doge:",
     "dur": 7200
+  },
+  "vacation": {
+    "msg": "Out of office.",
+    "emoji": ":vacation:",
+    "dur": 86400
   }
 }
