@@ -1,0 +1,77 @@
+#!/bin/bash
+
+CONF_DIR="$HOME/conf/show"
+CONF_PATH="$CONF_DIR/show_conf.json"
+
+help() {
+  printf "show - command line tool to quickly store and retrieve text\n\n"
+  printf "usage: show <option>\n\n"
+  printf "Available options\n"
+  printf "\tshow <key> - retrieve text stored at <key>\n"
+  printf "\tshow init - initialize configuration file\n"
+  printf "\tshow add <key> <value> - store a <key> <value> pair\n"
+  printf "\tshow delete <key> - delete a <key>\n\n"
+  printf "Configuration file can be found at $CONF_PATH.\n"
+}
+
+# init, create .json if doesnt exist
+init() {
+  if [[ -f "$CONF_PATH" ]]; then
+    printf "$CONF_PATH already exists\n"
+    printf "skipping init()\n"
+  else
+    printf "initializing...\n"
+    status=$(mkdir -p "$CONF_DIR" && touch "$CONF_PATH")
+    printf "{}" > "$CONF_PATH"
+    printf "Configuration file generated at $CONF_PATH\n"
+  fi
+}
+
+# add
+# delete
+# regular show
+
+# handle input
+if [[ $# -lt 1 ]]; then
+  help
+  exit 0
+fi
+
+if [[ $1 == "init" ]]; then
+  init
+  exit 0
+fi
+
+if [[ ! -f "$CONF_PATH" ]]; then
+  printf "configuration file does not exist, please run [show init]\n"
+  exit -1
+fi
+
+if [[ $1 == "add" ]]; then
+  if [[ $# -lt 3 ]]; then
+    printf "invalid number of paramters for the option [add]\n\n"
+    help
+    exit -1
+  fi
+
+  new_json=$(jq -c ".\"$2\"=\"$3\"" $CONF_PATH)
+  printf "$new_json" > "$CONF_PATH"
+  printf "added \"$2\" to retrieve \"$3\"\n"
+elif [[ $1 == "delete" ]]; then
+  if [[ $# -lt 2 ]]; then
+    printf "invalid number of paramters for the option [delete]\n\n"
+    help
+    exit -1
+  fi
+  new_json=$(jq -c "del(.\"$2\")" $CONF_PATH)
+  printf "$new_json" > "$CONF_PATH"
+  printf "deleted \"$2\"\n"
+elif [[ $1 == "-A" || $1 == "--all" ]]; then
+  json_data=$(jq "." $CONF_PATH)
+  printf "$json_data\n"
+elif [[ $1 == "-h" || $1 == "--help" ]]; then
+  help
+else
+  json_data=$(jq ".\"$1\"" $CONF_PATH | tr -d "\"")
+  printf "$json_data\n"
+fi
