@@ -18,3 +18,7 @@ reload() {
   [[ $HOME/.zshrc ]] && source $HOME/.zshrc
   # [[ $HOME/.bashrc ]] && source $HOME/.bashrc
 }
+
+setbin() {
+  export PATH=$CURRENT_DIR/bin:$PATH
+}

@@ -12,16 +12,16 @@ SLACK_API_URL="https://slack.com/api/users.profile.set"
 log="false"
 
 help() {
-  printf "slack - command line helper for slack\n"
-  printf "\nusage: \tslack [options]"
+  printf "slacks - command line helper for slack\n"
+  printf "\nusage: \tslacks [options]"
   printf "\nslack is a tool for processing basic commands for slack. \n\tCurrently, only status changes are supported.\n"
   printf "\nSet the following env variables prior to using slack:\n\tSLACK_TOKEN = <user token with users.profile:write scope>\n"
   printf "\tSLACK_STATUS_JSON_LOC = <location of json file appropriate slack status information>\n"
   printf "\nAlternatively, see src/bin/conf/.env.template and src/bin/cong/slack_status.json\n"
-  printf "ex: slack [custom,c] <status message> <status emoji> <duration in seconds>\n"
-  printf "\nRunning 'slack' without any options will clear the current slack status\n\n"
+  printf "ex: slacks [custom,c] <status message> <status emoji> <duration in seconds>\n"
+  printf "\nRunning 'slacks' without any options will clear the current slack status\n\n"
   printf "\nTo schedule a slack status use the option [-s] followed by the time and date\n"
-  printf "ex: slack -s \"9:00am July 30 2021\" custom \"Out of the office\" :vacation: 432000\n"
+  printf "ex: slacks -s \"9:00am July 30 2021\" custom \"Out of the office\" :vacation: 432000\n"
 
   if [[ ! -f $SLACK_STATUS_LOC ]]; then
     printf "\nCurrent json file location is INVALID.\n"
@@ -30,8 +30,8 @@ help() {
   if [[ -f $SLACK_STATUS_LOC ]]; then
     printf "\nCurrent json file location: \n\tSLACK_STATUS_JSON_LOC=$SLACK_STATUS_LOC\n"
     printf "\nAvialable options: $keys\n"
-    printf "ex: slack <option> <duration?>\n"
-    printf "    slack <option> <custom message?> <duration?>\n"
+    printf "ex: slacks <option> <duration?>\n"
+    printf "    slacks <option> <custom message?> <duration?>\n"
   fi
 
 }
