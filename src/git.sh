@@ -24,6 +24,16 @@ git config --global alias.co 'checkout'
 git config --global alias.nb 'checkout -b'
 git config --global core.excludesfile ~/.gitignore
 
+unalias grb
+
+grb() {
+  git rebase -i $(git rev-parse --abbrev-ref HEAD)~$1
+}
+
+gfp() {
+  git push origin +$(git rev-parse --abbrev-ref HEAD)
+}
+
 gacp() {
 
   if [[ $# -eq 2 ]]; then
