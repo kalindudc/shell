@@ -7,7 +7,7 @@ alias g='git'
 GIT_PROJECTS_PATH="/home/kalindu/src/github.com/"
 
 git config --global user.name "Kalindu De Costa"
-git config --global user.email "kalinduk.decosta@gmail.com"
+git config --global user.email "kalindu.decosta@shopify.com"
 git config --global alias.st 'status'
 git config --global alias.b 'branch --show-current'
 git config --global alias.c 'commit -m'
