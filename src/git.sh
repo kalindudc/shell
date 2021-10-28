@@ -1,5 +1,7 @@
 #!/bin/bash
 
+export GPG_TTY=$(tty)
+
 GIT_SCRIPT="yes"
 
 alias g='git'

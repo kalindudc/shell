@@ -15,6 +15,7 @@ alias k='kubectl'
 alias kcl='kubectl'
 alias kcln='kubectl --namespace'
 alias kclc='kubectl --context'
+alias kngx='kubectl --plain ingress-nginx --deployment nginx-ingress-controller'
 
 kdebug() {
   if [[ $# -le 0 ]]; then
