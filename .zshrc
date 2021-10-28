@@ -54,12 +54,6 @@ zstyle :bracketed-paste-magic paste-finish pastefinish
 source $ZSH/oh-my-zsh.sh
 
 [ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
-if [ -f $(brew --prefix)/bash_completion.d/kubectl ]; then
-. $(brew --prefix)/bash_completion.d/kubectl
-fi
-
-autoload -U compinit promptinit; promptinit
-prompt pure
 
 [[ $BASE_SCRIPT != yes && -f /home/kalindu/src/github.com/shell/src/base.sh ]] && source /home/kalindu/src/github.com/shell/src/base.sh
 [[ $KUBERNETES_SCRIPT != yes && -f /home/kalindu/src/github.com/shell/src/kubernetes.sh ]] && source /home/kalindu/src/github.com/shell/src/kubernetes.sh
