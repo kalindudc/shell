@@ -10,11 +10,10 @@ CURRENT_DIR="$(
 PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
 
 command -v kubecolor >/dev/null 2>&1 && alias kubectl="kubecolor"
+compdef kubecolor=kubectl
 
 alias k='kubectl'
 alias kcl='kubectl'
-alias kcln='kubectl --namespace'
-alias kclc='kubectl --context'
 alias kngx='kubectl --plain ingress-nginx --deployment nginx-ingress-controller'
 
 kdebug() {

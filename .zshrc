@@ -23,12 +23,15 @@ fi
 unset env
 ### END
 
-export ZSH="/home/kalindu/.oh-my-zsh"
+export ZSH="$HOME/.oh-my-zsh"
 
 ZSH_THEME="dracula"
 
 plugins=(
   git
+  history
+  colored-man-pages
+  colorize
   zsh-autosuggestions
   zsh-syntax-highlighting
   kubectl
@@ -50,10 +53,23 @@ zstyle :bracketed-paste-magic paste-finish pastefinish
 
 source $ZSH/oh-my-zsh.sh
 
+[ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
+if [ -f $(brew --prefix)/bash_completion.d/kubectl ]; then
+. $(brew --prefix)/bash_completion.d/kubectl
+fi
+
+autoload -U compinit promptinit; promptinit
+prompt pure
+
 [[ $BASE_SCRIPT != yes && -f /home/kalindu/src/github.com/shell/src/base.sh ]] && source /home/kalindu/src/github.com/shell/src/base.sh
 [[ $KUBERNETES_SCRIPT != yes && -f /home/kalindu/src/github.com/shell/src/kubernetes.sh ]] && source /home/kalindu/src/github.com/shell/src/kubernetes.sh
 
-export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
+[[ -f /opt/dev/sh/chruby/chruby.sh ]] && type chruby >/dev/null 2>&1 || chruby () { source /opt/dev/sh/chruby/chruby.sh; chruby "$@"; }
+if [[ $- == *i* ]] && [[ -f /opt/dev/dev.sh ]]; then source /opt/dev/dev.sh; fi
 
-nvm use v16.4.2 2>&1 > /dev/null
+if [ -f "${HOME}/.gnupg/.gpg-agent-info" ]; then
+    . "${HOME}/.gnupg/.gpg-agent-info"
+    export GPG_AGENT_INFO
+fi
+
+[[ -x /usr/local/bin/brew ]] && eval $(/usr/local/bin/brew shellenv)
