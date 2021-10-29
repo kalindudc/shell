@@ -53,6 +53,11 @@ zstyle :bracketed-paste-magic paste-finish pastefinish
 
 source $ZSH/oh-my-zsh.sh
 
+ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+
+# auto complete one word at a time, similar to '^w' to remove one word at a time
+bindkey '^f' forward-word
+
 [ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
 
 [[ $BASE_SCRIPT != yes && -f /home/kalindu/src/github.com/shell/src/base.sh ]] && source /home/kalindu/src/github.com/shell/src/base.sh
