@@ -1,3 +1,5 @@
+STARTTIME=$(($(gdate +%s%3N)))
+
 ### SSH AGENT TO STORE SSH KEY PHRASE
 ### https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh/working-with-ssh-key-passphrases
 env=~/.ssh/agent.env
@@ -51,12 +53,13 @@ zstyle :bracketed-paste-magic paste-init pasteinit
 zstyle :bracketed-paste-magic paste-finish pastefinish
 # slow pastes
 
-source $ZSH/oh-my-zsh.sh
-
+ZSH_AUTOSUGGEST_USE_ASYNC="true"
 ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 
 # auto complete one word at a time, similar to '^w' to remove one word at a time
 bindkey '^f' forward-word
+
+source $ZSH/oh-my-zsh.sh
 
 [ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
 
@@ -72,3 +75,35 @@ if [ -f "${HOME}/.gnupg/.gpg-agent-info" ]; then
 fi
 
 [[ -x /usr/local/bin/brew ]] && eval $(/usr/local/bin/brew shellenv)
+
+autoload -U promptinit; promptinit
+
+zstyle :prompt:pure:git:stash show yes
+
+prompt pure
+
+[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+
+export ZPLUG_HOME=/usr/local/opt/zplug
+source $ZPLUG_HOME/init.zsh
+
+zplug "b4b4r07/enhancd", use:"*init.sh"
+
+if zplug check "b4b4r07/enhancd"; then
+  export ENHANCD_FILTER="fzf"
+  export ENHANCD_DOT_SHOW_FULLPATH=1
+fi
+
+# Install plugins if there are plugins that have not been installed
+if ! zplug check; then
+  printf "Some plugins need to be installed. Install plugins? [y/N]: "
+  if read -q; then
+    echo; zplug install
+  fi
+fi
+
+# Source plugins and add commands to $PATH
+zplug load --verbose
+
+ENDTIME=$(($(gdate +%s%3N)))
+printf 'Start time %.4fs\n' $(echo "($ENDTIME - $STARTTIME)/1000" | bc -l)

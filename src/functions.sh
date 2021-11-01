@@ -9,14 +9,7 @@ CURRENT_DIR="$(
 
 reload() {
 
-  unset BASE_SCRIPT
-  unset KUBERNETES_SCRIPT
-  unset ALIAS_SCRIPT
-  unset FUNC_SCRIPT
-  unset GIT_SCRIPT
-
-  [[ $HOME/.zshrc ]] && source $HOME/.zshrc
-  # [[ $HOME/.bashrc ]] && source $HOME/.bashrc
+  exec zsh
 }
 
 setbin() {
