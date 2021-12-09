@@ -1,3 +1,4 @@
+
 STARTTIME=$(($(gdate +%s%3N)))
 
 ### SSH AGENT TO STORE SSH KEY PHRASE
@@ -25,12 +26,15 @@ fi
 unset env
 ### END
 
-export ZSH="$HOME/.oh-my-zsh"
+export ZSH_DISABLE_COMPFIX="false"
 
-ZSH_THEME="dracula"
+# Path to your oh-my-zsh installation.
+export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME=""
 
 plugins=(
   git
+  fzf
   history
   colored-man-pages
   colorize
@@ -63,9 +67,6 @@ source $ZSH/oh-my-zsh.sh
 
 [ -f /usr/local/etc/profile.d/autojump.sh ] && . /usr/local/etc/profile.d/autojump.sh
 
-[[ $BASE_SCRIPT != yes && -f /home/kalindu/src/github.com/shell/src/base.sh ]] && source /home/kalindu/src/github.com/shell/src/base.sh
-[[ $KUBERNETES_SCRIPT != yes && -f /home/kalindu/src/github.com/shell/src/kubernetes.sh ]] && source /home/kalindu/src/github.com/shell/src/kubernetes.sh
-
 [[ -f /opt/dev/sh/chruby/chruby.sh ]] && type chruby >/dev/null 2>&1 || chruby () { source /opt/dev/sh/chruby/chruby.sh; chruby "$@"; }
 if [[ $- == *i* ]] && [[ -f /opt/dev/dev.sh ]]; then source /opt/dev/dev.sh; fi
 
@@ -90,7 +91,7 @@ source $ZPLUG_HOME/init.zsh
 zplug "b4b4r07/enhancd", use:"*init.sh"
 
 if zplug check "b4b4r07/enhancd"; then
-  export ENHANCD_FILTER="fzf"
+  export ENHANCD_FILTER="fzy:fzf"
   export ENHANCD_DOT_SHOW_FULLPATH=1
 fi
 
@@ -104,6 +105,21 @@ fi
 
 # Source plugins and add commands to $PATH
 zplug load --verbose
+
+## CUSTOM ##
+
+[ -f /opt/dev/dev.sh ] && source /opt/dev/dev.sh
+if [ -e /Users/kalindu/.nix-profile/etc/profile.d/nix.sh ]; then . /Users/kalindu/.nix-profile/etc/profile.d/nix.sh; fi # added by Nix installer
+
+[[ $BASE_SCRIPT != yes && -f $HOME/src/github.com/kalindudc/shell/src/base.sh ]] && source $HOME/src/github.com/kalindudc/shell/src/base.sh
+[[ $KUBERNETES_SCRIPT != yes && -f $HOME/src/github.com/kalindudc/shell/src/kubernetes.sh ]] && source $HOME/src/github.com/kalindudc/shell/src/kubernetes.sh
+
+# cloudplatform: add Shopify clusters to your local kubernetes config
+export KUBECONFIG=${KUBECONFIG:+$KUBECONFIG:}/Users/kalindu/.kube/config:/Users/kalindu/.kube/config.shopify.cloudplatform
+for file in /Users/kalindu/src/github.com/Shopify/cloudplatform/workflow-utils/*.bash; do source ${file}; done
+kubectl-short-aliases
+
+export PATH=/Users/kalindu/go/bin:/usr/bin/local:/usr/local/opt/coreutils/libexec/gnubin:/usr/local/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/kalindu/.gem/ruby/2.7.2/bin:/opt/rubies/2.7.2/lib/ruby/gems/2.7.0/bin:/opt/rubies/2.7.2/bin:$PATH
 
 ENDTIME=$(($(gdate +%s%3N)))
 printf 'Start time %.4fs\n' $(echo "($ENDTIME - $STARTTIME)/1000" | bc -l)

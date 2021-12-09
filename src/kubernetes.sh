@@ -15,6 +15,7 @@ compdef kubecolor=kubectl
 alias k='kubectl'
 alias kcl='kubectl'
 alias kngx='kubectl --plain ingress-nginx --deployment nginx-ingress-controller'
+alias kevents="kubectl get events --sort-by='.lastTimestamp'"
 
 kdebug() {
   if [[ $# -le 0 ]]; then

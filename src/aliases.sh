@@ -19,7 +19,7 @@ alias lsg='lsa --color=yes | grep -i $@ '
 alias cpv='rsync -ah --info=progress2'
 
 alias mnt='mount | grep -E ^/dev | column -t'
-alias gh='history -i |grep'
+alias history='history -i |grep'
 alias cl='clear'
 alias psg='ps -ef | grep'
 alias myip='curl ip.me'
