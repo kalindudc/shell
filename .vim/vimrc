@@ -1,0 +1,14 @@
+set nocompatible
+call pathogen#infect()
+call pathogen#helptags()
+
+syntax on
+colorscheme default
+set list
+set listchars=tab:!·,trail:·
+set number
+
+filetype plugin indent on
+syntax on
+runtime! config/**/*.vim
+
