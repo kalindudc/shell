@@ -1,3 +1,4 @@
+export PATH=/opt/homebrew/bin:/opt/homebrew/sbin:$PATH
 
 STARTTIME=$(($(gdate +%s%3N)))
 
@@ -75,7 +76,9 @@ if [ -f "${HOME}/.gnupg/.gpg-agent-info" ]; then
     export GPG_AGENT_INFO
 fi
 
-[[ -x /usr/local/bin/brew ]] && eval $(/usr/local/bin/brew shellenv)
+[[ -x /opt/homebrew/bin/brew ]] && eval $(/opt/homebrew/bin/brew shellenv)
+
+fpath+=$HOME/.zsh/pure
 
 autoload -U promptinit; promptinit
 
@@ -85,7 +88,7 @@ prompt pure
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
-export ZPLUG_HOME=/usr/local/opt/zplug
+export ZPLUG_HOME=$HOME/.zsh/zplug
 source $ZPLUG_HOME/init.zsh
 
 zplug "b4b4r07/enhancd", use:"*init.sh"
@@ -119,7 +122,10 @@ export KUBECONFIG=${KUBECONFIG:+$KUBECONFIG:}/Users/kalindu/.kube/config:/Users/
 for file in /Users/kalindu/src/github.com/Shopify/cloudplatform/workflow-utils/*.bash; do source ${file}; done
 kubectl-short-aliases
 
-export PATH=/Users/kalindu/go/bin:/usr/bin/local:/usr/local/opt/coreutils/libexec/gnubin:/usr/local/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/kalindu/.gem/ruby/2.7.2/bin:/opt/rubies/2.7.2/lib/ruby/gems/2.7.0/bin:/opt/rubies/2.7.2/bin:$PATH
+export PATH=$HOME/.kube-plugins:${KREW_ROOT:-$HOME/.krew}/bin:/Users/kalindu/go/bin:/usr/bin/local:/usr/local/opt/coreutils/libexec/gnubin:/usr/local/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:/Users/kalindu/.gem/ruby/2.7.2/bin:/opt/rubies/2.7.2/lib/ruby/gems/2.7.0/bin:/opt/rubies/2.7.2/bin:$PATH
 
 ENDTIME=$(($(gdate +%s%3N)))
 printf 'Start time %.4fs\n' $(echo "($ENDTIME - $STARTTIME)/1000" | bc -l)
+
+
+[ -f /opt/dev/dev.sh ] && source /opt/dev/dev.sh
