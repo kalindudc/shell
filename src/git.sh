@@ -26,6 +26,8 @@ git config --global alias.co 'checkout'
 git config --global alias.nb 'checkout -b'
 git config --global core.excludesfile ~/.gitignore
 
+git config commit.gpgsign true
+
 unalias grb
 
 grb() {
