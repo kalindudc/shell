@@ -121,7 +121,7 @@ fi
 
 [[ $log == "true" ]] && printf "using parameters: \n\n{\n\n  \"msg\":$message,\n\n  \"emoji\":$emoji,\n\n  \"dur\":$duration\n\n}\n\n"
 
-total_duration=$(date +%s -d "$(date) + $duration seconds")
+total_duration=$(date -v +"$duration"S +%s)
 json_data="{\"profile\":{\"status_text\":$message,\"status_emoji\": $emoji,\"status_expiration\": \"$total_duration\"}}"
 
 res=$(curl -s \
