@@ -5,7 +5,7 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
-export PATH=/opt/homebrew/bin:/opt/homebrew/sbin:$PATH
+export PATH=/opt/homebrew/bin:/opt/homebrew/sbin:$HOME/bin/:$PATH
 
 STARTTIME=$(($(gdate +%s%3N)))
 
@@ -48,7 +48,6 @@ plugins=(
   colorize
   zsh-autosuggestions
   zsh-syntax-highlighting
-  kubectl
 )
 
 # This speeds up pasting w/ autosuggest

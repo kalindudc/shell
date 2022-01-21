@@ -9,12 +9,13 @@ CURRENT_DIR="$(
 
 PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
 
+source <(kubectl completion zsh)
 # command -v kubecolor >/dev/null 2>&1 && alias kubectl="kubecolor"
 # compdef kubecolor=kubectl
 
 alias k='kubectl'
 alias kcl='kubectl'
-alias kngx='kubectl --plain ingress-nginx --deployment nginx-ingress-controller'
+alias kngx='kubectl ingress-nginx --deployment nginx-ingress-controller'
 alias kevents="kubectl get events --sort-by='.lastTimestamp'"
 
 kdebug() {
