@@ -44,9 +44,7 @@ git config --global delta.line-numbers.line-numbers-right-style cyan
 git config --global delta.line-numbers.line-numbers-minus-style 124
 git config --global delta.line-numbers.line-numbers-plus-style 28
 
-
-
-git config commit.gpgsign true
+git config --global commit.gpgsign true
 
 unalias grb
 
