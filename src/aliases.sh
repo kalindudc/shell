@@ -16,7 +16,6 @@ alias grepn='grep -n'
 alias tmux='tmux -CC'
 
 # file manipulations
-alias ls='exa'
 alias cpv='rsync -ah --info=progress2'
 
 alias mnt='mount | grep -E ^/dev | column -t'
@@ -26,3 +25,4 @@ alias psg='ps -ef | grep'
 alias myip='curl ip.me'
 alias cprof='curl -s -o /dev/null -w "time_namelookup:  %{time_namelookup}s\n time_connect:  %{time_connect}s\n time_appconnect:  %{time_appconnect}s\n time_pretransfer:  %{time_pretransfer}s\n time_redirect:  %{time_redirect}s\n time_starttransfer:  %{time_starttransfer}s\n ----------\n time_total:  %{time_total}s\n"'
 alias acceloff='defaults write -g com.apple.mouse.scaling -1'
+alias diff='code -d'

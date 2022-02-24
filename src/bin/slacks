@@ -116,6 +116,11 @@ elif [[ $# -gt 0 && -e $SLACK_STATUS_LOC ]]; then
     elif [[ $2 ]]; then
       duration=$2
     fi
+  else
+    printf "Invalid slack status command: $1\n"
+    keys=$(jq keys -c -C $SLACK_STATUS_LOC)
+    printf "\nAvialable options: $keys\n"
+    exit -1
   fi
 fi
 
