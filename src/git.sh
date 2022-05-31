@@ -49,7 +49,8 @@ git config --global commit.gpgsign true
 unalias grb
 
 grb() {
-  git rebase -i $(git rev-parse --abbrev-ref HEAD)~$1
+  count="${1:=2}"
+  git rebase -i $(git rev-parse --abbrev-ref HEAD)~$count
 }
 
 gfp() {
@@ -71,6 +72,8 @@ gacp() {
 
   git push origin $(git rev-parse --abbrev-ref HEAD)
 }
+unalias gp
+alias gp='gacp'
 
 # functions
 gitcd() {

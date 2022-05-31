@@ -17,6 +17,7 @@ alias k='kubectl'
 alias kcl='kubectl'
 alias kngx='kubectl ingress-nginx --deployment nginx-ingress-controller'
 alias kevents="kubectl get events --sort-by='.lastTimestamp'"
+alias kclgc="kubectl config get-contexts | awk '{print \$1}' | fzy"
 
 kdebug() {
   if [[ $# -le 0 ]]; then
