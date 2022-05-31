@@ -9,7 +9,6 @@ alias g='git'
 GIT_PROJECTS_PATH="/home/kalindu/src/github.com/"
 
 git config --global user.name "Kalindu De Costa"
-git config --global user.email "kalindu.decosta@shopify.com"
 git config --global alias.st 'status'
 git config --global alias.b 'branch --show-current'
 git config --global alias.c 'commit -m'
@@ -49,7 +48,8 @@ git config --global commit.gpgsign true
 unalias grb
 
 grb() {
-  git rebase -i $(git rev-parse --abbrev-ref HEAD)~$1
+  count="${1:=2}"
+  git rebase -i $(git rev-parse --abbrev-ref HEAD)~$count
 }
 
 gfp() {
@@ -71,6 +71,8 @@ gacp() {
 
   git push origin $(git rev-parse --abbrev-ref HEAD)
 }
+unalias gp
+alias gp='gacp'
 
 # functions
 gitcd() {

@@ -25,4 +25,7 @@ alias psg='ps -ef | grep'
 alias myip='curl ip.me'
 alias cprof='curl -s -o /dev/null -w "time_namelookup:  %{time_namelookup}s\n time_connect:  %{time_connect}s\n time_appconnect:  %{time_appconnect}s\n time_pretransfer:  %{time_pretransfer}s\n time_redirect:  %{time_redirect}s\n time_starttransfer:  %{time_starttransfer}s\n ----------\n time_total:  %{time_total}s\n"'
 alias acceloff='defaults write -g com.apple.mouse.scaling -1'
-alias diff='code -d'
+alias cdiff='code -d'
+
+alias ipseek='/Users/kalindu/.dev/go/1.17/bin/ipseek'
+alias hs='history | fzf --tac --exact'
