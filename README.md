@@ -3,6 +3,12 @@
 
 Shared and common aliases and functions for all machines.
 
+### Install (Mac OS)
+
+```sh
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install.sh)"
+```
+
 ### Directory Structure
 ```js
 .
