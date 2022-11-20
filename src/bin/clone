@@ -1,0 +1,70 @@
+#!/bin/sh
+
+#
+# This script can be used to quickly clone any gihub repo to a
+# predestined directory. The default clone location is $HOME/src/github.com.
+# The repos will be organized in the following way,
+#    $HOME/src/github.com/<owner>/<repo>
+#
+# For example:
+#   $ clone kubernetes/ingress-nginx
+# will clone https://github.com/kubernetes/kubernetes.git
+# to $HOME/src/github.com/kubernetes/kubernetes
+#
+# Similarly if a owner is not provided, the $DEFAULT owner will be used. Change
+# this variable to use your github user.
+#
+# For example:
+#   $ clone shell
+# will clone https://github.com/kalindudc/shell.git to
+# to $HOME/src/github.com/kalindudc/shell
+#
+
+
+DEFAULT="kalindudc"
+GIT_PROJECTS_PATH="$HOME/src/github.com"
+
+help() {
+  printf "You must specify a repository to clone.\n\n"
+  printf "usage: clone <repo> [<path> || $GIT_PROJECT_PATH]\n\n"
+}
+
+if [[ $# -eq 0 || $1 = "-h" || $1 = "--help" ]]; then
+  help
+  exit 0
+fi
+
+actual_project_path=$GIT_PROJECTS_PATH
+repo="$1"
+[[ $# -gt 2 ]] && root_path="$2" || root_path="$actual_project_path"
+
+https_git_prefix="https://github.com/"
+ssh_git_prefix="git@github.com:"
+suffix=".git"
+
+if [[ $repo == *"$suffix" ]]; then
+  filtered_repo=${repo#"$https_git_prefix"}
+  filtered_repo=${filtered_repo#"$ssh_git_prefix"}
+  filtered_repo=${filtered_repo%"$suffix"}
+  repo=$filtered_repo
+fi
+
+
+if [[ $repo != *"/"* ]]; then
+  actual_project_path="$actual_project_path/$DEFAULT/$repo"
+  repo="$DEFAULT/$repo"
+else
+  actual_project_path="$actual_project_path/$repo"
+fi
+
+full_uri="https://github.com/$repo.git"
+status_code=$(curl -I -L $full_uri -s -o /dev/null -w "%{http_code}")
+
+if [[ $status_code == "200" ]]; then
+  [ -d $actual_project_path ] || mkdir -p $actual_project_path
+  git clone $full_uri $actual_project_path
+else
+  echo "The provided repo does not exist: $1"
+  help
+  exit 1
+fi

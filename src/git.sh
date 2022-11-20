@@ -6,7 +6,7 @@ GIT_SCRIPT="yes"
 
 alias g='git'
 
-GIT_PROJECTS_PATH="/home/kalindu/src/github.com/"
+GIT_PROJECTS_PATH="$HOME/src/github.com/"
 
 git config --global user.name "Kalindu De Costa"
 git config --global alias.st 'status'
@@ -84,29 +84,6 @@ gitcd() {
   fi
 
   cd "${GIT_PROJECTS_PATH}${dir}"
-}
-
-clone() {
-  if [[ $# -le 0 ]]; then
-    printf "You must specify a repository to clone.\n\n"
-    printf "usage: clone <repo> [<path> || $GIT_PROJECT_PATH]\n\n"
-    return -1
-  fi
-
-  repo="$1"
-  [[ $# -gt 2 ]] && root_path="$2" || root_path="$GIT_PROJECTS_PATH"
-  # default to kalindudc/<repo>
-  if [[ $repo =~ (^[^\/]+)[^.git]$ ]]; then
-    repo="git@github.com:kalindudc/${repo}.git"
-  # otherwise try <org>/<repo>
-  elif [[ $repo =~ (.+)\/(.+)[^.git]$ ]]; then
-    repo="git@github.com:${repo}.git"
-  fi
-
-  printf "Cloning: $repo\n"
-
-  # else clone with given repo
-  git -C "$root_path" clone "$repo" && gitcd "$(basename "$repo" .git)"
 }
 
 ghopen() {
