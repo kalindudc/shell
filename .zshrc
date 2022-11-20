@@ -128,3 +128,7 @@ printf 'Start time %.4fs\n' $(echo "($ENDTIME - $STARTTIME)/1000" | bc -l)
 
 
 [ -f /opt/dev/dev.sh ] && source /opt/dev/dev.sh
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"

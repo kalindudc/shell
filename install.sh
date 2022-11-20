@@ -6,6 +6,7 @@ brew instal gh gpg fzy fzf kubectl coreutils git
 brew install --cask visual-studio-code
 brew install romkatv/powerlevel10k/powerlevel10k
 sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+curl https://bun.sh/install | bash
 
 gh auth login
 gh auth setup-git
