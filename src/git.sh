@@ -5,6 +5,10 @@ export GPG_TTY=$(tty)
 GIT_SCRIPT="yes"
 
 alias g='git'
+alias gs='git stash'
+alias gsp='git stash pop'
+alias gsd='git stash drop'
+alias gssd='git stash && git stash drop'
 
 GIT_PROJECTS_PATH="$HOME/src/github.com/"
 
@@ -22,6 +26,7 @@ git config --global alias.dv 'difftool -t vimdiff -y'
 git config --global alias.gl 'config --global -l'
 git config --global alias.p 'push origin $(git rev-parse --abbrev-ref HEAD)'
 git config --global alias.co 'checkout'
+git config --global alias.nb 'checkout -b'
 git config --global alias.nb 'checkout -b'
 git config --global core.excludesfile ~/.gitignore
 
