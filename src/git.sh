@@ -87,7 +87,7 @@ gitcd() {
 }
 
 ghopen() {
-  url_to_open="$(git remote get-url origin | sed -e's/:/\//' -e 's/git@/http:\/\//')"
+  url_to_open="$(git remote get-url origin)"
   printf "$url_to_open\n"
-  python -mwebbrowser "$url_to_open"
+  open "$url_to_open"
 }

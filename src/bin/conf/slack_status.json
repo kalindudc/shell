@@ -38,5 +38,15 @@
     "msg": "Out of office.",
     "emoji": ":vacation:",
     "dur": 86400
+  },
+  "mac_update" :{
+    "msg": "Mac Update.",
+    "emoji": ":mac-loading:",
+    "dur": 7200
+  },
+  "pup_walk" :{
+    "msg": "Walking the pup.",
+    "emoji": ":walking-the-dog:",
+    "dur": 1800
   }
 }
