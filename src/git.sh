@@ -9,6 +9,7 @@ alias gs='git stash'
 alias gsp='git stash pop'
 alias gsd='git stash drop'
 alias gssd='git stash && git stash drop'
+alias gd='git dunk'
 
 GIT_PROJECTS_PATH="$HOME/src/github.com/"
 
@@ -47,6 +48,8 @@ git config --global delta.line-numbers.line-numbers-left-style cyan
 git config --global delta.line-numbers.line-numbers-right-style cyan
 git config --global delta.line-numbers.line-numbers-minus-style 124
 git config --global delta.line-numbers.line-numbers-plus-style 28
+
+git config --global alias.dunk '!git diff | dunk'
 
 git config --global commit.gpgsign true
 

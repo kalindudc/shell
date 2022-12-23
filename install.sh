@@ -2,12 +2,14 @@
 
 mkdir -p $HOME/src/github.com/kalindudc
 
-brew instal gh gpg fzy fzf kubectl coreutils git
+brew instal gh gpg fzy fzf kubectl coreutils git pipx
 brew install --cask visual-studio-code
 brew install romkatv/powerlevel10k/powerlevel10k
 sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 curl https://bun.sh/install | bash
 curl -fsSL https://deno.land/x/install/install.sh | sh
+
+pipx install dunk
 
 gh auth login
 gh auth setup-git

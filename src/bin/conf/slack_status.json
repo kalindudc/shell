@@ -48,5 +48,10 @@
     "msg": "Walking the pup.",
     "emoji": ":walking-the-dog:",
     "dur": 1800
+  },
+  "sick": {
+    "msg": "",
+    "emoji": ":sickblob:",
+    "dur": 86400
   }
 }
