@@ -9,7 +9,8 @@ CURRENT_DIR="$(
 
 PATH="${KREW_ROOT:-$HOME/.krew}/bin:$PATH"
 
-source <(kubectl completion zsh)
+#source <(kubectl completion zsh)
+source <(eval HTTPS_PROXY=1:1 kubectl completion zsh)
 # command -v kubecolor >/dev/null 2>&1 && alias kubectl="kubecolor"
 # compdef kubecolor=kubectl
 

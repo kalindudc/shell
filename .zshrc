@@ -92,7 +92,7 @@ source $(brew --prefix)/opt/powerlevel10k/powerlevel10k.zsh-theme
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
-export ZPLUG_HOME=$HOME/.zsh/zplug
+export ZPLUG_HOME=$HOME/.zplug
 source $ZPLUG_HOME/init.zsh
 
 zplug "b4b4r07/enhancd", use:"*init.sh"
