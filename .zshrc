@@ -136,3 +136,8 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 #deno
 export DENO_INSTALL="$HOME/.deno"
 export PATH="$DENO_INSTALL/bin:$PATH"
+deno completions zsh > $HOME/.zsh/_deno
+
+fpath=($HOME/.zsh $fpath)
+autoload -Uz compinit
+compinit -u
