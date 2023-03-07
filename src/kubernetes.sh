@@ -20,6 +20,7 @@ alias kngx='kubectl ingress-nginx --deployment nginx-ingress-controller'
 alias kevents="kubectl get events --sort-by='.lastTimestamp'"
 alias kclgc="kubectl config get-contexts -o name | fzf --exact -m --height=40% | tr -d '\n' | pbcopy; pbpaste; echo ''"
 alias klog="stern $@"
+alias kcls="kubectl config get-contexts -o name | grep -e "
 
 kdebug() {
   if [[ $# -le 0 ]]; then
@@ -42,4 +43,14 @@ kclcn() {
 
 kcla() {
   kubectl $@ -A
+}
+
+kexec() {
+  if [[ $# -le 2 ]]; then
+    printf "Invalid usage of kexec\n"
+    printf "\nusage: kexec <cluster> <namespace> <deploy name>\n\n"
+    return
+  fi
+
+  kubectl --context $1 -n $2 exec -it deploy/$3 -- bash
 }

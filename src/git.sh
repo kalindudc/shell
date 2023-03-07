@@ -10,6 +10,8 @@ alias gsp='git stash pop'
 alias gsd='git stash drop'
 alias gssd='git stash && git stash drop'
 alias gd='git dunk'
+alias gpull='git pull origin $(git rev-parse --abbrev-ref HEAD)'
+alias grpull='git pull --rebase origin $(git rev-parse --abbrev-ref HEAD)'
 
 GIT_PROJECTS_PATH="$HOME/src/github.com/"
 
