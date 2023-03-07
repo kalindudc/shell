@@ -2,7 +2,8 @@
 
 mkdir -p $HOME/src/github.com/kalindudc
 
-brew instal gh gpg fzy fzf kubectl coreutils git pipx
+brew tap homebrew/cask-fonts
+brew instal gh gpg fzy fzf kubectl coreutils git pipx nvim fd jesseduffield/lazygit/lazygit font-hack-nerd-font
 brew install --cask visual-studio-code
 brew install romkatv/powerlevel10k/powerlevel10k
 sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
@@ -22,6 +23,10 @@ git clone https://github.com/zplug/zplug.git $HOME/.zplug
 
 git clone https://github.com/kalindudc/shell.git $HOME/src/github.com/kalindudc/shell
 
-rm $HOME/.zshrc
+rm -rf $HOME/.zshrc
+rm -rf $HOME/.p10k.zsh
+rm -rf $HOME/.config/nvim
+
 cp $HOME/src/github.com/kalindudc/shell/.zshrc $HOME/.zshrc
 cp $HOME/src/github.com/kalindudc/shell/.p10k.zsh $HOME/.p10k.zsh
+ln -s $HOME/src/github.com/kalindudc/shell/nvim $HOME/.config/nvim
