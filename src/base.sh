@@ -7,7 +7,6 @@ CURRENT_DIR="$(
   pwd -P
 )"
 
-PATH=$CURRENT_DIR/bin:$PATH
 HISTTIMEFORMAT="%d/%m/%y %T "
 
 [[ $FUNC_SCRIPT != yes && -f $CURRENT_DIR/functions.sh ]] && source $CURRENT_DIR/functions.sh
