@@ -10,6 +10,12 @@ CURRENT_DIR="$(
 HISTSIZE=20000
 HISTFILESIZE=20000
 
+export EDITOR="nvim"
+
+alias edit="nvim"
+alias e="nvim"
+
+
 alias grepn='grep -n'
 
 # terminal multiplexers
@@ -32,4 +38,3 @@ alias hs="history"
 alias pf="promformat <(pbpaste | sed 's/$__rate_interval/100M/g') | sed 's/100M/$__rate_interval/g' | pbcopy"
 alias lg='lazygit'
 alias ls='ls --color=auto'
-

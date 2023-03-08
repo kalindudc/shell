@@ -6,6 +6,9 @@ CURRENT_DIR="$(
   cd -- "$(dirname "$0")" >/dev/null 2>&1
   pwd -P
 )"
+
+export KUBE_EDITOR="nvim"
+
 #source <(kubectl completion zsh)
 source <(eval HTTPS_PROXY=1:1 kubectl completion zsh)
 # command -v kubecolor >/dev/null 2>&1 && alias kubectl="kubecolor"

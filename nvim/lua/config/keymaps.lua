@@ -2,8 +2,6 @@
 -- Default keymaps that are always set: https://github.com/LazyVim/LazyVim/blob/main/lua/lazyvim/config/keymaps.lua
 -- Add any additional keymaps here
 
-local Util = require("lazyvim.util")
-
 local function map(mode, lhs, rhs, opts)
   local keys = require("lazy.core.handler").handlers.keys
   ---@cast keys LazyKeysHandler
@@ -16,3 +14,4 @@ local function map(mode, lhs, rhs, opts)
 end
 
 map("n", "<leader>ff", require("telescope").extensions.file_browser.file_browser, { desc = "Open File Browser" })
+map("n", "<leader><space>", require("telescope").extensions.file_browser.file_browser, { desc = "Open File Browser" })

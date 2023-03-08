@@ -122,10 +122,6 @@ if [ -e $HOME/.nix-profile/etc/profile.d/nix.sh ]; then . $HOME/.nix-profile/etc
 [[ $KUBERNETES_SCRIPT != yes && -f $HOME/src/github.com/kalindudc/shell/src/kubernetes.sh ]] && source $HOME/src/github.com/kalindudc/shell/src/kubernetes.sh
 
 export PATH=$HOME/.local/bin:$HOME/bin:$HOME/.kube-plugins:${KREW_ROOT:-$HOME/.krew}/bin:$HOME/go/bin:/usr/bin/local:/usr/local/opt/coreutils/libexec/gnubin:/usr/local/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:$HOME/.gem/ruby/2.7.2/bin:/opt/rubies/2.7.2/lib/ruby/gems/2.7.0/bin:/opt/rubies/2.7.2/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin/:$HOME/src/github.com/kalindudc/shell/src/bin:$PATH
-export EDITOR="nvim"
-
-alias edit="nvim"
-alias e="nvim"
 
 # bun
 export BUN_INSTALL="$HOME/.bun"
@@ -142,4 +138,3 @@ compinit -u
 
 ENDTIME=$(($(gdate +%s%3N)))
 printf 'Start time %.4fs\n' $(echo "($ENDTIME - $STARTTIME)/1000" | bc -l)
-
