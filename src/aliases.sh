@@ -31,3 +31,5 @@ alias ipseek='/Users/kalindu/.dev/go/1.17/bin/ipseek'
 alias hs="history"
 alias pf="promformat <(pbpaste | sed 's/$__rate_interval/100M/g') | sed 's/100M/$__rate_interval/g' | pbcopy"
 alias lg='lazygit'
+alias ls='ls --color=auto'
+
