@@ -6,11 +6,19 @@
 -- * override the configuration of LazyVim plugins
 return {
 
+  { "iamcco/markdown-preview.nvim" },
+
+  {
+    "kevinhwang91/nvim-ufo",
+    dependencies = {
+      { "kevinhwang91/promise-async" },
+    },
+  },
+
   -- customize file explorer
   {
     "nvim-neo-tree/neo-tree.nvim",
     opts = {
-      close_if_last_window = true, -- Close Neo-tree if it is the last window left in the tab
       filesystem = {
         follow_current_file = true, -- This will find and focus the file in the active buffer every
         -- time the current file is changed while the tree is open.
