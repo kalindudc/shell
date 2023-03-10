@@ -7,6 +7,11 @@
 return {
 
   {
+    "olimorris/persisted.nvim",
+    config = true,
+  },
+
+  {
     "m4xshen/smartcolumn.nvim",
     opts = {
       colorcolumn = 120,
@@ -117,6 +122,9 @@ return {
           -- disables netrw and use telescope-file-browser in its place
           cwd_to_path = true,
           auto_depth = true,
+        },
+        persisted = {
+          layout_config = { width = 0.55, height = 0.55 },
         },
       },
     },
