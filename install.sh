@@ -27,6 +27,10 @@ rm -rf $HOME/.zshrc
 rm -rf $HOME/.p10k.zsh
 rm -rf $HOME/.config/nvim
 
+curl -fLo ~/.vim/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+sh -c 'curl -fLo "${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
+
 cp $HOME/src/github.com/kalindudc/shell/.zshrc $HOME/.zshrc
 cp $HOME/src/github.com/kalindudc/shell/.p10k.zsh $HOME/.p10k.zsh
 ln -s $HOME/src/github.com/kalindudc/shell/nvim $HOME/.config/nvim
+ln -s $HOME/src/github.com/kalindudc/shell/.vim $HOME/.vim
