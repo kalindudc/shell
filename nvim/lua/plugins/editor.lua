@@ -6,7 +6,14 @@
 -- * override the configuration of LazyVim plugins
 return {
 
-  { "iamcco/markdown-preview.nvim" },
+  {
+    "m4xshen/smartcolumn.nvim",
+    opts = {
+      colorcolumn = 120,
+    },
+  },
+
+  { "ellisonleao/glow.nvim", config = true, cmd = "Glow" },
 
   {
     "kevinhwang91/nvim-ufo",
