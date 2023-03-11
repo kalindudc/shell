@@ -1,5 +1,20 @@
 return {
 
+  {
+    "folke/noice.nvim",
+    opts = {
+      cmdline = {
+        enabled = true,
+        view = "cmdline",
+      },
+      presets = {
+        bottom_search = true, -- use a classic bottom cmdline for search
+        command_palette = false, -- position the cmdline and popupmenu together
+        long_message_to_split = true, -- long messages will be sent to a split
+      },
+    },
+  },
+
   -- notify customization
   {
     "rcarriga/nvim-notify",
