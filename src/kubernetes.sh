@@ -46,11 +46,23 @@ kcla() {
 }
 
 kexec() {
-  if [[ $# -le 2 ]]; then
-    printf "Invalid usage of kexec\n"
-    printf "\nusage: kexec <cluster> <namespace> <deploy name>\n\n"
-    return
+  cluster=$(kubectl config get-contexts -o name | fzf)
+  if [[ -z "$cluster" ]] then
+    echo "Please select a valid cluster"
+    return -1
   fi
 
-  kubectl --context $1 -n $2 exec -it deploy/$3 -- bash
+  namespace=$(kubectl --context $cluster get ns -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | fzf)
+  if [[ -z "$namespace" ]] then
+    echo "Please select a valid namespace"
+    return -1
+  fi
+
+  deploy=$(kubectl --context $cluster -n $namespace get deploy -o name | fzf)
+  if [[ -z "$namespace" ]] then
+    echo "Please select a valid namespace"
+    return -1
+  fi
+
+  kubectl --context $cluster -n $namespace exec -it $deploy -- bash
 }
