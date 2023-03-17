@@ -48,8 +48,8 @@ return {
   -- treesitter
   {
     "nvim-treesitter/nvim-treesitter",
-    opts = function(_, opts)
-      opts.ensure_installed = {
+    opts = {
+      ensure_installed = {
         "bash",
         "comment",
         "diff",
@@ -75,7 +75,19 @@ return {
         "sql",
         "vim",
         "yaml",
-      }
+      },
+      incremental_selection = {
+        enable = true,
+        keymaps = {
+          init_selection = "<C-space>",
+          node_incremental = "<C-space>",
+          scope_incremental = "<nop>",
+          node_decremental = "<bs>",
+        },
+      },
+    },
+    config = function(_, opts)
+      require("nvim-treesitter.configs").setup(opts)
     end,
   },
 }
