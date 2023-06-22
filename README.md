@@ -6,6 +6,7 @@ Shared and common aliases and functions for all machines.
 ### Install (Mac OS)
 
 ```sh
+cp ~/.zshrc ~/.zshrc-bak
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install.sh)"
 ```
 
