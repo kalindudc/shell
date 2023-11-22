@@ -26,10 +26,21 @@ kdebug() {
   if [[ $# -le 0 ]]; then
     printf "Invalid usage of kdebug\n"
     printf "\nusage: kdebug <context> <namespace>\n\n"
+    return 1
   fi
 
   kubectl --context "$1" -n "$2" delete pod "$USER-test"
   kubectl --context "$1" -n "$2" run -ti --rm $USER-test --image gcr.io/shopify-docker-images/cloud/debug-container -- bash
+}
+
+kcerts() {
+  if [[ $# -le 2 ]]; then
+    printf "Invalid usage of kcerts\n"
+    printf "\nusage: kcerts <context> <namespace> <secret>\n\n"
+    return 1
+  fi
+
+  kubectl --context $1 --namespace $2 get secrets $3 -o json | jq -r '.data["tls.crt"]' | base64 --decode | openssl x509 -noout -text
 }
 
 kclcn() {
