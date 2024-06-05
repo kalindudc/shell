@@ -6,9 +6,11 @@ brew tap homebrew/cask-fonts
 brew instal gh gpg fzy fzf kubectl coreutils git pipx nvim fd jesseduffield/lazygit/lazygit font-hack-nerd-font rg neovide
 brew install --cask visual-studio-code
 brew install romkatv/powerlevel10k/powerlevel10k
+brew install zoxide
 sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 curl https://bun.sh/install | bash
 curl -fsSL https://deno.land/x/install/install.sh | sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 pipx install dunk
 

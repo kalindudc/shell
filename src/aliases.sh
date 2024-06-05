@@ -16,8 +16,6 @@ alias edit="nvim"
 alias e="nvim"
 alias nv="neovide"
 
-alias grepn='grep -n'
-
 # terminal multiplexers
 alias tmux='tmux -CC'
 
