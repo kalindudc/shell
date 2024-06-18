@@ -7,6 +7,7 @@ brew instal gh gpg fzy fzf kubectl coreutils git pipx nvim fd jesseduffield/lazy
 brew install --cask visual-studio-code
 brew install romkatv/powerlevel10k/powerlevel10k
 brew install zoxide
+brew install direnv
 sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 curl https://bun.sh/install | bash
 curl -fsSL https://deno.land/x/install/install.sh | sh
@@ -36,3 +37,4 @@ cp $HOME/src/github.com/kalindudc/shell/.zshrc $HOME/.zshrc
 cp $HOME/src/github.com/kalindudc/shell/.p10k.zsh $HOME/.p10k.zsh
 ln -s $HOME/src/github.com/kalindudc/shell/nvim $HOME/.config/nvim
 ln -s $HOME/src/github.com/kalindudc/shell/.vim $HOME/.vim
+ln -s $HOME/src/github.com/kalindudc/shell/direnv $HOME/.config/direnv

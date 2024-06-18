@@ -58,13 +58,13 @@ else
 fi
 
 full_uri="https://github.com/$repo.git"
-status_code=$(curl -I -L $full_uri -s -o /dev/null -w "%{http_code}")
+test_repo=$(git ls-remote $full_uri 2>&1)
 
-if [[ $status_code == "200" ]]; then
-  [ -d $actual_project_path ] || mkdir -p $actual_project_path
-  git clone $full_uri $actual_project_path
-else
+if [[ $test_repo == *"Repository not found"* ]]; then
   echo "The provided repo does not exist: $1"
   help
   exit 1
+else
+  [ -d $actual_project_path ] || mkdir -p $actual_project_path
+  git clone $full_uri $actual_project_path
 fi
