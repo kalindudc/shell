@@ -5,7 +5,7 @@ mkdir -p $HOME/src/github.com/kalindudc
 brew tap homebrew/cask-fonts
 brew instal gh gpg fzy fzf kubectl coreutils git pipx nvim fd jesseduffield/lazygit/lazygit font-hack-nerd-font rg neovide
 brew install --cask visual-studio-code
-brew install romkatv/powerlevel10k/powerlevel10k
+brew install powerlevel10k
 brew install zoxide
 brew install direnv
 sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
