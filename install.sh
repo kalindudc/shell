@@ -8,8 +8,9 @@ brew install --cask visual-studio-code
 brew install powerlevel10k
 brew install zoxide
 brew install direnv
-brew install pyenv
+brew install pyenv rbenv ruby-build
 brew install openssl readline sqlite3 xz zlib tcl-tk gcc
+brew install helm
 sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
 curl https://bun.sh/install | bash
 curl -fsSL https://deno.land/x/install/install.sh | sh
