@@ -145,5 +145,7 @@ eval "$(pyenv init -)"
 
 eval "$(rbenv init - zsh)"
 
+source <(helm completion zsh)
+
 ENDTIME=$(($(gdate +%s%3N)))
 printf 'Start time %.4fs\n' $(echo "($ENDTIME - $STARTTIME)/1000" | bc -l)
