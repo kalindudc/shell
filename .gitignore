@@ -14,3 +14,5 @@ data
 .vim/bundle/*
 .vim/plugged/
 .vim/plugged/*
+
+home/.gitconfig

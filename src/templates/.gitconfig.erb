@@ -1,0 +1,53 @@
+<%
+  email = ENV["GIT_EMAIL"] ||= "kalindu.decosta@gmail.com"
+  signing_key = ENV["GIT_SIGNING_KEY"] ||= ""
+%>
+[user]
+	name = Kalindu De Costa
+  email = <%= email %>
+  <%- if signing_key != "" -%>
+	signingkey = <%= signing_key %>
+  <%- end -%>
+
+[alias]
+	st = status
+	b = branch --show-current
+	c = commit -m
+	a = add
+	aa = add -A
+	au = add -u
+	last = log -1 HEAD --stat
+	rv = remote -v
+	d = diff
+	dv = difftool -t vimdiff -y
+	gl = config --global -l
+	p = push origin $(git rev-parse --abbrev-ref HEAD)
+	co = checkout
+	nb = checkout -b
+	dunk = !git diff | dunk
+[core]
+	excludesfile = /Users/kalindu/.gitignore
+	pager = delta
+[interactive]
+	diffFilter = delta --color-only --features=interactive
+[delta]
+	features = side-by-side line-numbers decorations
+	syntax-theme = Dracula
+	plus-style = "syntax '#003800'"
+	minus-style = "syntax '#3f0001'"
+	file-decoration-style = none
+	hunk-header-decoration-style = cyan box ul
+[delta "decorations"]
+	commit-decoration-style = bold yellow box ul
+	file-style = bold yellow ul
+[delta "line-numbers"]
+	line-numbers-left-style = cyan
+	line-numbers-right-style = cyan
+	line-numbers-minus-style = 124
+	line-numbers-plus-style = 28
+[commit]
+  <%- if signing_key != "" -%>
+  gpgsign = true
+  <%- else -%>
+  gpgsign = false
+  <%- end -%>

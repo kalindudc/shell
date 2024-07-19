@@ -1,0 +1,61 @@
+export GPG_TTY=$(tty)
+
+GIT_SCRIPT="yes"
+
+alias g='git'
+alias gs='git stash'
+alias gsp='git stash pop'
+alias gsd='git stash drop'
+alias gssd='git stash && git stash drop'
+alias gd='git dunk'
+alias gpull='git pull origin $(git rev-parse --abbrev-ref HEAD)'
+alias grpull='git pull --rebase origin $(git rev-parse --abbrev-ref HEAD)'
+
+GIT_PROJECTS_PATH="$HOME/src/github.com/"
+
+
+unalias grb
+grb() {
+  count="${1:=2}"
+  git rebase -i $(git rev-parse --abbrev-ref HEAD)~$count
+}
+
+gfp() {
+  git push origin +$(git rev-parse --abbrev-ref HEAD)
+}
+
+gacp() {
+
+  if [[ $# -eq 2 ]]; then
+    printf "adding \`$1\` and commiting with \`$2\`\n"
+    git add $1
+    git commit -m $2
+  fi
+
+  if [[ $# -eq 1 ]]; then
+    printf "commiting with $1\n"
+    git commit -m $1
+  fi
+
+  git push origin $(git rev-parse --abbrev-ref HEAD)
+}
+unalias gp
+alias gp='gacp'
+
+# functions
+gitcd() {
+  dir=""
+
+  if [[ $# -gt 0  ]]; then
+    dir=$(ls -a $GIT_PROJECTS_PATH | grep $@ | sed 's/\x1b\[[0-9;]*m//g' | head -n 1)
+    [[ -z $dir  ]] && printf "Could not find matching directory\n" || printf "Found matching directory: $dir\n"
+  fi
+
+  cd "${GIT_PROJECTS_PATH}${dir}"
+}
+
+ghopen() {
+  url_to_open="$(git remote get-url origin)"
+  printf "$url_to_open\n"
+  open "$url_to_open"
+}
