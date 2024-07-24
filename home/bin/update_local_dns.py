@@ -123,7 +123,7 @@ def update_pihole_local_dns(device_info):
 
 # Function to restart Pi-hole DNS service
 def restart_pihole_dns():
-  os.system("pihole restartdns")
+  os.system("/usr/local/bin/pihole restartdns")
 
 # Main function
 def main():
