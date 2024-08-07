@@ -17,24 +17,59 @@ alias klog="stern $@"
 alias kcls="kubectl config get-contexts -o name | grep -e "
 
 kdebug() {
-  if [[ $# -le 0 ]]; then
-    printf "Invalid usage of kdebug\n"
-    printf "\nusage: kdebug <context> <namespace>\n\n"
-    return 1
+  cluster=$1
+  if [[ -z "$cluster" ]] then
+    cluster=$(kubectl config get-contexts -o name | fzf)
+    if [[ -z "$cluster" ]] then
+      echo "Please select a valid cluster"
+      return -1
+    fi
   fi
 
-  kubectl --context "$1" -n "$2" delete pod "$USER-test"
-  kubectl --context "$1" -n "$2" run -ti --rm $USER-test --image gcr.io/shopify-docker-images/cloud/debug-container -- bash
+  namespace=$2
+  if [[ -z $namespace ]] then
+    namespace=$(kubectl --context $cluster get ns -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | fzf)
+    if [[ -z "$namespace" ]] then
+      echo "Please select a valid namespace"
+      return -1
+    fi
+  fi
+
+  echo "Using $cluster and $namespace for a debug pod"
+  kubectl --context "$cluster" -n "$namespace" delete pod "$USER-test"
+  kubectl --context "$cluster" -n "$namespace" run -ti --rm $USER-test --image gcr.io/shopify-docker-images/cloud/debug-container -- bash
 }
 
 kcerts() {
-  if [[ $# -le 2 ]]; then
-    printf "Invalid usage of kcerts\n"
-    printf "\nusage: kcerts <context> <namespace> <secret>\n\n"
-    return 1
+  cluster=$1
+  if [[ -z "$cluster" ]] then
+    cluster=$(kubectl config get-contexts -o name | fzf)
+    if [[ -z "$cluster" ]] then
+      echo "Please select a valid cluster"
+      return -1
+    fi
   fi
 
-  kubectl --context $1 --namespace $2 get secrets $3 -o json | jq -r '.data["tls.crt"]' | base64 --decode | openssl x509 -noout -text
+  namespace=$2
+  if [[ -z $namespace ]] then
+    namespace=$(kubectl --context $cluster get ns -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | fzf)
+    if [[ -z "$namespace" ]] then
+      echo "Please select a valid namespace"
+      return -1
+    fi
+  fi
+
+  secret=$3
+  if [[ -z $secret ]] then
+    secret=$(kubectl --context $cluster -n $namespace get secrets -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | fzf)
+    if [[ -z "$secret" ]] then
+      echo "Please select a valid secret"
+      return -1
+    fi
+  fi
+
+  echo "Using $cluster, $namespace and $secret"
+  kubectl --context $cluster --namespace $namespace get secrets $secret -o json | jq -r '.data["tls.crt"]' | base64 --decode | openssl x509 -noout -text
 }
 
 kclcn() {
@@ -51,23 +86,33 @@ kcla() {
 }
 
 kexec() {
-  cluster=$(kubectl config get-contexts -o name | fzf)
+  cluster=$1
   if [[ -z "$cluster" ]] then
-    echo "Please select a valid cluster"
-    return -1
+    cluster=$(kubectl config get-contexts -o name | fzf)
+    if [[ -z "$cluster" ]] then
+      echo "Please select a valid cluster"
+      return -1
+    fi
   fi
 
-  namespace=$(kubectl --context $cluster get ns -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | fzf)
-  if [[ -z "$namespace" ]] then
-    echo "Please select a valid namespace"
-    return -1
+  namespace=$2
+  if [[ -z $namespace ]] then
+    namespace=$(kubectl --context $cluster get ns -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | fzf)
+    if [[ -z "$namespace" ]] then
+      echo "Please select a valid namespace"
+      return -1
+    fi
   fi
 
-  deploy=$(kubectl --context $cluster -n $namespace get deploy -o name | fzf)
-  if [[ -z "$namespace" ]] then
-    echo "Please select a valid namespace"
-    return -1
+  deploy=$3
+  if [[ -z $deploy ]] then
+    deploy=$(kubectl --context $cluster -n $namespace get deploy -o name | fzf)
+    if [[ -z "$namespace" ]] then
+      echo "Please select a valid namespace"
+      return -1
+    fi
   fi
 
+  echo "Using $cluster, $namespace and $deploy for exec"
   kubectl --context $cluster -n $namespace exec -it $deploy -- bash
 }
