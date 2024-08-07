@@ -5,6 +5,23 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m'
 
+prompt_for_yn() {
+  local prompt="$1"
+  local default="$2"
+  local answer
+
+  while true; do
+    read -p "$prompt " answer
+    answer=${answer:-$default}
+
+    case "$answer" in
+      [Yy]* ) return 0;;
+      [Nn]* ) return 1;;
+      * ) echo "Please answer y or N.";;
+    esac
+  done
+}
+
 mkdir -p $HOME/src/github.com/kalindudc
 
 brew update
@@ -141,4 +158,9 @@ gh auth setup-git
 
 echo "Done setting up git"
 echo "All done!"
-zsh
+echo " "
+echo " "
+echo "If this is the first time you are setting up kalindudc/shell, you may need to configure powerlevel10k"
+if prompt_for_yn "$(echo ${GREEN}Do you want to set up powerlevel10k now?${NC}) (y/N)" "N"; then
+  zsh -i -c "p10k configure"
+fi
