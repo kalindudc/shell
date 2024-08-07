@@ -115,7 +115,7 @@ zplug load --verbose
 
 ## dev ##
 
-[[ -f /opt/dev/sh/chruby/chruby.sh ]] && type chruby >/dev/null 2>&1 || chruby () { source /opt/dev/sh/chruby/chruby.sh; chruby "$@"; }
+[[ -f /opt/dev/sh/chruby/chruby.sh ]] && { type chruby >/dev/null 2>&1 || chruby () { source /opt/dev/sh/chruby/chruby.sh; chruby "$@"; } }
 if [[ $- == *i* ]] && [[ -f /opt/dev/dev.sh ]]; then source /opt/dev/dev.sh; fi
 [ -f /opt/dev/dev.sh ] && source /opt/dev/dev.sh
 if [ -e $HOME/.nix-profile/etc/profile.d/nix.sh ]; then . $HOME/.nix-profile/etc/profile.d/nix.sh; fi # added by Nix installer
@@ -345,10 +345,12 @@ kexec() {
   kubectl --context $cluster -n $namespace exec -it $deploy -- bash
 }
 
-
 # kubernetes template end
 
 ### TEMPLATES END ###
 
 ENDTIME=$(($(gdate +%s%3N)))
 printf 'Start time %.4fs\n' $(echo "($ENDTIME - $STARTTIME)/1000" | bc -l)
+
+# cloudplatform: add Shopify clusters to your local kubernetes config
+export KUBECONFIG=${KUBECONFIG:+$KUBECONFIG:}/Users/kalindu/.kube/config:/Users/kalindu/.kube/config.shopify.cloudplatform
