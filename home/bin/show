@@ -9,6 +9,7 @@ help() {
   printf "Available options\n"
   printf "\tshow <key> - retrieve text stored at <key>\n"
   printf "\tshow init - initialize configuration file\n"
+  printf "\tshow list - list currently stored keys\n"
   printf "\tshow add <key> <value> - store a <key> <value> pair\n"
   printf "\tshow delete <key> - delete a <key>\n\n"
   printf "Configuration file can be found at $CONF_PATH.\n"
@@ -27,6 +28,15 @@ init() {
   fi
 }
 
+list() {
+  if [[ -f "$CONF_PATH" ]]; then
+    cat $CONF_PATH | jq -r 'keys[]' | nl
+  else
+    printf "$CONF_PATH does not exist exists\n"
+    printf "run 'show init'\n"
+  fi
+}
+
 # add
 # delete
 # regular show
@@ -39,6 +49,11 @@ fi
 
 if [[ $1 == "init" ]]; then
   init
+  exit 0
+fi
+
+if [[ $1 == "list" ]]; then
+  list
   exit 0
 fi
 
