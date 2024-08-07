@@ -27,7 +27,7 @@ brew install openssl
 brew install pipx
 brew install powerlevel10k
 brew install pyenv
-brew install rbenv
+#brew install rbenv
 brew install readline
 brew install rg
 brew install ruby-build
@@ -41,7 +41,7 @@ brew install zoxide
 brew install --cask visual-studio-code
 
 sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+#curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 pipx install dunk
 
@@ -68,17 +68,19 @@ echo "Done setting up kalindudc/shell"
 echo " "
 echo "Setting up $HOME..."
 
+echo "Backup current configs before replacing..."
+[[ -f $HOME/.zshrc ]] && cp $HOME/.zshrc $HOME/.zshrc.bak
+[[ -f $HOME/.p10k.zsh ]] && cp $HOME/.p10k.zsh $HOME/.p10k.zsh.bak
+[[ -f $HOME/.config/direnv ]] && cp $HOME/.config/direnv $HOME/.config/direnv.bak
+[[ -f $HOME/.vim ]] && cp $HOME/.vim $HOME/.vim.bak
+
 rm -rf $HOME/.zshrc
 rm -rf $HOME/.p10k.zsh
-rm -rf $HOME/.config/nvim
 rm -rf $HOME/.config/direnv
 rm -rf $HOME/.vim
 
 curl -fLo ~/.vim/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
 sh -c 'curl -fLo "${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
-
-echo "Backup $HOME/.zshrc to $HOME/.zshrc.bak"
-[[ -f $HOME/.zshrc ]] && cp $HOME/.zshrc $HOME/.zshrc.bak
 
 echo " "
 echo "Generate $HOME/.zshrc..."

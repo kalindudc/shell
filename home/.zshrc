@@ -117,6 +117,10 @@ if which rbenv > /dev/null; then eval "$(rbenv init -)"; fi
 
 source <(helm completion zsh)
 
+fpath=($HOME/.zsh $fpath)
+autoload -Uz compinit
+compinit -u
+
 ### TEMPLATES ###
 
 # bases template
@@ -325,10 +329,6 @@ export KUBECONFIG=${KUBECONFIG:+$KUBECONFIG:}/Users/kalindu/.kube/config:/Users/
 # kubernetes template end
 
 ### TEMPLATES END ###
-
-fpath=($HOME/.zsh $fpath)
-autoload -Uz compinit
-compinit -u
 
 ENDTIME=$(($(gdate +%s%3N)))
 printf 'Start time %.4fs\n' $(echo "($ENDTIME - $STARTTIME)/1000" | bc -l)
