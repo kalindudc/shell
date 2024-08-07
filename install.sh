@@ -48,13 +48,15 @@ pipx install dunk
 echo "Done installing packages"
 
 echo " "
-echo "Installing up zsh plugins and zplug..."
+echo "Installing zsh plugins and zinit..."
 git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
 git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
 
-mkdir -p $HOME/.zplug
-git clone https://github.com/zplug/zplug.git $HOME/.zplug
-echo "Done instaling zsh plugins and zplug..."
+ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
+[ ! -d $ZINIT_HOME ] && mkdir -p "$(dirname $ZINIT_HOME)"
+[ ! -d $ZINIT_HOME/.git ] && git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
+
+echo "Done instaling zsh plugins and zinit..."
 
 echo " "
 echo "Setting up kalindudc/shell..."

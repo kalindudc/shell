@@ -2,9 +2,11 @@
   work_setup = ENV['WORK_SETUP'] == 'true' ? true : false
 %>
 #!/bin/bash
-STARTTIME=$(($(gdate +%s%3N)))
 
 export PATH=/opt/homebrew/bin:/opt/homebrew/sbin:$HOME/bin/:$HOME/.local/bin:$HOME/bin:$HOME/.kube-plugins:${KREW_ROOT:-$HOME/.krew}/bin:$HOME/go/bin:/usr/bin/local:/usr/local/opt/coreutils/libexec/gnubin:/usr/local/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:$HOME/.gem/ruby/2.7.2/bin:/opt/rubies/2.7.2/lib/ruby/gems/2.7.0/bin:/opt/rubies/2.7.2/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin/:$PATH
+
+zmodload zsh/zprof
+STARTTIME=$(($(gdate +%s%3N)))
 
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
@@ -91,27 +93,10 @@ autoload -U promptinit; promptinit
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
-export ZPLUG_HOME=$HOME/.zplug
-source $ZPLUG_HOME/init.zsh
+export ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
+source "${ZINIT_HOME}/zinit.zsh"
 
-zplug "b4b4r07/enhancd", use:"*init.sh"
-
-if zplug check "b4b4r07/enhancd"; then
-  export ENHANCD_FILTER="fzy:fzf"
-  export ENHANCD_DOT_SHOW_FULLPATH=1
-fi
-
-# Install plugins if there are plugins that have not been installed
-if ! zplug check; then
-  printf "Some plugins need to be installed. Install plugins? [y/N]: "
-  if read -q; then
-    echo; zplug install
-  fi
-fi
-
-# Source plugins and add commands to $PATH
-zplug load --verbose
-
+zinit load "b4b4r07/enhancd"
 
 ## dev ##
 
@@ -120,19 +105,6 @@ if [[ $- == *i* ]] && [[ -f /opt/dev/dev.sh ]]; then source /opt/dev/dev.sh; fi
 [ -f /opt/dev/dev.sh ] && source /opt/dev/dev.sh
 if [ -e $HOME/.nix-profile/etc/profile.d/nix.sh ]; then . $HOME/.nix-profile/etc/profile.d/nix.sh; fi # added by Nix installer
 
-# bun
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
-
-#deno
-export DENO_INSTALL="$HOME/.deno"
-export PATH="$DENO_INSTALL/bin:$PATH"
-deno completions zsh > $HOME/.zsh/_deno
-
-fpath=($HOME/.zsh $fpath)
-autoload -Uz compinit
-compinit -u
-
 eval "$(direnv hook zsh)"
 
 # PYENV
@@ -140,7 +112,8 @@ export PYENV_ROOT="$HOME/.pyenv"
 [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
 eval "$(pyenv init -)"
 
-eval "$(rbenv init - zsh)"
+# if rvenv is installed then load it
+if which rbenv > /dev/null; then eval "$(rbenv init -)"; fi
 
 source <(helm completion zsh)
 
@@ -174,9 +147,16 @@ source <(helm completion zsh)
 
 <%= kubernetes_template_contents %>
 
+# cloudplatform: add Shopify clusters to your local kubernetes config
+export KUBECONFIG=${KUBECONFIG:+$KUBECONFIG:}/Users/kalindu/.kube/config:/Users/kalindu/.kube/config.shopify.cloudplatform
+
 # kubernetes template end
 
 ### TEMPLATES END ###
+
+fpath=($HOME/.zsh $fpath)
+autoload -Uz compinit
+compinit -u
 
 ENDTIME=$(($(gdate +%s%3N)))
 printf 'Start time %.4fs\n' $(echo "($ENDTIME - $STARTTIME)/1000" | bc -l)

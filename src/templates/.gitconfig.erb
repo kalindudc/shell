@@ -1,9 +1,10 @@
 <%
+  name = ENV["GIT_NAME"] ||= "Kalindu De Costa"
   email = ENV["GIT_EMAIL"] ||= "kalindu.decosta@gmail.com"
   signing_key = ENV["GIT_SIGNING_KEY"] ||= ""
 %>
 [user]
-	name = Kalindu De Costa
+	name = <%= name %>
   email = <%= email %>
   <%- if signing_key != "" -%>
 	signingkey = <%= signing_key %>
