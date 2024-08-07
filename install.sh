@@ -45,7 +45,7 @@ brew install zoxide
 
 brew install --cask visual-studio-code
 
-sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
 #curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash
 
