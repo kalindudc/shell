@@ -56,9 +56,15 @@ plugins=(
   history
   colored-man-pages
   colorize
+  zsh-completions
   zsh-autosuggestions
   zsh-syntax-highlighting
+  evalcache
+  enhancd
 )
+
+ENHANCD_ENABLE_DOUBLE_DOT="false"
+ENHANCD_ENABLE_HOME="false"
 
 # This speeds up pasting w/ autosuggest
 # https://github.com/zsh-users/zsh-autosuggestions/issues/238
@@ -93,11 +99,6 @@ autoload -U promptinit; promptinit
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
-export ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
-source "${ZINIT_HOME}/zinit.zsh"
-
-zinit load "b4b4r07/enhancd"
-
 ## dev ##
 
 [[ -f /opt/dev/sh/chruby/chruby.sh ]] && type chruby >/dev/null 2>&1 || chruby () { source /opt/dev/sh/chruby/chruby.sh; chruby "$@"; }
@@ -105,19 +106,19 @@ if [[ $- == *i* ]] && [[ -f /opt/dev/dev.sh ]]; then source /opt/dev/dev.sh; fi
 [ -f /opt/dev/dev.sh ] && source /opt/dev/dev.sh
 if [ -e $HOME/.nix-profile/etc/profile.d/nix.sh ]; then . $HOME/.nix-profile/etc/profile.d/nix.sh; fi # added by Nix installer
 
-eval "$(direnv hook zsh)"
+if which direnv > /dev/null; then _evalcache direnv hook zsh; fi
 
 # PYENV
 export PYENV_ROOT="$HOME/.pyenv"
 [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
-eval "$(pyenv init -)"
+_evalcache pyenv init -
 
 # if rvenv is installed then load it
-if which rbenv > /dev/null; then eval "$(rbenv init -)"; fi
+if which rbenv > /dev/null; then _evalcache rbenv init -; fi
 
 source <(helm completion zsh)
 
-fpath=($HOME/.zsh $fpath)
+fpath=($HOME/.zsh ZSH_CUSTOM:-${ZSH:-~/.oh-my-zsh}/custom}/plugins/zsh-completions/src $fpath)
 autoload -Uz compinit
 compinit -u
 
