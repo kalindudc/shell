@@ -1,6 +1,14 @@
 # shell
 > Shared and common aliases and functions for all machines.
 
+### What do you get?
+1. [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh#unattended-install)
+1. [powerlevel10k](https://github.com/romkatv/powerlevel10k)
+1. [enhancd](https://github.com/babarot/enhancd): a fuzzy `cd`
+1. [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions): command suggestions based on history
+1. Tons of custom aliases and functions, see `./home/.zshrc`
+1. Helpful scripts, see `./home/bin/`
+
 ### Install (Mac OS)
 
 ```sh

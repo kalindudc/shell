@@ -369,9 +369,7 @@ kexec() {
   kubectl --context $cluster -n $namespace exec -it $deploy -- bash
 }
 
-
-# cloudplatform: add Shopify clusters to your local kubernetes config
-export KUBECONFIG=${KUBECONFIG:+$KUBECONFIG:}/Users/kalindu/.kube/config:/Users/kalindu/.kube/config.shopify.cloudplatform
+export KUBECONFIG=$(find ~/.kube -type f -name '*config*' | tr '\n' ':' | sed 's/:$//')
 
 # kubernetes template end
 
