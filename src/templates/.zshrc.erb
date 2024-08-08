@@ -152,7 +152,7 @@ compinit -u
 
 <%= kubernetes_template_contents %>
 
-export KUBECONFIG=$(find ~/.kube -type f -name '*config*' | tr '\n' ':' | sed 's/:$//')
+export KUBECONFIG=$(printf '%s:' $HOME/.kube/*config*(N.) | sed 's/:$//')
 
 # kubernetes template end
 

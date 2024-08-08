@@ -286,6 +286,7 @@ kdebug() {
       return -1
     fi
   fi
+
   echo "Using $cluster and $namespace for a debug pod"
 
   image_to_use="gcr.io/shopify-docker-images/cloud/debug-container"
@@ -376,7 +377,8 @@ kexec() {
   kubectl --context $cluster -n $namespace exec -it $deploy -- bash
 }
 
-export KUBECONFIG=$(find ~/.kube -type f -name '*config*' | tr '\n' ':' | sed 's/:$//')
+
+export KUBECONFIG=$(printf '%s:' $HOME/.kube/*config*(N.) | sed 's/:$//')
 
 # kubernetes template end
 
