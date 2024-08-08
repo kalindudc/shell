@@ -286,10 +286,17 @@ kdebug() {
       return -1
     fi
   fi
-
   echo "Using $cluster and $namespace for a debug pod"
-  kubectl --context "$cluster" -n "$namespace" delete pod "$USER-test"
-  kubectl --context "$cluster" -n "$namespace" run -ti --rm $USER-test --image gcr.io/shopify-docker-images/cloud/debug-container -- bash
+
+  image_to_use="gcr.io/shopify-docker-images/cloud/debug-container"
+  fallback_image="docker.io/nicolaka/netshoot"
+
+  kubectl --context "$cluster" -n "$namespace" delete pod "$USER-test" --ignore-not-found
+
+  if ! kubectl --context "$cluster" -n "$namespace" run -ti --rm $USER-test --image "$image_to_use" -- bash; then
+    echo "Falling back to $fallback_image"
+    kubectl --context "$cluster" -n "$namespace" run -ti --rm $USER-test --image "$fallback_image" -- bash
+  fi
 }
 
 kcerts() {
