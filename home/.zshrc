@@ -8,6 +8,31 @@ export PATH=/opt/homebrew/bin:/opt/homebrew/sbin:$HOME/bin/:$HOME/.local/bin:$HO
 zmodload zsh/zprof
 STARTTIME=$(($(gdate +%s%3N)))
 
+# Path to your oh-my-zsh installation.
+export ZSH="$HOME/.oh-my-zsh"
+ZSH_THEME=""
+export ZSH_DISABLE_COMPFIX="false"
+export ZSH_AUTOSUGGEST_USE_ASYNC="true"
+export ZSH_AUTOSUGGEST_STRATEGY=(history completion)
+
+export ENHANCD_ENABLE_DOUBLE_DOT="false"
+export ENHANCD_ENABLE_HOME="false"
+
+export PYENV_ROOT="$HOME/.pyenv"
+[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+
+fpath=($HOME/.zsh ZSH_CUSTOM:-${ZSH:-~/.oh-my-zsh}/custom}/plugins/zsh-completions/src $fpath)
+
+autoload -Uz compinit
+# Recompile completion dump if it's out of date or missing
+if [[ ! -f ~/.zcompdump || ~/.zcompdump -ot ~/.zshrc ]]; then
+  compinit
+else
+  compinit -C
+fi
+
+autoload -U promptinit; promptinit
+
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
 # confirmations, etc.) must go above this block; everything else may go below.
@@ -44,12 +69,6 @@ fi
 unset env
 ### END
 
-export ZSH_DISABLE_COMPFIX="false"
-
-# Path to your oh-my-zsh installation.
-export ZSH="$HOME/.oh-my-zsh"
-ZSH_THEME=""
-
 plugins=(
   git
   fzf
@@ -62,9 +81,6 @@ plugins=(
   evalcache
   enhancd
 )
-
-ENHANCD_ENABLE_DOUBLE_DOT="false"
-ENHANCD_ENABLE_HOME="false"
 
 # This speeds up pasting w/ autosuggest
 # https://github.com/zsh-users/zsh-autosuggestions/issues/238
@@ -80,9 +96,6 @@ zstyle :bracketed-paste-magic paste-init pasteinit
 zstyle :bracketed-paste-magic paste-finish pastefinish
 # slow pastes
 
-ZSH_AUTOSUGGEST_USE_ASYNC="true"
-ZSH_AUTOSUGGEST_STRATEGY=(history completion)
-
 # auto complete one word at a time, similar to '^w' to remove one word at a time
 bindkey '^f' forward-word
 
@@ -94,8 +107,6 @@ if [ -f "${HOME}/.gnupg/.gpg-agent-info" ]; then
 fi
 
 [[ -x /opt/homebrew/bin/brew ]] && eval $(/opt/homebrew/bin/brew shellenv)
-
-autoload -U promptinit; promptinit
 
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
 
@@ -109,18 +120,12 @@ if [ -e $HOME/.nix-profile/etc/profile.d/nix.sh ]; then . $HOME/.nix-profile/etc
 if which direnv > /dev/null; then _evalcache direnv hook zsh; fi
 
 # PYENV
-export PYENV_ROOT="$HOME/.pyenv"
-[[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
 _evalcache pyenv init -
 
 # if rvenv is installed then load it
 if which rbenv > /dev/null; then _evalcache rbenv init -; fi
 
 source <(helm completion zsh)
-
-fpath=($HOME/.zsh ZSH_CUSTOM:-${ZSH:-~/.oh-my-zsh}/custom}/plugins/zsh-completions/src $fpath)
-autoload -Uz compinit
-compinit -u
 
 ### TEMPLATES ###
 
