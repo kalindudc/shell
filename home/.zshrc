@@ -17,6 +17,7 @@ export ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 
 export ENHANCD_ENABLE_DOUBLE_DOT="false"
 export ENHANCD_ENABLE_HOME="false"
+export ENHANCD_FILTER="fzf --height 40%:fzy:fzf:peco:sk:zf"
 
 export PYENV_ROOT="$HOME/.pyenv"
 [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
