@@ -88,7 +88,24 @@ echo "Done instaling zsh plugins"
 echo " "
 echo "Setting up $SHELL_DIR..."
 
-git clone $SHELL_REMOTE $SHELL_DIR
+# Check if the directory exists
+if [ -d "$SHELL_DIR" ]; then
+  echo "Directory exists. Navigating to $SHELL_DIR."
+  cd "$SHELL_DIR" || exit
+
+  # Discard any changes
+  echo "Discarding any local changes."
+  git reset --hard
+  git clean -fd
+
+  # Pull the latest changes
+  echo "Pulling the latest changes."
+  git pull origin main
+else
+  # Clone the repository
+  echo "$SHELL_DIR does not exist. Cloning the repository."
+  git clone "$REPO_URL" "$SHELL_DIR"
+fi
 
 echo "Done setting up $SHELL_DIR"
 
