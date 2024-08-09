@@ -22,7 +22,11 @@ prompt_for_yn() {
   done
 }
 
-mkdir -p $HOME/src/github.com/kalindudc
+GIT_CLONE_DIR="$HOME/src/github.com/kalindudc"
+SHELL_DIR="$GIT_CLONE_DIR/shell"
+SHELL_REMOTE="https://github.com/kalindudc/shell.git"
+
+mkdir -p $GIT_CLONE_DIR
 
 brew update
 brew upgrade
@@ -82,11 +86,11 @@ git clone https://github.com/zsh-users/zsh-completions ${ZSH_CUSTOM:-${ZSH:-~/.o
 echo "Done instaling zsh plugins"
 
 echo " "
-echo "Setting up kalindudc/shell..."
+echo "Setting up $SHELL_DIR..."
 
-git clone https://github.com/kalindudc/shell.git $HOME/src/github.com/kalindudc/shell
+git clone $SHELL_REMOTE $SHELL_DIR
 
-echo "Done setting up kalindudc/shell"
+echo "Done setting up $SHELL_DIR"
 
 echo " "
 echo "Setting up $HOME..."
@@ -109,7 +113,7 @@ sh -c 'curl -fLo "${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload/plug.
 
 echo " "
 echo "Generate $HOME/.zshrc..."
-$HOME/src/github.com/kalindudc/shell/src/generate_zshrc.rb
+$SHELL_DIR/src/generate_zshrc.rb
 echo "Done generating $HOME/.zshrc"
 
 echo " "
@@ -142,12 +146,12 @@ if [ -z "$GIT_SIGNING_KEY" ]; then
 fi
 
 echo "All set, generating $HOME/.gitconfig..."
-$HOME/src/github.com/kalindudc/shell/src/generate_tempate.rb -i $HOME/src/github.com/kalindudc/shell/src/templates/.gitconfig.erb -o $HOME/src/github.com/kalindudc/shell/home/.gitconfig
+$SHELL_DIR/generate_tempate.rb -i $SHELL_DIR/src/templates/.gitconfig.erb -o $SHELL_DIR/shell/home/.gitconfig
 echo "Done generating $HOME/.gitconfig"
 
 echo " "
 echo "Stowing $HOME..."
-stow home -d "$HOME/src/github.com/kalindudc/shell/" -t $HOME --adopt
+stow home -d "$SHELL_DIR" -t $HOME --adopt
 echo "Done setting up $HOME"
 
 echo " "
@@ -160,7 +164,7 @@ echo "Done setting up git"
 echo "All done!"
 echo " "
 echo " "
-echo "If this is the first time you are setting up kalindudc/shell, you may need to configure powerlevel10k"
+echo "If this is the first time you are setting up $SHELL_DIR, you may need to configure powerlevel10k"
 if prompt_for_yn "$(echo ${GREEN}Do you want to set up powerlevel10k now?${NC}) (y/N)" "N"; then
   zsh -i -c "p10k configure"
 fi
