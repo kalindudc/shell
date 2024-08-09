@@ -25,12 +25,7 @@ export PYENV_ROOT="$HOME/.pyenv"
 fpath=($HOME/.zsh ZSH_CUSTOM:-${ZSH:-~/.oh-my-zsh}/custom}/plugins/zsh-completions/src $fpath)
 
 autoload -Uz compinit
-# Recompile completion dump if it's out of date or missing
-if [[ ! -f ~/.zcompdump || ~/.zcompdump -ot ~/.zshrc ]]; then
-  compinit
-else
-  compinit -C
-fi
+compinit -C
 
 autoload -U promptinit; promptinit
 
