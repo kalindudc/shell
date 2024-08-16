@@ -28,51 +28,79 @@ SHELL_REMOTE="https://github.com/kalindudc/shell.git"
 
 mkdir -p $GIT_CLONE_DIR
 
-brew update
-brew upgrade
+skip_brew=false
+# Function to display usage
+usage() {
+    echo "Usage: $0 [--skip-brew]"
+    exit 1
+}
 
-# Install packages
-echo "Installing packages..."
+# Parse options
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        --skip-brew)
+            skip_brew=true
+            ;;
+        -h|--help)
+            usage
+            ;;
+        *)
+            echo "Unknown option: $1"
+            usage
+            ;;
+    esac
+    shift
+done
 
-brew install coreutils
-brew install direnv
-brew install fd
-brew install font-hack-nerd-font
-brew install fzf
-brew install fzy
-brew install gcc
-brew install gh
-brew install git
-brew install gpg
-brew install helm
-brew install jesseduffield/lazygit/lazygit
-brew install kubectl
-brew install neovide
-brew install nvim
-brew install openssl
-brew install pipx
-brew install powerlevel10k
-brew install pyenv
-#brew install rbenv
-brew install readline
-brew install rg
-brew install ruby-build
-brew install sqlite3
-brew install stow
-brew install tcl-tk
-brew install xz
-brew install zlib
-brew install zoxide
+if [ "$skip_brew" = false ]; then
+  brew update
+  brew upgrade
 
-brew install --cask visual-studio-code
+  # Install packages
+  echo "Installing packages..."
 
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-#curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash
+  brew install coreutils
+  brew install direnv
+  brew install fd
+  brew install font-hack-nerd-font
+  brew install fzf
+  brew install fzy
+  brew install gcc
+  brew install gh
+  brew install git
+  brew install gpg
+  brew install helm
+  brew install jesseduffield/lazygit/lazygit
+  brew install kubectl
+  brew install neovide
+  brew install nvim
+  brew install openssl
+  brew install pipx
+  brew install powerlevel10k
+  brew install pyenv
+  #brew install rbenv
+  brew install readline
+  brew install rg
+  brew install ruby-build
+  brew install sqlite3
+  brew install stow
+  brew install tcl-tk
+  brew install xz
+  brew install zlib
+  brew install zoxide
 
-pipx install dunk
+  brew install --cask visual-studio-code
 
-echo "Done installing packages"
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+  #curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash
+
+  pipx install dunk
+
+  echo "Done installing packages"
+else
+  echo "Skipping brew installation"
+fi
 
 echo " "
 echo "Installing zsh plugins..."
@@ -94,17 +122,21 @@ echo "Setting up $SHELL_DIR..."
 
 # Check if the directory exists
 if [ -d "$SHELL_DIR" ]; then
-  echo "Directory exists. Navigating to $SHELL_DIR."
-  cd "$SHELL_DIR" || exit
+  if prompt_for_yn "$(echo ${GREEN}$SHELL_DIR exists, do you want to overwrite the changes wiith upstream changes?${NC}) (y/N)" "N"; then
+    echo "Directory exists. Navigating to $SHELL_DIR."
+    cd "$SHELL_DIR" || exit
 
-  # Discard any changes
-  echo "Discarding any local changes."
-  git reset --hard
-  git clean -fd
+    # Discard any changes
+    echo "Discarding any local changes."
+    git reset --hard
+    git clean -fd
 
-  # Pull the latest changes
-  echo "Pulling the latest changes."
-  git pull origin main
+    # Pull the latest changes
+    echo "Pulling the latest changes."
+    git pull origin main
+  else
+    echo "Skipping $SHELL_DIR"
+  fi
 else
   # Clone the repository
   echo "$SHELL_DIR does not exist. Cloning the repository."
