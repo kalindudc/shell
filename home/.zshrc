@@ -25,7 +25,13 @@ export PYENV_ROOT="$HOME/.pyenv"
 fpath=($HOME/.zsh ZSH_CUSTOM:-${ZSH:-~/.oh-my-zsh}/custom}/plugins/zsh-completions/src $fpath)
 
 autoload -Uz compinit
-compinit -C
+
+actual_zshrc=$(readlink -f "$HOME/.zshrc")
+if [[ ! -f $HOME/.zcompdump || $HOME/.zcompdump -ot $actual_zshrc ]]; then
+  echo "Regenerating zcompdump..."
+  rm -f "$HOME/.zcompdump"
+fi
+compinit
 
 autoload -U promptinit; promptinit
 

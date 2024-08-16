@@ -121,6 +121,7 @@ echo "Generating backups for current configs before replacing..."
 echo " "
 echo "Removing existing configs..."
 rm -rf $HOME/.zshrc > /dev/null 2>&1
+rm -rf $HOME/.zcompdump > /dev/null 2>&1
 rm -rf $HOME/.p10k.zsh > /dev/null 2>&1
 rm -rf $HOME/.config/direnv > /dev/null 2>&1
 rm -rf $HOME/.vim > /dev/null 2>&1
