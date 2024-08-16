@@ -31,5 +31,9 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/insta
     └── generate_zshrc.rb       // script to generate the .zshrc files
 ```
 
+### Performance
+On latest M3 macs, the average shell will startup in under 400ms. Even on old 2018 Intel Macs, the average shell will startup in under 700ms.
+
+
 ### License
 MIT
