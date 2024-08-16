@@ -2,9 +2,10 @@ KUBERNETES_SCRIPT="yes"
 
 export KUBE_EDITOR="nvim"
 
-# command -v kubecolor >/dev/null 2>&1 && alias kubectl="kubecolor"
+# COLORIZE KUBECTL OUTPUT
 alias kubectl="kubecolor"
 compdef kubecolor=kubectl
+# COLORIZE END
 
 alias k='kubectl'
 alias kcl='kubectl'
