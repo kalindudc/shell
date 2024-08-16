@@ -83,6 +83,10 @@ git clone https://github.com/mroth/evalcache ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/
 git clone https://github.com/b4b4r07/enhancd.git ${ZSH_CUSTOM:-${ZSH:-~/.oh-my-zsh}/custom}/plugins/enhancd
 git clone https://github.com/zsh-users/zsh-completions ${ZSH_CUSTOM:-${ZSH:-~/.oh-my-zsh}/custom}/plugins/zsh-completions
 
+# kubectl completion
+mkdir -p ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/kubectl-autocomplete/
+kubectl completion zsh > ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/kubectl-autocomplete/kubectl-autocomplete.plugin.zsh
+
 echo "Done instaling zsh plugins"
 
 echo " "

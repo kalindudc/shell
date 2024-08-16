@@ -81,6 +81,7 @@ plugins=(
   zsh-completions
   zsh-autosuggestions
   zsh-syntax-highlighting
+  kubectl-autocomplete
   evalcache
   enhancd
 )
@@ -260,10 +261,9 @@ KUBERNETES_SCRIPT="yes"
 
 export KUBE_EDITOR="nvim"
 
-#source <(kubectl completion zsh)
-source <(_evalcache HTTPS_PROXY=1:1 kubectl completion zsh)
 # command -v kubecolor >/dev/null 2>&1 && alias kubectl="kubecolor"
-# compdef kubecolor=kubectl
+alias kubectl="kubecolor"
+compdef kubecolor=kubectl
 
 alias k='kubectl'
 alias kcl='kubectl'
