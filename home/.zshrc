@@ -22,7 +22,7 @@ export ENHANCD_FILTER="fzf --height 40%:fzy:fzf:peco:sk:zf"
 export PYENV_ROOT="$HOME/.pyenv"
 [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
 
-fpath=($HOME/.zsh ZSH_CUSTOM:-${ZSH:-~/.oh-my-zsh}/custom}/plugins/zsh-completions/src $fpath)
+fpath=($HOME/.zsh ZSH_CUSTOM:-${ZSH:-$HOME/.oh-my-zsh}/custom}/plugins/zsh-completions/src $fpath)
 
 autoload -Uz compinit
 
@@ -35,7 +35,7 @@ compinit
 
 autoload -U promptinit; promptinit
 
-# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# Enable Powerlevel10k instant prompt. Should stay close to the top of $HOME/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
 # confirmations, etc.) must go above this block; everything else may go below.
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
@@ -43,18 +43,19 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
 fi
 
 source $(brew --prefix)/share/powerlevel10k/powerlevel10k.zsh-theme
-# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
-[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+# To customize prompt, run `p10k configure` or edit $HOME/.p10k.zsh.
+[[ ! -f $HOME/.p10k.zsh ]] || source $HOME/.p10k.zsh
 
 ### SSH AGENT TO STORE SSH KEY PHRASE
 ### https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh/working-with-ssh-key-passphrases
-env=~/.ssh/agent.env
+env=$HOME/.ssh/agent.env
 
 agent_load_env () { test -f "$env" && . "$env" >| /dev/null ; }
 
 agent_start () {
-    (umask 077; ssh-agent >| "$env")
-    . "$env" >| /dev/null ; }
+  (umask 077; ssh-agent >| "$env")
+  . "$env" >| /dev/null ;
+}
 
 agent_load_env
 
@@ -62,14 +63,14 @@ agent_load_env
 agent_run_state=$(ssh-add -l >| /dev/null 2>&1; echo $?)
 
 if [ ! "$SSH_AUTH_SOCK" ] || [ $agent_run_state = 2 ]; then
-    agent_start
-    ssh-add
+  agent_start
+  ssh-add
 elif [ "$SSH_AUTH_SOCK" ] && [ $agent_run_state = 1 ]; then
-    ssh-add
+  ssh-add
 fi
 
 unset env
-### END
+### END SSH AGENT
 
 plugins=(
   git
@@ -104,13 +105,13 @@ bindkey '^f' forward-word
 source $ZSH/oh-my-zsh.sh
 
 if [ -f "${HOME}/.gnupg/.gpg-agent-info" ]; then
-    . "${HOME}/.gnupg/.gpg-agent-info"
-    export GPG_AGENT_INFO
+  . "${HOME}/.gnupg/.gpg-agent-info"
+  export GPG_AGENT_INFO
 fi
 
 [[ -x /opt/homebrew/bin/brew ]] && eval $(/opt/homebrew/bin/brew shellenv)
 
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+[ -f $HOME/.fzf.zsh ] && source $HOME/.fzf.zsh
 
 ## dev ##
 
@@ -126,8 +127,6 @@ _evalcache pyenv init -
 
 # if rvenv is installed then load it
 if which rbenv > /dev/null; then _evalcache rbenv init -; fi
-
-source <(helm completion zsh)
 
 ### TEMPLATES ###
 
@@ -262,7 +261,7 @@ KUBERNETES_SCRIPT="yes"
 export KUBE_EDITOR="nvim"
 
 #source <(kubectl completion zsh)
-source <(eval HTTPS_PROXY=1:1 kubectl completion zsh)
+source <(_evalcache HTTPS_PROXY=1:1 kubectl completion zsh)
 # command -v kubecolor >/dev/null 2>&1 && alias kubectl="kubecolor"
 # compdef kubecolor=kubectl
 
