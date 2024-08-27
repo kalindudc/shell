@@ -82,6 +82,7 @@ plugins=(
   zsh-autosuggestions
   zsh-syntax-highlighting
   kubectl-autocomplete
+  op-autocomplete
   evalcache
   enhancd
 )

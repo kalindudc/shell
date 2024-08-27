@@ -88,6 +88,7 @@ if [ "$skip_brew" = false ]; then
   brew install xz
   brew install zlib
   brew install zoxide
+  brew install 1password-cli
 
   brew install --cask visual-studio-code
 
@@ -114,6 +115,9 @@ git clone https://github.com/zsh-users/zsh-completions ${ZSH_CUSTOM:-${ZSH:-~/.o
 # kubectl completion
 mkdir -p ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/kubectl-autocomplete/
 kubectl completion zsh > ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/kubectl-autocomplete/kubectl-autocomplete.plugin.zsh
+
+mkdir -p ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/op-autocomplete/
+op completion zsh > ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/op-autocomplete/op-autocomplete.plugin.zsh
 
 echo "Done instaling zsh plugins"
 
