@@ -89,6 +89,7 @@ if [ "$skip_brew" = false ]; then
   brew install zlib
   brew install zoxide
   brew install 1password-cli
+  brew install go-task
 
   brew install --cask visual-studio-code
 

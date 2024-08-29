@@ -34,6 +34,12 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/insta
 ### Performance
 On latest M3 macs, the average shell will startup in under 400ms. Even on old 2018 Intel Macs, the average shell will startup in under 700ms.
 
+### Tasks
+Custom tasks are specified in the `Taskfile` 
+
+```
+stow: Re-stow the $HOME directory       // use this when adding new directories to home/
+```
 
 ### License
 MIT

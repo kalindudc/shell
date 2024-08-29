@@ -1,0 +1,7 @@
+version: '3'
+
+tasks:
+  stow:
+    desc: "Re-store the home directory"
+    cmds:
+      - stow home -d "./" -t $HOME --adopt
