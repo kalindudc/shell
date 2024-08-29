@@ -72,8 +72,7 @@ if [ "$skip_brew" = false ]; then
   brew install helm
   brew install jesseduffield/lazygit/lazygit
   brew install kubectl
-  brew install neovide
-  brew install nvim
+  brew install neovim
   brew install openssl
   brew install pipx
   brew install powerlevel10k
