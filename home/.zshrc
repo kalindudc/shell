@@ -262,11 +262,6 @@ KUBERNETES_SCRIPT="yes"
 
 export KUBE_EDITOR="nvim"
 
-# COLORIZE KUBECTL OUTPUT
-alias kubectl="kubecolor"
-compdef kubecolor=kubectl
-# COLORIZE END
-
 alias k='kubectl'
 alias kcl='kubectl'
 alias kngx='kubectl ingress-nginx --deployment nginx-ingress-controller'

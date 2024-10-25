@@ -1,0 +1,114 @@
+#!/bin/bash
+
+CONF_DIR="$HOME/conf/oncall"
+CONF_PATH="$CONF_DIR/oncall_conf.json"
+
+help() {
+  printf "oncall - command line tool to manage oncall duties\n\n"
+  printf "usage: oncall <option>\n\n"
+  printf "Available options\n"
+  printf "\toncall - view the number of days off accumulated\n"
+  printf "\toncall [-h|--help|help] - show this help message\n"
+  printf "\toncall init - initialize configuration file\n"
+  printf "\toncall [r|record] - record a oncall shift\n"
+  printf "\toncall [u|use] <float?> - use <float> days of accumulated dayoffs, if no float is provided, the number of days off to be taken will be the dayoffs_per_shift\n\n"
+  printf "Configuration options:\n"
+  printf "\toncall --dayoffs-per-shift <float> - in days, set the number of days off to be taken after a shift\n"
+  printf "\t\t\t default is 1 day\n"
+  printf "\toncall --reset - reset the accumulated dayoffs and set dayoffs_per_shift to the default\n"
+  printf "Configuration file can be found at $CONF_PATH.\n"
+}
+
+# init, create .json if doesnt exist
+init() {
+  if [[ -f "$CONF_PATH" ]]; then
+    printf "$CONF_PATH already exists\n"
+    printf "skipping init()\n"
+  else
+    printf "initializing...\n"
+    status=$(mkdir -p "$CONF_DIR" && touch "$CONF_PATH")
+    printf "{\n\t\"dayoffs\": 0,\n\t\"dayoffs_per_shift\": 1\n}" > "$CONF_PATH"
+    printf "Configuration file generated at $CONF_PATH\n"
+  fi
+}
+
+# handle input
+if [[ $1 == "-h" || $1 == "--help" || $1 == "help" ]]; then
+  help
+  exit 0
+fi
+
+if [[ $1 == "init" ]]; then
+  init
+  exit 0
+fi
+
+if [[ ! -f "$CONF_PATH" ]]; then
+  printf "configuration file does not exist, please run [$0 init]\n"
+  exit -1
+fi
+
+dayoffs=$(jq '.dayoffs' $CONF_PATH)
+dayoffs_per_shift=$(jq '.dayoffs_per_shift' $CONF_PATH)
+
+show() {
+  printf "You have \033[1;36m$dayoffs\033[0m days off accumulated\n"
+  printf "You will be taking \033[1;33m$dayoffs_per_shift\033[0m days off per shift\n"
+}
+
+if [[ $# -lt 1 ]]; then
+  show
+  exit 0
+fi
+
+update_config() {
+  if [[ $# -ne 2 ]]; then
+    printf "update_config() expects 2 arguments\n"
+    exit -1
+  fi
+
+  dayoffs=$1
+  dayoffs_per_shift=$2
+  printf "{\n\t\"dayoffs\": $dayoffs,\n\t\"dayoffs_per_shift\": $dayoffs_per_shift\n}" > "$CONF_PATH"
+}
+
+if [[ $1 == "record" || $1 == "r" ]]; then
+  # record the start of the oncall shift by accumulating the dayoffs with the dayoffs_per_shift
+  dayoffs=$(printf "$dayoffs + $dayoffs_per_shift" | bc)
+  update_config $dayoffs $dayoffs_per_shift
+  printf "You have \033[1;36m$dayoffs\033[0m days off accumulated\n"
+
+elif [[ $1 == "use" || $1 == "u" ]]; then
+  days_to_take=$dayoffs_per_shift
+  if [[ $# -gt 1 ]]; then
+    days_to_take=$2
+  fi
+
+  new_dayoffs=$(printf "$dayoffs - $days_to_take" | bc)
+  if [[ $(bc <<< "$new_dayoffs < 0") -eq 1 ]]; then
+    printf "You don't have enough days off to take\n"
+    show
+    exit -1
+  fi
+
+  update_config $new_dayoffs $dayoffs_per_shift
+  printf "You have \033[1;36m$dayoffs\033[0m days off remaining\n"
+elif [[ $1 == "--reset" ]]; then
+  update_config 0 1
+  printf "Reset...\n"
+  show
+elif [[ $1 == "--dayoffs-per-shift" ]]; then
+  if [[ $# -ne 2 ]]; then
+    printf "usage: $0 --dayoffs-per-shift <float>\n"
+    help
+    exit -1
+  fi
+
+  dayoffs_per_shift=$2
+  update_config $dayoffs $dayoffs_per_shift
+  show
+else
+  printf "invalid option: $1\n"
+  help
+  exit -1
+fi

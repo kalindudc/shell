@@ -31,8 +31,14 @@ mkdir -p $GIT_CLONE_DIR
 skip_brew=false
 # Function to display usage
 usage() {
-    echo "Usage: $0 [--skip-brew]"
+    echo "Usage: $0 [--skip-brew] [--stow] [--help]"
     exit 1
+}
+
+do_stow() {
+  echo "Stowing $HOME..."
+  stow home -d "$SHELL_DIR" -t $HOME --adopt
+  echo "Done setting up $HOME"
 }
 
 # Parse options
@@ -43,6 +49,10 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         -h|--help)
             usage
+            ;;
+        --stow)
+            do_stow
+            exit 0
             ;;
         *)
             echo "Unknown option: $1"
@@ -208,9 +218,7 @@ $SHELL_DIR/generate_tempate.rb -i $SHELL_DIR/src/templates/.gitconfig.erb -o $SH
 echo "Done generating $HOME/.gitconfig"
 
 echo " "
-echo "Stowing $HOME..."
-stow home -d "$SHELL_DIR" -t $HOME --adopt
-echo "Done setting up $HOME"
+do_stow
 
 echo " "
 echo "Setting up git..."
