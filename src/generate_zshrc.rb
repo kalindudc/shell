@@ -34,7 +34,13 @@ FUNCTIONS_TEMPLATE = "#{File.expand_path(".", File.dirname(__FILE__))}/templates
 KUBERNETES_TEMPLATE = "#{File.expand_path(".", File.dirname(__FILE__))}/templates/kubernetes.sh.erb"
 
 def init
-  @options = {output: DEFAULT_OUTPUT_PATH, zshrc_template: DEFAULT_ZSHRC_TEMPLATE_PATH, debug: false, print_output: false}
+  @options = {
+    output: DEFAULT_OUTPUT_PATH,
+    zshrc_template: DEFAULT_ZSHRC_TEMPLATE_PATH,
+    debug: false,
+    print_output: false,
+  }
+
   OptionParser.new do |opt|
     opt.on('-oOUTPUT_PATH', '--output=OUTPUT_PATH', ".zshrc output file path. Default path: #{DEFAULT_OUTPUT_PATH}") { |o| @options[:output] = o }
     opt.on('-iINPUT_TEMPLATE', '--input=INPUT_TEMPLATE', ".zshrc.erb input template. Default path: #{DEFAULT_ZSHRC_TEMPLATE_PATH}") { |o| @options[:zshrc_template] = o }
@@ -78,6 +84,14 @@ def main
 
   @logger.info("Rendering template #{KUBERNETES_TEMPLATE}")
   kubernetes_template_contents = render_template(KUBERNETES_TEMPLATE)
+
+  misc_template_contents = <<EOF
+if [[ "$(uname)" == "Linux" ]]; then
+  # Use xclip to copy/paste to clipboard
+  alias pbcopy='xclip -selection clipboard'
+  alias pbpaste='xclip -selection clipboard -o'
+fi
+EOF
 
   @logger.info("Rendering template #{@options[:zshrc_template]}")
 

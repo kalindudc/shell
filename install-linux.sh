@@ -111,7 +111,8 @@ if [ "$skip_package_install" = false ]; then
     tk-dev \
     libffi-dev \
     liblzma-dev \
-    python3-openssl
+    python3-openssl \
+    xclip
 
   curl -s https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sudo bash
 
@@ -215,8 +216,14 @@ echo "Done generating $HOME/.zshrc"
 
 echo " "
 echo "Generate $HOME/.gitconfig..."
+
+export GIT_EMAIL=$(git config --global user.email)
+export GIT_NAME=$(git config --global user.name)
+export GIT_SIGNING_KEY=$(git config --global user.signingkey)
+
 # if GIT_EMAIL is not set, prompt for it
 if [ -z "$GIT_EMAIL" ]; then
+  # try to extract email from existing git config
   echo " "
   echo "GIT_EMAIL is not set..."
   read -p "$(echo ${GREEN}Please enter your email address:${NC}) " GIT_EMAIL
@@ -235,9 +242,24 @@ fi
 
 # if GIT_SIGNING_KEY is not set, prompt for it
 if [ -z "$GIT_SIGNING_KEY" ]; then
-  echo " "
-  echo "GIT_SIGNING_KEY is not set"
-  read -p "$(echo ${GREEN}please enter your GPG key ID:${NC}) " GIT_SIGNING_KEY
+  # ask if user wants to generate a new key
+  if prompt_for_yn "$(echo ${GREEN}GIT signing key does not exit, do you want to generate a new signing key?${NC}) (y/N)" "N"; then
+    echo "${RED}Generating GPG key...${NC}"
+    gpg --full-generate-key
+
+    echo "Listing GPG keys..."
+    gpg --list-secret-keys --keyid-format LONG
+    read -p "$(echo ${GREEN}please enter the GPG key ID from the above list:${NC}) " GIT_SIGNING_KEY
+
+    echo " "
+    echo "${RED}Do not forget to add your key to github, https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key${NC}"
+  else
+    echo " "
+    echo "GIT_SIGNING_KEY is not set, listing GPG keys..."
+    gpg --list-secret-keys --keyid-format LONG
+    read -p "$(echo ${GREEN}please enter your GPG key ID:${NC}) " GIT_SIGNING_KEY
+  fi
+
   export GIT_SIGNING_KEY
   echo " "
 fi
