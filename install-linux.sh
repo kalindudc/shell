@@ -75,6 +75,9 @@ done
 if [ "$skip_package_install" = false ]; then
   sudo apt update && suto apt upgrade -y
 
+  # Remove conflicting packages
+  sudo apt remove neovim -y
+
   sudo apt install -y \
     coreutils \
     direnv \
@@ -122,6 +125,7 @@ if [ "$skip_package_install" = false ]; then
   sudo dpkg -i /tmp/git-delta.deb
   rm /tmp/git-delta.deb
 
+  sudo snap install nvim --classic
   sudo snap install task --classic
   sudo snap install helm --classic
   sudo snap install kubectl --classic
