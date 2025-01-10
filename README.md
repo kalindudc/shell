@@ -9,10 +9,18 @@
 1. Tons of custom aliases and functions, see `./home/.zshrc`
 1. Helpful scripts, see `./home/bin/`
 
-### Install (Mac OS)
+### Install
+
+#### 1. Mac OS
 
 ```sh
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install.sh)"
+```
+
+#### 2. Linux (Debian/Ubuntu)
+
+```sh
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install-linux.sh)"
 ```
 
 ### Directory Structure
@@ -35,7 +43,7 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/insta
 On latest M3 macs, the average shell will startup in under 400ms. Even on old 2018 Intel Macs, the average shell will startup in under 700ms.
 
 ### Tasks
-Custom tasks are specified in the `Taskfile` 
+Custom tasks are specified in the `Taskfile`
 
 ```
 stow: Re-stow the $HOME directory       // use this when adding new directories to home/
