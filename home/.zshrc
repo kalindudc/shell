@@ -6,11 +6,17 @@
 export PATH=/opt/homebrew/bin:/opt/homebrew/sbin:$HOME/bin/:$HOME/.local/bin:$HOME/bin:$HOME/.kube-plugins:${KREW_ROOT:-$HOME/.krew}/bin:$HOME/go/bin:/usr/bin/local:/usr/local/opt/coreutils/libexec/gnubin:/usr/local/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin:$HOME/.gem/ruby/2.7.2/bin:/opt/rubies/2.7.2/lib/ruby/gems/2.7.0/bin:/opt/rubies/2.7.2/bin:/opt/homebrew/Caskroom/google-cloud-sdk/latest/google-cloud-sdk/bin/:$PATH
 
 zmodload zsh/zprof
-STARTTIME=$(($(gdate +%s%3N)))
+
+STARTTIME=0
+if command -v gdate &>/dev/null; then
+  STARTTIME=$(($(gdate +%s%3N)))
+else
+  STARTTIME=$(($(date +%s%3N)))
+fi
 
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
-ZSH_THEME=""
+ZSH_THEME="powerlevel10k/powerlevel10k"
 export ZSH_DISABLE_COMPFIX="false"
 export ZSH_AUTOSUGGEST_USE_ASYNC="true"
 export ZSH_AUTOSUGGEST_STRATEGY=(history completion)
@@ -42,7 +48,6 @@ if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
 
-source $(brew --prefix)/share/powerlevel10k/powerlevel10k.zsh-theme
 # To customize prompt, run `p10k configure` or edit $HOME/.p10k.zsh.
 [[ ! -f $HOME/.p10k.zsh ]] || source $HOME/.p10k.zsh
 
@@ -387,5 +392,10 @@ export KUBECONFIG=$(printf '%s:' $HOME/.kube/*config*(N.) | sed 's/:$//')
 
 ### TEMPLATES END ###
 
-ENDTIME=$(($(gdate +%s%3N)))
+ENDTIME=0
+if command -v gdate &>/dev/null; then
+  ENDTIME=$(($(gdate +%s%3N)))
+else
+  ENDTIME=$(($(date +%s%3N)))
+fi
 printf 'Start time %.4fs\n' $(echo "($ENDTIME - $STARTTIME)/1000" | bc -l)
