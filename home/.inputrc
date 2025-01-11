@@ -1,0 +1,5 @@
+# Enable Shift + Arrow for text selection
+"\e[1;2C": forward-char
+"\e[1;2D": backward-char
+"\e[1;2A": previous-history
+"\e[1;2B": next-history

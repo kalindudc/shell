@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 #
 # This script can be used to quickly clone any gihub repo to a
@@ -67,4 +67,5 @@ if [[ $test_repo == *"Repository not found"* ]]; then
 else
   [ -d $actual_project_path ] || mkdir -p $actual_project_path
   git clone $full_uri $actual_project_path
+  cd $actual_project_path
 fi

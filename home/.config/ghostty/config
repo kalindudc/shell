@@ -1,0 +1,26 @@
+
+# KEYBINDS START #
+
+# splitting
+keybind = ctrl+d=new_split:right
+keybind = alt+d=new_split:right
+
+keybind = ctrl+shift+d=new_split:down
+keybind = alt+shift+d=new_split:down
+
+# copy + paste
+keybind = alt+c=copy_to_clipboard
+keybind = alt+v=paste_from_clipboard
+
+keybind = alt+t=new_tab
+keybind = alt+w=close_surface
+
+# KEYBINGS END #
+
+# OPTIONS START #
+
+unfocused-split-opacity = 0.5
+copy-on-select = true
+confirm-close-surface = false
+
+# OPTIONS END #

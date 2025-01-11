@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ "$SHELL" != "/usr/bin/zsh" ]; then
   echo "Zsh is not the default shell. Installing zsh..."
@@ -115,7 +115,9 @@ if [ "$skip_package_install" = false ]; then
     libffi-dev \
     liblzma-dev \
     python3-openssl \
-    xclip
+    xclip \
+    flatpak\
+    gnome-software-plugin-flatpak
 
   curl -s https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sudo bash
 
@@ -140,6 +142,8 @@ if [ "$skip_package_install" = false ]; then
   pipx install dunk
 
   sudo apt --fix-broken install -y
+
+  flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
 
   echo "Done installing packages"
 else
