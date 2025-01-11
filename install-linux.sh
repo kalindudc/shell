@@ -192,7 +192,7 @@ if [ -d "$SHELL_DIR" ]; then
 else
   # Clone the repository
   echo "$SHELL_DIR does not exist. Cloning the repository."
-  git clone "$REPO_URL" "$SHELL_DIR"
+  git clone "$SHELL_REMOTE" "$SHELL_DIR"
 fi
 
 echo "Done setting up $SHELL_DIR"
