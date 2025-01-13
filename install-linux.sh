@@ -117,6 +117,7 @@ if [ "$skip_package_install" = false ]; then
     python3-openssl \
     xclip \
     flatpak\
+    golang \
     gnome-software-plugin-flatpak
 
   curl -s https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sudo bash
