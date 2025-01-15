@@ -54,7 +54,6 @@ fi
 ### SSH AGENT TO STORE SSH KEY PHRASE
 ### https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh/working-with-ssh-key-passphrases
 env=$HOME/.ssh/agent.env
-export TERM=xterm-256color
 
 agent_load_env () { test -f "$env" && . "$env" >| /dev/null ; }
 
@@ -88,7 +87,6 @@ plugins=(
   zsh-autosuggestions
   zsh-syntax-highlighting
   kubectl-autocomplete
-  op-autocomplete
   evalcache
   enhancd
 )
