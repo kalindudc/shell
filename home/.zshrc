@@ -41,7 +41,7 @@ compinit
 
 autoload -U promptinit; promptinit
 
-# Enable Powerlevel10k instant prompt.
+# Enable Powerlevel10k instant prompt
 if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
   source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
 fi
@@ -92,6 +92,7 @@ fi
 [ -f $HOME/.fzf.zsh ] && source $HOME/.fzf.zsh
 
 ## dev ##
+
 [[ -f /opt/dev/sh/chruby/chruby.sh ]] && type chruby >/dev/null 2>&1 || chruby () { source /opt/dev/sh/chruby/chruby.sh; chruby "$@"; }
 if [[ $- == *i* ]] && [[ -f /opt/dev/dev.sh ]]; then source /opt/dev/dev.sh; fi
 [ -f /opt/dev/dev.sh ] && source /opt/dev/dev.sh
