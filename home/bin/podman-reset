@@ -1,0 +1,6 @@
+#!/bin/bash
+
+podman machine stop
+podman machine rm
+podman machine init --image https://builds.coreos.fedoraproject.org/prod/streams/stable/builds/39.20240407.3.0/aarch64/fedora-coreos-39.20240407.3.0-applehv.aarch64.raw.gz
+podman machine start
