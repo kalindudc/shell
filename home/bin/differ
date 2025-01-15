@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 CONF_DIR="$HOME/conf/differ"
 CONF_PATH="$CONF_DIR/differ.json"

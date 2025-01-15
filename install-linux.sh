@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if [ "$SHELL" != "/usr/bin/zsh" ]; then
   echo "Zsh is not the default shell. Installing zsh..."
