@@ -2,16 +2,16 @@
 > Shared and common aliases and functions for all machines.
 
 ### What do you get?
-1. [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh#unattended-install)
-1. [powerlevel10k](https://github.com/romkatv/powerlevel10k)
-1. [enhancd](https://github.com/babarot/enhancd): a fuzzy `cd`
-1. [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions): command suggestions based on history
-1. Tons of custom aliases and functions, see `./home/.zshrc`
-1. Helpful scripts, see `./home/bin/`
+-  [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh#unattended-install)
+-  [powerlevel10k](https://github.com/romkatv/powerlevel10k)
+-  [enhancd](https://github.com/babarot/enhancd): a fuzzy `cd`
+-  [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions): command suggestions based on history
+-  Tons of custom aliases and functions, see `./home/.zshrc`
+-  Helpful scripts, see `./home/bin/`
 
 ### Install
 
-#### 1. Mac OS
+#### -  Mac OS
 
 ```sh
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install.sh)"
@@ -21,6 +21,26 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/insta
 
 ```sh
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install-linux.sh)"
+```
+
+#### 3. Manual
+
+_Dependencies_
+```
+-  bash
+-  git
+-  curl
+-  ruby
+-  gnu-stow (https://www.gnu.org/software/stow/)
+-  fzf
+-  kubectl
+-  gh (github cli)
+```
+
+_Installation_
+```
+$ git clone https://github.com/kalindudc/shell.git $HOME/src/github.com/kalindudc/shell
+$ $HOME/src/github.com/kalindudc/shell/src/setup.sh
 ```
 
 ### Directory Structure
