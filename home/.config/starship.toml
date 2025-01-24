@@ -78,10 +78,10 @@ $sudo\
 $cmd_duration\
 $fill\
 $kubernetes\
+$battery\
 $time\
 $line_break\
 $jobs\
-$battery\
 $status\
 $os\
 $container\
@@ -118,6 +118,9 @@ disabled = false
 [time]
 disabled = false
 
-[direnv]
-disabled = false
+[gcloud]
+disabled = true
 
+[[battery.display]]
+threshold = 25
+style = 'bold red'
