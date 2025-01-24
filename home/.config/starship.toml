@@ -110,7 +110,7 @@ untracked = '[?$count ](bold blue)'
 conflicted = '[x$count ](bold red)'
 
 [kubernetes]
-disabled = false
+disabled = true
 
 [status]
 disabled = false
@@ -124,3 +124,9 @@ disabled = true
 [[battery.display]]
 threshold = 25
 style = 'bold red'
+
+[lua]
+disabled = true
+
+[ruby]
+disabled = true
