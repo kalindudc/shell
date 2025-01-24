@@ -88,15 +88,29 @@ $container\
 $shell\
 $character"""
 
-[fill]
-symbol = ' '
+[[battery.display]]
+threshold = 25
+style = 'bold red'
 
 [directory]
 style = "bold #fe8019"
+read_only = " 󰌾"
+
+[docker_context]
+symbol = " "
+
+[fill]
+symbol = ' '
+
+[gcloud]
+disabled = true
 
 [git_branch]
-symbol = '🌱 '
+symbol = " "
 style = 'bold green'
+
+[git_commit]
+tag_symbol = '  '
 
 [git_metrics]
 disabled = true
@@ -109,7 +123,16 @@ modified = '[!$count ](bold yellow)'
 untracked = '[?$count ](bold blue)'
 conflicted = '[x$count ](bold red)'
 
+[hostname]
+ssh_symbol = " "
+
 [kubernetes]
+disabled = true
+
+[lua]
+disabled = true
+
+[ruby]
 disabled = true
 
 [status]
@@ -117,16 +140,3 @@ disabled = false
 
 [time]
 disabled = false
-
-[gcloud]
-disabled = true
-
-[[battery.display]]
-threshold = 25
-style = 'bold red'
-
-[lua]
-disabled = true
-
-[ruby]
-disabled = true
