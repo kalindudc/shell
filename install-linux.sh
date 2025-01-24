@@ -120,6 +120,8 @@ if [ "$skip_package_install" = false ]; then
     golang \
     gnome-software-plugin-flatpak
 
+  curl -sS https://starship.rs/install.sh | sh
+
   curl -s https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sudo bash
 
   curl -s https://api.github.com/repos/dandavison/delta/releases/latest \

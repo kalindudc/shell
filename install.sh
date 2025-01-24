@@ -102,6 +102,8 @@ if [ "$skip_brew" = false ]; then
 
   brew install --cask visual-studio-code
 
+  curl -sS https://starship.rs/install.sh | sh
+
   sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
   #curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash

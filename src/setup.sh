@@ -41,14 +41,14 @@ rm -rf $HOME/.oh-my-zsh/
 git clone https://github.com/ohmyzsh/ohmyzsh.git $HOME/.oh-my-zsh
 
 # clean up plugins and re-clone
-rm -rf ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
+# rm -rf ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
 rm -rf ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
 rm -rf ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
 rm -rf ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/evalcache
 rm -rf ${ZSH_CUSTOM:-${ZSH:-$HOME/.oh-my-zsh}/custom}/plugins/enhancd
 rm -rf ${ZSH_CUSTOM:-${ZSH:-$HOME/.oh-my-zsh}/custom}/plugins/zsh-completions
 
-git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
+# git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
 git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
 git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
 git clone https://github.com/mroth/evalcache ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/evalcache
@@ -161,7 +161,8 @@ else
 fi
 
 echo " "
-echo "All done! Restart your shell and run \`p10k configure\` to configure powerlevel10k"
+# echo "All done! Restart your shell and run \`p10k configure\` to configure powerlevel10k"
+echo "All done!"
 echo " "
 
 

@@ -16,7 +16,10 @@ fi
 
 # Path to your oh-my-zsh installation.
 export ZSH="$HOME/.oh-my-zsh"
-ZSH_THEME="powerlevel10k/powerlevel10k"
+
+
+ZSH_THEME=""
+
 export ZSH_DISABLE_COMPFIX="false"
 export ZSH_AUTOSUGGEST_USE_ASYNC="true"
 export ZSH_AUTOSUGGEST_STRATEGY=(history completion)
@@ -41,13 +44,7 @@ compinit
 
 autoload -U promptinit; promptinit
 
-# Enable Powerlevel10k instant prompt
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
 
-# To customize prompt, run `p10k configure` or edit $HOME/.p10k.zsh.
-[[ ! -f $HOME/.p10k.zsh ]] || source $HOME/.p10k.zsh
 
 plugins=(
   git
@@ -82,6 +79,9 @@ bindkey '^f' forward-word
 
 source $ZSH/oh-my-zsh.sh
 
+# start starship
+eval "$(starship init zsh)"
+
 if [ -f "${HOME}/.gnupg/.gpg-agent-info" ]; then
   . "${HOME}/.gnupg/.gpg-agent-info"
   export GPG_AGENT_INFO
@@ -98,10 +98,11 @@ if [[ $- == *i* ]] && [[ -f /opt/dev/dev.sh ]]; then source /opt/dev/dev.sh; fi
 [ -f /opt/dev/dev.sh ] && source /opt/dev/dev.sh
 if [ -e $HOME/.nix-profile/etc/profile.d/nix.sh ]; then . $HOME/.nix-profile/etc/profile.d/nix.sh; fi # added by Nix installer
 
+# if direnv is installed load it
 if which direnv > /dev/null; then _evalcache direnv hook zsh; fi
 
-# PYENV
-_evalcache pyenv init -
+# if pyenv is installed then load it
+if which pyenv > /dev/null; then _evalcache pyenv init -; fi
 
 # if rvenv is installed then load it
 if which rbenv > /dev/null; then _evalcache rbenv init -; fi
@@ -111,6 +112,10 @@ if which rbenv > /dev/null; then _evalcache rbenv init -; fi
 # bases template
 
 BASE_SCRIPT="yes"
+
+setopt INC_APPEND_HISTORY
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_SPACE
 
 HISTTIMEFORMAT="%d/%m/%y %T "
 HISTSIZE=20000
