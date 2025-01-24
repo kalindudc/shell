@@ -1,15 +1,5 @@
 #!/usr/bin/env bash
 
-if [ "$SHELL" != "/usr/bin/zsh" ]; then
-  echo "Zsh is not the default shell. Installing zsh..."
-  sudo apt install -y zsh
-  echo "Switching to zsh..."
-  chsh -s $(which zsh)
-
-  echo "Please reboot your machine and run this script again"
-  exit 0
-fi
-
 # Define color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -46,9 +36,7 @@ usage() {
 }
 
 do_stow() {
-  echo "Stowing $HOME..."
-  stow home -d "$SHELL_DIR" -t $HOME --adopt
-  echo "Done setting up $HOME"
+  $SHELL_DIR/src/setup.sh --stow
 }
 
 # Parse options
@@ -71,6 +59,16 @@ while [ "$#" -gt 0 ]; do
   esac
   shift
 done
+
+if [ "$SHELL" != "/usr/bin/zsh" ]; then
+  echo "Zsh is not the default shell. Installing zsh..."
+  sudo apt install -y zsh
+  echo "Switching to zsh..."
+  chsh -s $(which zsh)
+
+  echo "Please reboot your machine and run this script again"
+  exit 0
+fi
 
 if [ "$skip_package_install" = false ]; then
   sudo apt update && suto apt upgrade -y

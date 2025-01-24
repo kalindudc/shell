@@ -31,35 +31,33 @@ mkdir -p $GIT_CLONE_DIR
 skip_brew=false
 # Function to display usage
 usage() {
-    echo "Usage: $0 [--skip-brew] [--stow] [--help]"
-    exit 1
+  echo "Usage: $0 [--skip-brew] [--stow] [--help]"
+  exit 1
 }
 
 do_stow() {
-  echo "Stowing $HOME..."
-  stow home -d "$SHELL_DIR" -t $HOME --adopt
-  echo "Done setting up $HOME"
+  $SHELL_DIR/src/setup.sh --stow
 }
 
 # Parse options
 while [[ "$#" -gt 0 ]]; do
-    case $1 in
-        --skip-brew)
-            skip_brew=true
-            ;;
-        -h|--help)
-            usage
-            ;;
-        --stow)
-            do_stow
-            exit 0
-            ;;
-        *)
-            echo "Unknown option: $1"
-            usage
-            ;;
-    esac
-    shift
+  case $1 in
+    --skip-brew)
+      skip_brew=true
+      ;;
+    -h|--help)
+      usage
+      ;;
+    --stow)
+      do_stow
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1"
+      usage
+      ;;
+  esac
+  shift
 done
 
 if [ "$skip_brew" = false ]; then
