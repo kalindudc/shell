@@ -15,6 +15,10 @@ keybind = alt+v=paste_from_clipboard
 keybind = alt+t=new_tab
 keybind = alt+w=close_surface
 
+keybind = cmd+f=write_screen_file:open
+keybind = ctrl+f=write_screen_file:open
+keybind = cmd+shift+f=write_selection_file:open
+keybind = ctrl+shift+f=write_selection_file:open
 # KEYBINGS END #
 
 # OPTIONS START #
@@ -24,5 +28,6 @@ copy-on-select = clipboard
 confirm-close-surface = false
 clipboard-paste-protection = false
 term = xterm-256color
+scrollback-limit = 20000000
 
 # OPTIONS END #
