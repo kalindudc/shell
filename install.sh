@@ -100,6 +100,9 @@ if [ "$skip_brew" = false ]; then
 
   brew install --cask visual-studio-code
 
+  # install fonts
+  brew search '/font-.*-nerd-font/' | awk '{ print $1 }' | xargs -I{} brew install --cask {} || true
+
   curl -sS https://starship.rs/install.sh | sh
 
   sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended

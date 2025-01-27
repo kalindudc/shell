@@ -137,6 +137,16 @@ disabled = true
 
 [status]
 disabled = false
+symbol = " "
 
 [time]
 disabled = false
+
+[python]
+disabled = true
+
+[buf]
+disabled = true
+
+[golang]
+symbol = " "
