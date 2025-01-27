@@ -80,9 +80,9 @@ $fill\
 $kubernetes\
 $battery\
 $time\
+$status\
 $line_break\
 $jobs\
-$status\
 $os\
 $container\
 $shell\
