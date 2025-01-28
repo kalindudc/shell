@@ -1,3 +1,4 @@
+theme = GruvboxDark
 
 # KEYBINDS START #
 
@@ -19,9 +20,13 @@ keybind = cmd+f=write_screen_file:open
 keybind = ctrl+f=write_screen_file:open
 keybind = cmd+shift+f=write_selection_file:open
 keybind = ctrl+shift+f=write_selection_file:open
+
 # KEYBINGS END #
 
 # OPTIONS START #
+
+window-width = 152
+window-height = 48
 
 unfocused-split-opacity = 0.5
 copy-on-select = clipboard
@@ -29,5 +34,6 @@ confirm-close-surface = false
 clipboard-paste-protection = false
 term = xterm-256color
 scrollback-limit = 20000000
+shell-integration = zsh
 
 # OPTIONS END #
