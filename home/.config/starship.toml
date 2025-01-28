@@ -150,3 +150,6 @@ disabled = true
 
 [golang]
 symbol = " "
+
+[package]
+disabled = true
