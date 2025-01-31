@@ -10,8 +10,10 @@ keybind = ctrl+shift+d=new_split:down
 keybind = alt+shift+d=new_split:down
 
 # copy + paste
-keybind = alt+c=copy_to_clipboard
-keybind = alt+v=paste_from_clipboard
+keybind = performable:alt+c=copy_to_clipboard
+keybind = performable:ctrl+c=copy_to_clipboard
+keybind = performable:alt+v=paste_from_clipboard
+keybind = performable:ctrl+v=paste_from_clipboard
 
 keybind = alt+t=new_tab
 keybind = alt+w=close_surface
