@@ -37,5 +37,6 @@ clipboard-paste-protection = false
 term = xterm-256color
 scrollback-limit = 20000000
 shell-integration = zsh
+app-notifications = no-clipboard-copy
 
 # OPTIONS END #
