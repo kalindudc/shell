@@ -28,6 +28,8 @@ keybind = ctrl+shift+f=write_selection_file:open
 
 window-width = 152
 window-height = 48
+window-padding-x = 5
+window-padding-y = 5
 
 unfocused-split-opacity = 0.5
 copy-on-select = clipboard
