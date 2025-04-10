@@ -7,6 +7,23 @@ usage() {
   exit 1
 }
 
+prompt_for_yn() {
+  local prompt="$1"
+  local default="$2"
+  local answer
+
+  while true; do
+    read -p "$prompt " answer
+    answer=${answer:-$default}
+
+    case "$answer" in
+      [Yy]* ) return 0;;
+      [Nn]* ) return 1;;
+      * ) echo "Please answer y or N.";;
+    esac
+  done
+}
+
 do_stow() {
   echo "Stowing $HOME..."
   stow home -d "$SHELL_DIR" -t $HOME --adopt
