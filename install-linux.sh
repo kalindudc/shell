@@ -132,7 +132,8 @@ if [ "$skip_package_install" = false ]; then
   sudo snap install task --classic
   sudo snap install helm --classic
   sudo snap install kubectl --classic
-  sudo snap install --classic code
+  sudo snap install code --classic
+  sudo snap install ghostty --classic
 
   curl https://pyenv.run | bash
 
