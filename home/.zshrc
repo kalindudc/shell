@@ -230,19 +230,16 @@ gfix() {
   if ! git diff --quiet; then
     echo "Error: You have unstaged changes. Please stage them first with 'git add'"
     git status --short
-    exit 1
   fi
 
   # Check that we actually have staged changes to fixup
   if git diff --cached --quiet; then
     echo "Error: No staged changes to fixup. Stage your changes first with 'git add'"
-    exit 1
   fi
 
   # Check if we have enough commits to go back
   if ! git rev-parse --verify "HEAD~$commits_back" >/dev/null 2>&1; then
     echo "Error: Not enough commits in history to go back $commits_back commit(s)"
-    exit 1
   fi
 
   target_commit="HEAD~$commits_back"
