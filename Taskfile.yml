@@ -5,3 +5,7 @@ tasks:
     desc: "Re-store the home directory"
     cmds:
       - stow home -d "./" -t $HOME --adopt
+  generate-zsh:
+    desc: "Re-generate .zshrc"
+    cmds:
+      - $HOME/src/github.com/kalindudc/shell/src/generate_zshrc.rb

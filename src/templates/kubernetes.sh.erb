@@ -2,6 +2,9 @@ KUBERNETES_SCRIPT="yes"
 
 export KUBE_EDITOR="nvim"
 
+compdef kubecolor=kubectl
+alias kubectl=kubecolor
+
 alias k='kubectl'
 alias kcl='kubectl'
 alias kngx='kubectl ingress-nginx --deployment nginx-ingress-controller'

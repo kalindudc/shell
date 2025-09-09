@@ -22,6 +22,9 @@ keybind = cmd+f=write_screen_file:open
 keybind = cmd+shift+f=write_selection_file:open
 keybind = ctrl+shift+f=write_selection_file:open
 
+keybind = ctrl+left=unbind
+keybind = ctrl+right=unbind
+
 # KEYBINGS END #
 
 # OPTIONS START #

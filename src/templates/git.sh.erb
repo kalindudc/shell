@@ -59,3 +59,39 @@ ghopen() {
   printf "$url_to_open\n"
   open "$url_to_open"
 }
+
+gfix() {
+  # Default to fixing up the last commit if no argument provided
+  commits_back=${1:-1}
+
+  # Check for unstaged changes - should be staged first
+  if ! git diff --quiet; then
+    echo "Error: You have unstaged changes. Please stage them first with 'git add'"
+    git status --short
+    exit 1
+  fi
+
+  # Check that we actually have staged changes to fixup
+  if git diff --cached --quiet; then
+    echo "Error: No staged changes to fixup. Stage your changes first with 'git add'"
+    exit 1
+  fi
+
+  # Check if we have enough commits to go back
+  if ! git rev-parse --verify "HEAD~$commits_back" >/dev/null 2>&1; then
+    echo "Error: Not enough commits in history to go back $commits_back commit(s)"
+    exit 1
+  fi
+
+  target_commit="HEAD~$commits_back"
+
+  echo "Fixing up commit HEAD~$commits_back"
+
+  # Create fixup commit targeting the specified commit
+  git commit --fixup="$target_commit"
+
+  # Auto-squash with interactive rebase
+  git rebase -i --autosquash "HEAD~$((commits_back + 2))"
+
+  echo "Fixup complete!"
+}
