@@ -88,6 +88,8 @@ $container\
 $shell\
 $character"""
 
+command_timeout = 500
+
 [[battery.display]]
 threshold = 25
 style = 'bold red'
