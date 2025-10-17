@@ -1,0 +1,90 @@
+#!/bin/bash
+
+# Function to convert HTML to Markdown
+convert_html_to_markdown() {
+  local input="$1"
+  
+  # Remove blockquote tags
+  input="${input//<blockquote>/}"
+  input="${input//<\/blockquote>/}"
+  
+  # Convert <br /> and <br> to newlines
+  input="${input//<br \/>/$'\n'}"
+  input="${input//<br>/$'\n'}"
+  
+  # Convert HTML entities
+  input="${input//&amp;/&}"
+  input="${input//&lt;/<}"
+  input="${input//&gt;/>}"
+  input="${input//&quot;/\"}"
+  input="${input//&#39;/\'}"
+  
+  # Convert emojis to shortcodes
+  input="${input//👀/:eyes:}"
+  input="${input//🚀/:rocket:}"
+  input="${input//✅/:white_check_mark:}"
+  input="${input//🔄/:arrows_counterclockwise:}"
+  input="${input//⏸️/:pause_button:}"
+  input="${input//❌/:x:}"
+  input="${input//🔀/:twisted_rightwards_arrows:}"
+  input="${input//📝/:memo:}"
+  input="${input//🎯/:dart:}"
+  input="${input//⚡/:zap:}"
+  
+  # Convert <a href="url">text</a> to [text](url)
+  input=$(echo "$input" | sed -E 's|<a href="([^"]+)">([^<]+)</a>|[\2](\1)|g')
+  
+  # Convert <code>text</code> to `text`
+  input=$(echo "$input" | sed -E 's|<code>([^<]+)</code>|`\1`|g')
+  
+  # Add markdown quote prefix to each line
+  local output=""
+  while IFS= read -r line; do
+    if [[ -n "$line" ]]; then
+      output+=$(echo "> $line" | sed 's/^> *$/>/g')$'\n'
+    fi
+  done <<< "$input"
+  
+  # Remove trailing newline
+  echo -n "${output%$'\n'}"
+}
+
+# Main script
+main() {
+  local input_text=""
+  
+  if [[ $# -gt 0 ]]; then
+    # Input from command line arguments
+    input_text="$*"
+  elif [[ ! -t 0 ]]; then
+    # Input from pipe/stdin
+    input_text=$(cat)
+  else
+    # Interactive mode - prompt for input
+    echo "Paste your Graphite stack HTML:"
+    read -r input_text
+  fi
+  
+  if [[ -z "$input_text" ]]; then
+    echo "Error: No input provided"
+    exit 1
+  fi
+  
+  # Convert to markdown
+  markdown=$(convert_html_to_markdown "$input_text")
+  
+  # Print output
+  echo ""
+  echo "------------------------------------------------"
+  echo ""
+  echo "$markdown"
+  echo ""
+  echo "------------------------------------------------"
+  
+  # Copy to clipboard using pbcopy
+  echo -n "$markdown" | pbcopy
+  echo ""
+  echo "✅ Copied to clipboard!"
+}
+
+main "$@"
