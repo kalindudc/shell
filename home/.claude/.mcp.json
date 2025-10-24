@@ -1,0 +1,45 @@
+{
+  "mcpServers": {
+    "vault-mcp": {
+      "type": "stdio",
+      "command": "/opt/homebrew/bin/uvx",
+      "args": [
+        "shopify-mcp-bridge"
+      ],
+      "env": {
+        "MCP_TARGET_URL": "https://vault.shopify.io/mcp",
+        "MCP_API_TOKEN": "${VAULT_API_TOKEN}"
+      }
+    },
+    "observe-mcp": {
+      "type": "stdio",
+      "command": "/opt/homebrew/bin/uvx",
+      "args": [
+        "shopify-mcp-bridge"
+      ],
+      "env": {
+        "MCP_TARGET_URL": "https://observe-ai.shopifycloud.com/mcp",
+        "MCP_MINERVA_CLIENT_ID": "${MCP_MINERVA_CLIENT_ID}"
+      }
+    },
+    "dev-mcp": {
+      "type": "stdio",
+      "command": "/opt/dev/bin/devx",
+      "args": [
+        "mcp"
+      ],
+      "env": {}
+    },
+    "buildkite-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "github:shop/buildkite-mcp"
+      ],
+      "env": {
+        "BUILDKITE_TOKEN": "${BUILDKITE_TOKEN}"
+      }
+    }
+  }
+}

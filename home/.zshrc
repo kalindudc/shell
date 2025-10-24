@@ -416,6 +416,13 @@ fi
 
 ### TEMPLATES END ###
 
+set -a
+source $HOME/.env
+set +a
+
+# Added by tec agent
+[[ -x $HOME/.local/state/tec/profiles/base/current/global/init ]] && eval "$($HOME/.local/state/tec/profiles/base/current/global/init zsh)"
+
 ENDTIME=0
 if command -v gdate &>/dev/null; then
   ENDTIME=$(($(gdate +%s%3N)))

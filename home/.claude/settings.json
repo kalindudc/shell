@@ -1,0 +1,39 @@
+{
+  "apiKeyHelper": "/opt/dev/bin/devx llm-gateway print-token --key",
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://proxy.shopify.ai/vendors/anthropic-claude-code"
+  },
+  "alwaysThinkingEnabled": true,
+  "model": "sonnet[1m]",
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(which:*)",
+      "Bash(gt:*)",
+      "Bash(mkdir:*)",
+      "Bash(cat:*)",
+      "Bash(cat /tmp:*)",
+      "Read(/tmp/**)",
+      "Read(/Users/kalindu/.templates/**)",
+      "Bash(pbcopy:*)",
+      "Write(/tmp/**)",
+      "Bash(rm:*)",
+      "Bash(touch:*)",
+      "Bash(gh pr edit:*)",
+      "Bash(gcloud compute public-delegated-prefixes list:*)",
+      "Bash(gcloud config set:*)",
+      "Bash(gcloud compute health-checks list:*)",
+      "Bash(gcloud compute backend-services list:*)",
+      "Bash(gcloud compute forwarding-rules list:*)",
+      "Bash(gcloud compute target-pools describe:*)",
+      "Bash(gcloud compute target-pools get-health:*)",
+      "Bash(gcloud compute http-health-checks describe:*)",
+      "Bash(gcloud compute firewall-rules list:*)",
+      "Bash(gcloud compute instances describe:*)",
+      "Bash(kubectl get:*)",
+      "Bash(gcloud container clusters list:*)",
+      "Bash(gcloud container clusters get-credentials:*)",
+      "Bash(kubectl describe:*)"
+    ]
+  }
+}
