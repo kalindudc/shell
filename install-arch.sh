@@ -116,7 +116,11 @@ if [ "$skip_package_install" = false ]; then
     ncurses \
     flatpak \
     jq \
-    base-devel
+    base-devel \
+    bc
+
+  gem instal erb
+  gem install bundler
 
   # Install packages from AUR
   echo "Installing packages from AUR..."
