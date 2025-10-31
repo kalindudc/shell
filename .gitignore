@@ -16,3 +16,5 @@ data
 .vim/plugged/*
 
 home/.gitconfig
+.tmp/
+tmp/
