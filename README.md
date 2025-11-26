@@ -71,3 +71,6 @@ stow: Re-stow the $HOME directory       // use this when adding new directories 
 
 ### License
 MIT
+
+### Credits
+- PRP commands and templates: https://github.com/Wirasm/PRPs-agentic-eng/

@@ -3,8 +3,6 @@
   "env": {
     "ANTHROPIC_BASE_URL": "https://proxy.shopify.ai/vendors/anthropic-claude-code"
   },
-  "alwaysThinkingEnabled": true,
-  "model": "sonnet[1m]",
   "permissions": {
     "allow": [
       "Bash(git:*)",
@@ -35,5 +33,7 @@
       "Bash(gcloud container clusters get-credentials:*)",
       "Bash(kubectl describe:*)"
     ]
-  }
+  },
+  "model": "sonnet[1m]",
+  "alwaysThinkingEnabled": true
 }
