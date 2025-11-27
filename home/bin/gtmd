@@ -54,15 +54,23 @@ main() {
   local input_text=""
   
   if [[ $# -gt 0 ]]; then
-    # Input from command line arguments
     input_text="$*"
   elif [[ ! -t 0 ]]; then
-    # Input from pipe/stdin
     input_text=$(cat)
   else
-    # Interactive mode - prompt for input
-    echo "Paste your Graphite stack HTML:"
-    read -r input_text
+    local tmpfile=$(mktemp)
+    trap "rm -f '$tmpfile'" EXIT
+    
+    cat > "$tmpfile" << 'EOF'
+
+# Paste the raw HTML output from Graphite share above this comment.
+# Lines starting with # will be ignored.
+# Save and close the editor when done.
+EOF
+    
+    ${EDITOR:-vim} +1 "$tmpfile"
+    
+    input_text=$(grep -v '^#' "$tmpfile" | sed '/^$/d')
   fi
   
   if [[ -z "$input_text" ]]; then
@@ -84,7 +92,7 @@ main() {
   # Copy to clipboard using pbcopy
   echo -n "$markdown" | pbcopy
   echo ""
-  echo "✅ Copied to clipboard!"
+  echo "Copied to clipboard!"
 }
 
 main "$@"
