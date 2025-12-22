@@ -29,11 +29,6 @@ keybind = ctrl+right=unbind
 
 # OPTIONS START #
 
-window-width = 152
-window-height = 48
-window-padding-x = 5
-window-padding-y = 5
-
 unfocused-split-opacity = 0.5
 copy-on-select = clipboard
 confirm-close-surface = false
