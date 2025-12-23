@@ -1,4 +1,184 @@
 #!/usr/bin/env bash
 
-shell=${1-$SHELL}
-for i in $(seq 1 10); do time $shell -i -c exit; done
+# timezsh - Benchmark shell startup time
+# Usage: timezsh [shell] [--save] [--with-zprof]
+
+set -euo pipefail
+
+# Color codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Default values
+SAVE_RESULTS=false
+WITH_ZPROF=false
+ITERATIONS=10
+SHELL_CMD="${SHELL}"
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --save)
+      SAVE_RESULTS=true
+      shift
+      ;;
+    --with-zprof)
+      WITH_ZPROF=true
+      shift
+      ;;
+    --help|-h)
+      echo "Usage: timezsh [shell] [--save] [--with-zprof]"
+      echo ""
+      echo "Options:"
+      echo "  shell          Shell to benchmark (default: \$SHELL)"
+      echo "  --save         Save results to /tmp/benchmarks/results/"
+      echo "  --with-zprof   Temporarily add zprof to .zshrc for profiling"
+      echo "  --help, -h     Show this help message"
+      echo ""
+      echo "Examples:"
+      echo "  timezsh                    # Benchmark default shell"
+      echo "  timezsh /bin/bash          # Benchmark bash"
+      echo "  timezsh --save             # Benchmark and save results"
+      echo "  timezsh --with-zprof       # Benchmark with zprof enabled"
+      exit 0
+      ;;
+    *)
+      # Assume it's a shell path
+      SHELL_CMD="$1"
+      shift
+      ;;
+  esac
+done
+
+# Temporary zprof setup if requested
+ZSHRC_BACKUP=""
+if [[ "$WITH_ZPROF" == true && "$SHELL_CMD" == *"zsh"* ]]; then
+  ZSHRC="$HOME/.zshrc"
+  if [[ -f "$ZSHRC" ]]; then
+    ZSHRC_BACKUP="${ZSHRC}.timezsh.backup"
+    cp "$ZSHRC" "$ZSHRC_BACKUP"
+    
+    # Add zprof at the top
+    echo "zmodload zsh/zprof" | cat - "$ZSHRC" > "${ZSHRC}.tmp"
+    mv "${ZSHRC}.tmp" "$ZSHRC"
+    
+    # Add zprof output at the bottom
+    echo "" >> "$ZSHRC"
+    echo "zprof" >> "$ZSHRC"
+    
+    echo -e "${YELLOW}Added zprof instrumentation to .zshrc${NC}"
+  fi
+fi
+
+# Function to restore .zshrc
+cleanup() {
+  if [[ -n "$ZSHRC_BACKUP" && -f "$ZSHRC_BACKUP" ]]; then
+    mv "$ZSHRC_BACKUP" "$HOME/.zshrc"
+    echo -e "${GREEN}Restored original .zshrc${NC}"
+  fi
+}
+
+# Register cleanup on exit
+trap cleanup EXIT
+
+echo -e "${BLUE}Benchmarking shell startup time...${NC}"
+echo -e "Shell: ${GREEN}$SHELL_CMD${NC}"
+echo -e "Iterations: ${GREEN}$ITERATIONS${NC}"
+echo ""
+
+# Array to store times
+declare -a times
+
+# Run benchmark
+for i in $(seq 1 $ITERATIONS); do
+  # Capture time output
+  output=$( { time $SHELL_CMD -i -c exit; } 2>&1 )
+  
+  # Extract real time (format: "0m0.123s" or "0.123s")
+  real_time=$(echo "$output" | grep real | awk '{print $2}' | sed 's/[ms]//g')
+  
+  # Convert to milliseconds
+  if [[ "$real_time" == *"m"* ]]; then
+    # Format: XmY.Zs -> convert to seconds
+    minutes=$(echo "$real_time" | cut -d'm' -f1)
+    seconds=$(echo "$real_time" | cut -d'm' -f2)
+    total_seconds=$(echo "$minutes * 60 + $seconds" | bc)
+  else
+    # Format: X.Ys -> already in seconds
+    total_seconds="$real_time"
+  fi
+  
+  # Convert to milliseconds
+  ms=$(echo "$total_seconds * 1000" | bc | cut -d'.' -f1)
+  times+=("$ms")
+  
+  echo -e "Run $i: ${ms}ms"
+done
+
+echo ""
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+# Calculate statistics
+total=0
+min=${times[0]}
+max=${times[0]}
+
+for time in "${times[@]}"; do
+  total=$((total + time))
+  
+  if (( time < min )); then
+    min=$time
+  fi
+  
+  if (( time > max )); then
+    max=$time
+  fi
+done
+
+avg=$((total / ITERATIONS))
+
+# Display results in table format
+echo -e "${BLUE}Results:${NC}"
+echo -e "  $(printf '%-15s' "Average:")${GREEN}${avg}ms${NC}"
+echo -e "  $(printf '%-15s' "Minimum:")${GREEN}${min}ms${NC}"
+echo -e "  $(printf '%-15s' "Maximum:")${YELLOW}${max}ms${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+
+# Save results if requested
+if [[ "$SAVE_RESULTS" == true ]]; then
+  RESULTS_DIR="/tmp/benchmarks/results"
+  mkdir -p "$RESULTS_DIR"
+  
+  TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+  RESULT_FILE="$RESULTS_DIR/benchmark-$TIMESTAMP.txt"
+  
+  {
+    echo "Shell Startup Benchmark"
+    echo "======================="
+    echo "Date: $(date)"
+    echo "Shell: $SHELL_CMD"
+    echo "Iterations: $ITERATIONS"
+    echo ""
+    echo "Results:"
+    echo "  Average: ${avg}ms"
+    echo "  Minimum: ${min}ms"
+    echo "  Maximum: ${max}ms"
+    echo ""
+    echo "Individual runs:"
+    for i in "${!times[@]}"; do
+      echo "  Run $((i+1)): ${times[$i]}ms"
+    done
+  } > "$RESULT_FILE"
+  
+  echo ""
+  echo -e "${GREEN}Results saved to: $RESULT_FILE${NC}"
+fi
+
+# If with-zprof, remind user to check output
+if [[ "$WITH_ZPROF" == true && "$SHELL_CMD" == *"zsh"* ]]; then
+  echo ""
+  echo -e "${YELLOW}Note: Start a new shell to see zprof output${NC}"
+fi

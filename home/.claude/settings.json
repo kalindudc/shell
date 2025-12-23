@@ -30,6 +30,5 @@
       "Bash(kubectl describe:*)"
     ]
   },
-  "model": "sonnet[1m]",
   "alwaysThinkingEnabled": true
 }

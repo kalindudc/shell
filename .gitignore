@@ -27,3 +27,12 @@ home/.claude/
 !home/.claude/agents/
 !home/.claude/skills/
 !home/.claude/scripts/
+
+# ignore .claude files, with some exceptions
+.claude/
+!.claude/commands/
+!.claude/concepts/
+!.claude/templates/
+!.claude/agents/
+!.claude/skills/
+!.claude/scripts/
