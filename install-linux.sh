@@ -71,7 +71,7 @@ if [ "$SHELL" != "/usr/bin/zsh" ]; then
 fi
 
 if [ "$skip_package_install" = false ]; then
-  sudo apt update && suto apt upgrade -y
+  sudo apt update && sudo apt upgrade -y
 
   # Remove conflicting packages
   sudo apt remove neovim -y
