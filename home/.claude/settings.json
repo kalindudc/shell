@@ -1,8 +1,4 @@
 {
-  "apiKeyHelper": "/opt/dev/bin/devx llm-gateway print-token --key",
-  "env": {
-    "ANTHROPIC_BASE_URL": "https://proxy.shopify.ai/vendors/anthropic-claude-code"
-  },
   "permissions": {
     "allow": [
       "Bash(git:*)",

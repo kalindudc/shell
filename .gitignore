@@ -18,3 +18,12 @@ data
 home/.gitconfig
 .tmp/
 tmp/
+
+# ignore .claude files, with some exceptions
+home/.claude/
+!home/.claude/commands/
+!home/.claude/concepts/
+!home/.claude/templates/
+!home/.claude/agents/
+!home/.claude/skills/
+!home/.claude/scripts/
