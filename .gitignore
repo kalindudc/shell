@@ -19,6 +19,8 @@ home/.gitconfig
 .tmp/
 tmp/
 
+home/.claude/settings.json
+
 # ignore .claude files, with some exceptions
 home/.claude/
 !home/.claude/commands/
