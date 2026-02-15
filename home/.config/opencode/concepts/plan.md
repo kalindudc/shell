@@ -11,7 +11,7 @@ Precise file paths and content, library versions and library context, code snipp
 In contrast of a plan, this concept explicitly states how the a feature will be built. This includes the use of specific Rust crates, libraries, code standard, repo practices / existing patterns, terraform snippets, or agent patterns (ReAct, Plan-and-Execute) to use. Usage of typehints, dependencies, architectural patterns and other tools to ensure the code is built correctly.
 
 ### Validation Gates
-Deterministic checks such as `dev test unit` / `dev test integration` / `dev style`, with TDD development for quality control will catch defects early and are cheaper than pivoting . Example: Each new addition should be independently tested with unit tests and comprehensively tested with integration tests, Validation gate = all tests pass.
+Deterministic checks such as `dev test unit` (or `task test:unit`) / `dev test integration` (or `task test:integration`) / `dev style` (or `task style`), with TDD development for quality control will catch defects early and are cheaper than pivoting. Example: Each new addition should be independently tested with unit tests and comprehensively tested with integration tests, Validation gate = all tests pass.
 
 ## Rules
 - ONLY generate the plan document and DO NOT implement any code change

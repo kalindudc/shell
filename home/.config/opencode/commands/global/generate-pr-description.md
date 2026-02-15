@@ -1,11 +1,10 @@
 ---
-name: generate-pr-description
 description: Creates a structured PR description for the current branch
 ---
 
 # Generate PR Description
 
-Automatically generates a PR description for the current branch by analyzing git changes and following the required format standards: $ARGUMENT
+Automatically generates a PR description for the current branch by analyzing git changes and following the required format standards: $ARGUMENTS
 
 ## Rules
 - ALWAYS use the `Write` tool, NEVER use the `>` tool when updating a file or create and writing to a new file
@@ -38,7 +37,7 @@ Create a comprehensive PR description of the changes that are in the current git
 1. First, determine the parent branch:
     - Check if graphite CLI is available by running `which gt`
     - If available, run `gt log` to determine the parent branch from the stack
-    - If not available, determine if the user specified a parent branch in $ARGUMENT
+    - If not available, determine if the user specified a parent branch in $ARGUMENTS
     - If you are unclear of which branch to use, prompt the user for more information on the parent branch
    
 2. Get the git diff:
@@ -51,7 +50,7 @@ Create a comprehensive PR description of the changes that are in the current git
     - Store analysis in `./tmp/research_docs/ai/pr_analysis.md`
     - You may spawn a subagent to analyze specific complex parts of the diff if needed
 
-4. Read the PR template from `$HOME/.claude/templates/pr.md`
+4. Read the PR template from `$HOME/.config/opencode/templates/pr.md`
 
 5. Generate the PR description:
     - Use the template structure from the file
