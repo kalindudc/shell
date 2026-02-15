@@ -18,10 +18,6 @@ keybind = performable:ctrl+v=paste_from_clipboard
 keybind = alt+t=new_tab
 keybind = alt+w=close_surface
 
-keybind = cmd+f=write_screen_file:open
-keybind = cmd+shift+f=write_selection_file:open
-keybind = ctrl+shift+f=write_selection_file:open
-
 keybind = ctrl+left=unbind
 keybind = ctrl+right=unbind
 
