@@ -38,3 +38,14 @@ home/.claude/
 !.claude/agents/
 !.claude/skills/
 !.claude/scripts/
+
+# ignore opencode files, with some exceptions
+home/.config/opencode/
+!home/.config/opencode/commands/
+!home/.config/opencode/concepts/
+!home/.config/opencode/templates/
+!home/.config/opencode/agents/
+!home/.config/opencode/skills/
+!home/.config/opencode/scripts/
+
+

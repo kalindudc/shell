@@ -1,12 +1,10 @@
 ---
-name: plan
 description: Creates a structured plan for implementing a vertical slice of working software
-argument-hint: What feature/refactor/etc.. are we planning?
 ---
 
 YOU MUST READ THE FOLLOWING SECTIONS AND FOLLOW THE INSTRUCTIONS IN THEM.
-- Start by reading the plan concept in `$HOME/.claude/concepts/plan.md`
-- Next read our plan template structure `$HOME/.claude/templates/plan.md`
+- Start by reading the plan concept in `$HOME/.config/opencode/concepts/plan.md`
+- Next read our plan template structure `$HOME/.config/opencode/templates/plan.md`
 
 Think hard about the above concept
 
@@ -41,7 +39,7 @@ Begin with thorough research to gather all necessary context:
 
 3. **Template Analysis**
 
-   - Use `$HOME/.claude/templates/plan.md` as the structural reference
+   - Use `$HOME/.config/opencode/templates/plan.md` as the structural reference
    - Ensure understanding of the template requirements before proceeding
 
 4. **Codebase Exploration**
@@ -57,7 +55,7 @@ Begin with thorough research to gather all necessary context:
 
 ## Plan Development
 
-Create a Plan following the template in `$HOME/.claude/templates/plan.md`, ensuring it includes the same structure as the template.
+Create a Plan following the template in `$HOME/.config/opencode/templates/plan.md`, ensuring it includes the same structure as the template.
 
 ## Context Prioritization
 
@@ -81,7 +79,7 @@ After completing initial research, present findings to the user and confirm:
 
 ## Output format
 
-- The plan MUST be created as a markdown file using the structure defined in `$HOME/.claude/templates/plan.md` template and generate a new plan into `./tmp/plan/<feature_name>-plan.md`.
+- The plan MUST be created as a markdown file using the structure defined in `$HOME/.config/opencode/templates/plan.md` template and generate a new plan into `./tmp/plan/<feature_name>-plan.md`.
 - After creation, inform the user of where to find the plan and provide a brief summary
 
 ## Rules and requirements

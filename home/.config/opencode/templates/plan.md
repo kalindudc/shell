@@ -68,4 +68,4 @@ What are details you want to add to drive the code changes?
 - ALWAYS update the source plan after each task and keep our source-of-truth up-to-detailed
 - MAINTAINABILITY above all else
 - ALWAYS follow KISS (keep it simple stupid), AVOID over engineering
-- ALWAYS use `dev` commands over manual commands, if needed, prompt the user for clarification on building new `dev` commands
+- ALWAYS use `dev` or `task` (go-task) commands over manual commands, if needed, prompt the user for clarification on building new `dev` or `task` commands
