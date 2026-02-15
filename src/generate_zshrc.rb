@@ -12,6 +12,7 @@
 #   - <%= git %>
 #   - <%= functions %>
 #   - <%= kubernetes %>
+#   - <%= agents %>
 #
 # Usage: generate_zshrc [options]
 #     -o, --output=OUTPUT_PATH         .zshrc output file path. Default path: ../home/.zshrc
@@ -32,6 +33,7 @@ ALIASES_TEMPLATE = "#{File.expand_path(".", File.dirname(__FILE__))}/templates/a
 GIT_TEMPLATE = "#{File.expand_path(".", File.dirname(__FILE__))}/templates/git.sh.erb"
 FUNCTIONS_TEMPLATE = "#{File.expand_path(".", File.dirname(__FILE__))}/templates/functions.sh.erb"
 KUBERNETES_TEMPLATE = "#{File.expand_path(".", File.dirname(__FILE__))}/templates/kubernetes.sh.erb"
+AGENTS_TEMPLATE = "#{File.expand_path(".", File.dirname(__FILE__))}/templates/agents.sh.erb"
 
 def init
   @options = {
@@ -84,6 +86,9 @@ def main
 
   @logger.info("Rendering template #{KUBERNETES_TEMPLATE}")
   kubernetes_template_contents = render_template(KUBERNETES_TEMPLATE)
+
+  @logger.info("Rendering template #{AGENTS_TEMPLATE}")
+  agents_template_contents = render_template(AGENTS_TEMPLATE)
 
   misc_template_contents = <<EOF
 if [[ "$(uname)" == "Linux" ]]; then
