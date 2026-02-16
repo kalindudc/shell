@@ -58,10 +58,13 @@ prompt_for_yn() {
   local default="${2:-N}"
   local answer
 
-  # In non-interactive mode, use default
+  # In non-interactive mode, use default and return appropriate code
   if [[ "${NONINTERACTIVE-0}" == "1" ]]; then
-    echo "${default}"
-    return 0
+    case "${default}" in
+      [Yy]* ) return 0;;
+      [Nn]* ) return 1;;
+      * ) return 1;;
+    esac
   fi
 
   while true; do

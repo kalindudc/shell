@@ -239,10 +239,16 @@ setup_gh_auth() {
 
   if [[ "${silent_mode}" == "false" ]]; then
     if command_exists gh; then
-      log "Setting up GitHub CLI authentication..."
-      gh auth login
-      gh auth setup-git
-      success "GitHub CLI authenticated"
+      echo ""
+      if prompt_for_yn "Do you want to authenticate with GitHub CLI now? (y/N)" "N"; then
+        log "Setting up GitHub CLI authentication..."
+        gh auth login
+        gh auth setup-git
+        success "GitHub CLI authenticated"
+      else
+        warn "Skipping GitHub CLI authentication"
+        warn "You can authenticate later by running: gh auth login && gh auth setup-git"
+      fi
     fi
   else
     warn "Do not forget to run 'gh auth login && gh auth setup-git' to authenticate with GitHub"
