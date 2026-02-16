@@ -175,7 +175,39 @@ install_package() {
       ;;
   esac
 
-  success "Installed ${package}"
+  # Verify installation succeeded
+  if is_package_installed "${mapped_name}"; then
+    success "Installed ${package}"
+  else
+    error "Failed to install ${package} (${mapped_name})"
+    error "Please install it manually and re-run the installation"
+    return 1
+  fi
+}
+
+# Update PATH to include common binary locations
+# Call this after installing packages to ensure they're available in current session
+update_path() {
+  local common_paths=(
+    "/usr/local/bin"
+    "/usr/bin"
+    "/bin"
+    "/usr/local/sbin"
+    "/usr/sbin"
+    "/sbin"
+    "${HOME}/.local/bin"
+    "/opt/homebrew/bin"  # Apple Silicon Homebrew
+    "/usr/local/opt"     # Intel Mac Homebrew
+  )
+
+  for dir in "${common_paths[@]}"; do
+    if [[ -d "${dir}" ]] && [[ ":${PATH}:" != *":${dir}:"* ]]; then
+      export PATH="${dir}:${PATH}"
+    fi
+  done
+  
+  # Hash -r to refresh bash's command cache
+  hash -r 2>/dev/null || true
 }
 
 # Install a list of packages
@@ -207,6 +239,12 @@ install_packages_core() {
   esac
 
   install_package_list "${PACKAGES_CORE[@]}"
+
+  # Update PATH to ensure newly installed CORE packages are available
+  # This is called ONCE because only CORE packages are needed for the installation to function
+  # (stow for dotfiles, ruby for templating, git for cloning, etc.)
+  # Other packages (shell, dev, devops) are installed but not required for this script to work
+  update_path
 
   # Install ruby gems for templating
   if command_exists gem; then
@@ -535,7 +573,7 @@ install_pipx_packages() {
 }
 
 # Export functions
-export -f map_package_name is_package_installed
+export -f map_package_name is_package_installed update_path
 export -f install_package install_package_list
 export -f install_packages_core install_packages_shell
 export -f install_packages_dev install_packages_runtimes

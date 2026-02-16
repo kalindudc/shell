@@ -39,6 +39,15 @@ EOF
 # Stow dotfiles
 do_stow() {
   log "Stowing dotfiles to ${HOME}..."
+  
+  # Verify stow is installed
+  if ! command -v stow >/dev/null 2>&1; then
+    error "stow is not installed or not in PATH"
+    error "stow is a required dependency for managing dotfiles"
+    error "Please ensure PACKAGES_CORE was installed successfully"
+    return 1
+  fi
+  
   stow home -d "${SHELL_DIR}" -t "${HOME}" --adopt
   success "Dotfiles stowed successfully"
 }
