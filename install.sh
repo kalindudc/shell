@@ -185,7 +185,10 @@ setup_shell_repo() {
   save_state_var "SHELL_DIR" "${SHELL_DIR}"
 
   if [[ -d "${SHELL_DIR}" ]]; then
-    if prompt_for_yn "${SHELL_DIR} exists. Overwrite with upstream changes? (y/N)" "N"; then
+    # In non-interactive mode, always use existing directory
+    if [[ "${NONINTERACTIVE:-0}" == "1" ]]; then
+      log "Using existing ${SHELL_DIR} (non-interactive mode)"
+    elif prompt_for_yn "${SHELL_DIR} exists. Overwrite with upstream changes? (y/N)" "N"; then
       log "Updating ${SHELL_DIR}..."
       (
         cd "${SHELL_DIR}"
@@ -208,6 +211,11 @@ setup_shell_repo() {
 main() {
   log "Shell Dotfiles Installation"
   echo ""
+
+  # Track failures, warnings, and skipped steps for final summary
+  declare -a FAILED_STEPS=()
+  declare -a WARNED_STEPS=()
+  declare -a SKIPPED_CATEGORIES=()
 
   # Parse arguments
   parse_args "$@"
@@ -348,6 +356,9 @@ main() {
   success "Installation complete!"
   echo ""
 
+  # Display summary
+  display_installation_summary
+
   # Display next steps
   cat <<'EOF'
 
@@ -375,6 +386,109 @@ Troubleshooting:
 EOF
 
   ring_bell
+}
+
+# Display installation summary
+display_installation_summary() {
+  echo ""
+  echo "════════════════════════════════════════════════════════════════"
+  echo "                    INSTALLATION SUMMARY"
+  echo "════════════════════════════════════════════════════════════════"
+  echo ""
+
+  # Check which steps completed
+  local completed_steps=()
+  local failed_steps=()
+  local skipped_steps=()
+
+  # shellcheck disable=SC2154  # STEP_VARS is defined in state.sh
+  for step in "${STEP_VARS[@]}"; do
+    if [[ "${!step:-}" == "done" ]]; then
+      completed_steps+=("${step}")
+    else
+      # Check if step was skipped due to category skip
+      case "${step}" in
+        INSTALL_PACKAGES_CORE)
+          [[ " ${SKIP_CATEGORIES[*]} " =~ " core " ]] && skipped_steps+=("${step} (category skipped)") || failed_steps+=("${step}")
+          ;;
+        INSTALL_PACKAGES_SHELL)
+          [[ " ${SKIP_CATEGORIES[*]} " =~ " shell " ]] && skipped_steps+=("${step} (category skipped)") || failed_steps+=("${step}")
+          ;;
+        INSTALL_PACKAGES_DEV)
+          [[ " ${SKIP_CATEGORIES[*]} " =~ " dev " ]] && skipped_steps+=("${step} (category skipped)") || failed_steps+=("${step}")
+          ;;
+        INSTALL_PACKAGES_RUNTIMES)
+          [[ " ${SKIP_CATEGORIES[*]} " =~ " runtimes " ]] && skipped_steps+=("${step} (category skipped)") || failed_steps+=("${step}")
+          ;;
+        INSTALL_PACKAGES_DEVOPS)
+          [[ " ${SKIP_CATEGORIES[*]} " =~ " devops " ]] && skipped_steps+=("${step} (category skipped)") || failed_steps+=("${step}")
+          ;;
+        INSTALL_PACKAGES_FONTS)
+          [[ " ${SKIP_CATEGORIES[*]} " =~ " fonts " ]] && skipped_steps+=("${step} (category skipped)") || failed_steps+=("${step}")
+          ;;
+        INSTALL_PACKAGES_OPTIONAL)
+          [[ " ${SKIP_CATEGORIES[*]} " =~ " optional " ]] && skipped_steps+=("${step} (category skipped)") || failed_steps+=("${step}")
+          ;;
+        SET_DEFAULT_SHELL)
+          [[ " ${SKIP_CATEGORIES[*]} " =~ " shell " ]] && skipped_steps+=("${step} (category skipped)") || failed_steps+=("${step}")
+          ;;
+        *)
+          failed_steps+=("${step}")
+          ;;
+      esac
+    fi
+  done
+
+  # Display results
+  echo "✓ Completed: ${#completed_steps[@]} steps"
+  
+  if [[ ${#skipped_steps[@]} -gt 0 ]]; then
+    echo "⊘ Skipped: ${#skipped_steps[@]} steps"
+  fi
+  
+  if [[ ${#failed_steps[@]} -gt 0 ]]; then
+    echo "✗ Failed/Incomplete: ${#failed_steps[@]} steps"
+  fi
+  
+  echo ""
+
+  # Show details if there are failures or skips
+  if [[ ${#skipped_steps[@]} -gt 0 ]]; then
+    echo "Skipped Steps:"
+    for step in "${skipped_steps[@]}"; do
+      echo "  ⊘ ${step}"
+    done
+    echo ""
+  fi
+
+  if [[ ${#failed_steps[@]} -gt 0 ]]; then
+    echo "Failed/Incomplete Steps:"
+    for step in "${failed_steps[@]}"; do
+      echo "  ✗ ${step}"
+    done
+    echo ""
+    echo "To retry failed steps, run:"
+    echo "  ./install.sh --continue"
+    echo ""
+  fi
+
+  # Check for specific missing configurations
+  local missing_configs=()
+  
+  if [[ -z "${GIT_EMAIL:-}" ]] || [[ -z "${GIT_NAME:-}" ]]; then
+    missing_configs+=("Git configuration (GIT_EMAIL and/or GIT_NAME not set)")
+  fi
+  
+  if [[ ${#missing_configs[@]} -gt 0 ]]; then
+    echo "Missing Configurations:"
+    for config in "${missing_configs[@]}"; do
+      echo "  ⚠ ${config}"
+    done
+    echo ""
+  fi
+
+  echo "════════════════════════════════════════════════════════════════"
+  echo ""
 }
 
 # Run main function

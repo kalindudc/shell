@@ -157,6 +157,15 @@ prompt_git_config() {
   export GIT_NAME="${GIT_NAME:-$(git config --global user.name 2>/dev/null || echo "")}"
   export GIT_SIGNING_KEY="${GIT_SIGNING_KEY:-$(git config --global user.signingkey 2>/dev/null || echo "")}"
 
+  # In non-interactive mode, skip if env vars not set
+  if [[ "${NONINTERACTIVE:-0}" == "1" ]]; then
+    if [[ -z "${GIT_EMAIL}" ]] || [[ -z "${GIT_NAME}" ]]; then
+      warn "Skipping git configuration (non-interactive mode, GIT_EMAIL/GIT_NAME not set)"
+      warn "Set GIT_EMAIL and GIT_NAME environment variables to configure git in non-interactive mode"
+      return 0
+    fi
+  fi
+
   # Prompt for email if not set
   if [[ -z "${GIT_EMAIL}" ]] && [[ "${silent_mode}" == "false" ]]; then
     echo ""
