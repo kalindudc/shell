@@ -18,6 +18,7 @@ data
 home/.gitconfig
 .tmp/
 tmp/
+test-manual.sh
 
 home/.claude/settings.json
 

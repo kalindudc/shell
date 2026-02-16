@@ -26,9 +26,16 @@
 
 The new unified installation script automatically detects your operating system and installs everything you need:
 
-```sh
-sh -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install.sh)"
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install.sh)"
 ```
+
+This command:
+1. Downloads and runs the installation script
+2. Automatically clones the repository to `~/src/github.com/kalindudc/shell` (or `$SHELL_INSTALL_DIR/shell` if set)
+   - If the directory already exists, it will `git pull` to update instead of re-cloning
+3. Re-executes the script from the cloned repository
+4. Proceeds with the full installation
 
 **Supported Platforms:**
 - macOS (Intel & Apple Silicon) with Homebrew
@@ -36,6 +43,22 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/insta
 - Arch Linux with pacman/yay
 
 ### Installation Options
+
+**Via one-liner with options:**
+
+```bash
+# Skip fonts during one-liner installation
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install.sh)" -s --skip-category=fonts
+
+# Non-interactive installation via one-liner
+NONINTERACTIVE=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install.sh)"
+
+# Custom installation directory
+SHELL_INSTALL_DIR="$HOME/custom/path" bash -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install.sh)"
+# This will clone to: $HOME/custom/path/shell
+```
+
+**After cloning the repository:**
 
 ```sh
 # Standard installation (auto-detect OS)

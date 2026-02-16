@@ -12,6 +12,59 @@ if [[ "${TRACE-0}" == "1" ]]; then
   set -o xtrace
 fi
 
+# Bootstrap: If running via curl (no source file), clone repo and re-execute
+# This block runs ONLY when the script is piped from curl
+# After exec, this process is replaced and won't continue
+if [[ "${BASH_SOURCE[0]:-}" == "" ]] || [[ "${BASH_SOURCE[0]}" == "bash" ]]; then
+  echo "===> Detected execution via curl, bootstrapping..."
+  
+  # Determine installation directory (allow override via env var)
+  BOOTSTRAP_CLONE_DIR="${SHELL_INSTALL_DIR:-${HOME}/src/github.com/kalindudc}"
+  BOOTSTRAP_SHELL_DIR="${BOOTSTRAP_CLONE_DIR}/shell"
+  
+  echo "===> Repository will be cloned to: ${BOOTSTRAP_SHELL_DIR}"
+  
+  # Check if directory already exists
+  if [[ -d "${BOOTSTRAP_SHELL_DIR}" ]]; then
+    echo "===> Directory already exists, updating..."
+    cd "${BOOTSTRAP_SHELL_DIR}"
+    if [[ -d .git ]]; then
+      git pull --quiet
+    else
+      echo "Error: ${BOOTSTRAP_SHELL_DIR} exists but is not a git repository"
+      exit 1
+    fi
+  else
+    # Install git if not present
+    if ! command -v git >/dev/null 2>&1; then
+      echo "===> Installing git..."
+      if command -v apt-get >/dev/null 2>&1; then
+        apt-get update -qq && apt-get install -y git >/dev/null 2>&1
+      elif command -v pacman >/dev/null 2>&1; then
+        pacman -Sy --noconfirm git >/dev/null 2>&1
+      elif command -v brew >/dev/null 2>&1; then
+        brew install git >/dev/null 2>&1
+      else
+        echo "Error: Unable to install git. Please install git manually."
+        exit 1
+      fi
+    fi
+    
+    # Clone repo to permanent location
+    echo "===> Cloning repository..."
+    mkdir -p "${BOOTSTRAP_CLONE_DIR}"
+    git clone --depth 1 https://github.com/kalindudc/shell.git "${BOOTSTRAP_SHELL_DIR}"
+  fi
+  
+  echo "===> Re-executing from cloned repository..."
+  cd "${BOOTSTRAP_SHELL_DIR}"
+  exec bash "${BOOTSTRAP_SHELL_DIR}/install.sh" "$@"
+  
+  # If exec fails (should never reach here), exit explicitly
+  echo "Error: Failed to execute cloned script"
+  exit 1
+fi
+
 # Get script directory
 INSTALL_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
