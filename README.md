@@ -24,7 +24,9 @@
 
 ### Quick Start (All Platforms)
 
-The new unified installation script automatically detects your operating system and installs everything you need:
+The new unified installation script automatically detects your operating system and installs everything you need.
+
+**Prerequisites**: Only `curl` is required. The script will automatically install `git` if needed.
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install.sh)"

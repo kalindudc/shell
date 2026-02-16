@@ -24,6 +24,22 @@ if [[ "${BASH_SOURCE[0]:-}" == "" ]] || [[ "${BASH_SOURCE[0]}" == "bash" ]]; the
   
   echo "===> Repository will be cloned to: ${BOOTSTRAP_SHELL_DIR}"
   
+  # Install git if not present (needed for both clone and pull)
+  if ! command -v git >/dev/null 2>&1; then
+    echo "===> Installing git..."
+    if command -v apt-get >/dev/null 2>&1; then
+      apt-get update -qq && apt-get install -y git >/dev/null 2>&1
+    elif command -v pacman >/dev/null 2>&1; then
+      pacman -Sy --noconfirm git >/dev/null 2>&1
+    elif command -v brew >/dev/null 2>&1; then
+      brew install git >/dev/null 2>&1
+    else
+      echo "Error: Unable to install git. Please install git manually."
+      echo "Then re-run: bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install.sh)\""
+      exit 1
+    fi
+  fi
+  
   # Check if directory already exists
   if [[ -d "${BOOTSTRAP_SHELL_DIR}" ]]; then
     echo "===> Directory already exists, updating..."
@@ -35,21 +51,6 @@ if [[ "${BASH_SOURCE[0]:-}" == "" ]] || [[ "${BASH_SOURCE[0]}" == "bash" ]]; the
       exit 1
     fi
   else
-    # Install git if not present
-    if ! command -v git >/dev/null 2>&1; then
-      echo "===> Installing git..."
-      if command -v apt-get >/dev/null 2>&1; then
-        apt-get update -qq && apt-get install -y git >/dev/null 2>&1
-      elif command -v pacman >/dev/null 2>&1; then
-        pacman -Sy --noconfirm git >/dev/null 2>&1
-      elif command -v brew >/dev/null 2>&1; then
-        brew install git >/dev/null 2>&1
-      else
-        echo "Error: Unable to install git. Please install git manually."
-        exit 1
-      fi
-    fi
-    
     # Clone repo to permanent location
     echo "===> Cloning repository..."
     mkdir -p "${BOOTSTRAP_CLONE_DIR}"

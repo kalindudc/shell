@@ -164,7 +164,12 @@ prompt_git_config() {
 
   # Prompt for signing key if not set
   if [[ -z "${GIT_SIGNING_KEY}" ]] && [[ "${silent_mode}" == "false" ]]; then
-    if prompt_for_yn "GIT signing key does not exist, do you want to generate a new signing key? (y/N)" "N"; then
+    # Check if gpg is available
+    if ! command -v gpg >/dev/null 2>&1; then
+      warn "GPG not found. Skipping GPG key configuration."
+      warn "You can configure it later by running: git config --global user.signingkey <KEY_ID>"
+      echo ""
+    elif prompt_for_yn "GIT signing key does not exist, do you want to generate a new signing key? (y/N)" "N"; then
       warn "Generating GPG key..."
       gpg --full-generate-key
 
@@ -175,15 +180,16 @@ prompt_git_config() {
 
       echo ""
       warn "Do not forget to add your key to GitHub: https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key"
+      export GIT_SIGNING_KEY
+      echo ""
     else
       echo ""
       log "Listing GPG keys..."
       gpg --list-secret-keys --keyid-format LONG
       GIT_SIGNING_KEY="$(prompt_for_input "Please enter your GPG key ID:" "")"
+      export GIT_SIGNING_KEY
+      echo ""
     fi
-
-    export GIT_SIGNING_KEY
-    echo ""
   fi
 
   # Save to state
