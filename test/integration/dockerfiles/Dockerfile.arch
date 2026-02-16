@@ -1,0 +1,21 @@
+FROM archlinux:latest
+
+# Set environment variables
+ENV LANG=en_US.UTF-8 \
+  LC_ALL=en_US.UTF-8
+
+# Update system and install base dependencies
+RUN pacman -Syu --noconfirm && \
+  pacman -S --noconfirm \
+  git \
+  curl \
+  sudo \
+  base-devel \
+  bats \
+  && pacman -Scc --noconfirm
+
+# Set working directory
+WORKDIR /workspace
+
+# Default command (will be overridden by docker-compose)
+CMD ["/bin/bash"]

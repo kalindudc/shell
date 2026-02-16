@@ -1,0 +1,104 @@
+services:
+  ubuntu-22:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.ubuntu-22
+    image: shell-test:ubuntu-22
+    container_name: shell-test-ubuntu-22
+    volumes:
+      - ../..:/workspace
+      - test-home-ubuntu-22:/root
+    working_dir: /workspace
+    command: >
+      bash -c "
+        cp -r . /tmp/shell-install &&
+        cd /tmp/shell-install &&
+        NONINTERACTIVE=1 ./install.sh --skip-category=fonts --skip-category=optional
+      "
+    environment:
+      - NONINTERACTIVE=1
+      - DEBIAN_FRONTEND=noninteractive
+      - TZ=America/New_York
+      - TRACE=0
+      - GIT_EMAIL=test@example.com
+      - GIT_NAME=Test User
+      - GIT_SIGNING_KEY=AAAA1111BBBB2222
+
+  ubuntu-24:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.ubuntu-24
+    image: shell-test:ubuntu-24
+    container_name: shell-test-ubuntu-24
+    volumes:
+      - ../..:/workspace
+      - test-home-ubuntu-24:/root
+    working_dir: /workspace
+    command: >
+      bash -c "
+        cp -r . /tmp/shell-install &&
+        cd /tmp/shell-install &&
+        NONINTERACTIVE=1 ./install.sh --skip-category=fonts --skip-category=optional
+      "
+    environment:
+      - NONINTERACTIVE=1
+      - DEBIAN_FRONTEND=noninteractive
+      - TZ=America/New_York
+      - TRACE=0
+      - GIT_EMAIL=test@example.com
+      - GIT_NAME=Test User
+      - GIT_SIGNING_KEY=AAAA1111BBBB2222
+
+  arch:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.arch
+    image: shell-test:arch
+    container_name: shell-test-arch
+    volumes:
+      - ../..:/workspace
+      - test-home-arch:/root
+    working_dir: /workspace
+    command: >
+      bash -c "
+        cp -r . /tmp/shell-install &&
+        cd /tmp/shell-install &&
+        NONINTERACTIVE=1 ./install.sh --skip-category=fonts --skip-category=optional
+      "
+    environment:
+      - NONINTERACTIVE=1
+      - TRACE=0
+      - GIT_EMAIL=test@example.com
+      - GIT_NAME=Test User
+      - GIT_SIGNING_KEY=AAAA1111BBBB2222
+
+  debian:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.debian
+    image: shell-test:debian
+    container_name: shell-test-debian
+    volumes:
+      - ../..:/workspace
+      - test-home-debian:/root
+    working_dir: /workspace
+    command: >
+      bash -c "
+        cp -r . /tmp/shell-install &&
+        cd /tmp/shell-install &&
+        NONINTERACTIVE=1 ./install.sh --skip-category=fonts --skip-category=optional
+      "
+    environment:
+      - NONINTERACTIVE=1
+      - DEBIAN_FRONTEND=noninteractive
+      - TZ=America/New_York
+      - TRACE=0
+      - GIT_EMAIL=test@example.com
+      - GIT_NAME=Test User
+      - GIT_SIGNING_KEY=AAAA1111BBBB2222
+
+volumes:
+  test-home-ubuntu-22:
+  test-home-ubuntu-24:
+  test-home-arch:
+  test-home-debian:

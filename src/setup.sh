@@ -1,185 +1,331 @@
 #!/usr/bin/env bash
 
-SHELL_DIR="$HOME/src/github.com/kalindudc/shell"
+# Setup script for shell dotfiles
+# Installs oh-my-zsh plugins, generates configs, and runs stow
 
+set -o errexit
+set -o nounset
+set -o pipefail
+
+# Get script directory
+SETUP_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SHELL_DIR="$(dirname "${SETUP_SCRIPT_DIR}")"
+
+# Source library modules
+# shellcheck source=src/lib/common.sh
+source "${SETUP_SCRIPT_DIR}/lib/common.sh"
+# shellcheck source=src/lib/state.sh
+source "${SETUP_SCRIPT_DIR}/lib/state.sh"
+
+# Configuration
+export SHELL_DIR
+
+# Display usage
 usage() {
-  echo "Usage: $0 [--silent|-s] [--stow]"
-  exit 1
+  cat <<EOF
+Usage: $0 [OPTIONS]
+
+Setup shell dotfiles and configurations.
+
+OPTIONS:
+  --help, -h       Show this help message
+  --silent, -s     Run in silent mode (skip prompts)
+  --stow           Run stow only
+
+EOF
+  exit 0
 }
 
-prompt_for_yn() {
-  local prompt="$1"
-  local default="$2"
-  local answer
-
-  while true; do
-    read -p "$prompt " answer
-    answer=${answer:-$default}
-
-    case "$answer" in
-      [Yy]* ) return 0;;
-      [Nn]* ) return 1;;
-      * ) echo "Please answer y or N.";;
-    esac
-  done
-}
-
+# Stow dotfiles
 do_stow() {
-  echo "Stowing $HOME..."
-  stow home -d "$SHELL_DIR" -t $HOME --adopt
-  echo "Done setting up $HOME"
+  log "Stowing dotfiles to ${HOME}..."
+  stow home -d "${SHELL_DIR}" -t "${HOME}" --adopt
+  success "Dotfiles stowed successfully"
 }
 
-silent_setup=false
-while [ "$#" -gt 0 ]; do
-  case $1 in
-    --silent|-s)
-      silent_setup=true
-      ;;
-    -h|--help)
-      usage
-      ;;
-    --stow)
-      do_stow
-      exit 0
-      ;;
-    *)
-      echo "Unknown option: $1"
-      usage
-      ;;
-  esac
-  shift
-done
+# Install oh-my-zsh plugins
+install_ohmyzsh_plugins() {
+  log "Installing oh-my-zsh plugins..."
 
-echo " "
-echo "Installing oh-my-zsh plugins..."
+  # Remove old installation and re-clone fresh
+  rm -rf "${HOME}/.oh-my-zsh/"
+  git clone https://github.com/ohmyzsh/ohmyzsh.git "${HOME}/.oh-my-zsh"
 
-rm -rf $HOME/.oh-my-zsh/
-git clone https://github.com/ohmyzsh/ohmyzsh.git $HOME/.oh-my-zsh
+  # Clean up existing plugins
+  local custom_dir="${ZSH_CUSTOM:-${HOME}/.oh-my-zsh/custom}"
+  rm -rf "${custom_dir}/plugins/zsh-autosuggestions"
+  rm -rf "${custom_dir}/plugins/zsh-syntax-highlighting"
+  rm -rf "${custom_dir}/plugins/evalcache"
+  rm -rf "${custom_dir}/plugins/enhancd"
+  rm -rf "${custom_dir}/plugins/zsh-completions"
 
-# clean up plugins and re-clone
-# rm -rf ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
-rm -rf ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
-rm -rf ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
-rm -rf ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/evalcache
-rm -rf ${ZSH_CUSTOM:-${ZSH:-$HOME/.oh-my-zsh}/custom}/plugins/enhancd
-rm -rf ${ZSH_CUSTOM:-${ZSH:-$HOME/.oh-my-zsh}/custom}/plugins/zsh-completions
+  # Clone plugins
+  git clone https://github.com/zsh-users/zsh-autosuggestions \
+    "${custom_dir}/plugins/zsh-autosuggestions"
 
-# git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
-git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
-git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
-git clone https://github.com/mroth/evalcache ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/evalcache
-git clone https://github.com/b4b4r07/enhancd.git ${ZSH_CUSTOM:-${ZSH:-$HOME/.oh-my-zsh}/custom}/plugins/enhancd
-git clone https://github.com/zsh-users/zsh-completions ${ZSH_CUSTOM:-${ZSH:-$HOME/.oh-my-zsh}/custom}/plugins/zsh-completions
+  git clone https://github.com/zsh-users/zsh-syntax-highlighting.git \
+    "${custom_dir}/plugins/zsh-syntax-highlighting"
 
-# kubectl completion
-mkdir -p ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/kubectl-autocomplete/
-kubectl completion zsh > ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/plugins/kubectl-autocomplete/kubectl-autocomplete.plugin.zsh
+  git clone https://github.com/mroth/evalcache \
+    "${custom_dir}/plugins/evalcache"
 
-echo "Done instaling zsh plugins"
+  git clone https://github.com/b4b4r07/enhancd.git \
+    "${custom_dir}/plugins/enhancd"
 
-echo " "
-echo "Setting up $HOME..."
+  git clone https://github.com/zsh-users/zsh-completions \
+    "${custom_dir}/plugins/zsh-completions"
 
-echo "Generating backups for current configs before replacing..."
-[ -f $HOME/.zshrc ] && echo ".zshrc.bak" && cp $HOME/.zshrc $HOME/.zshrc.bak > /dev/null 2>&1
-[ -f $HOME/.p10k.zsh ] && echo ".p10k.zsh.bak" && cp $HOME/.p10k.zsh $HOME/.p10k.zsh.bak > /dev/null 2>&1
-[ -f $HOME/.config/direnv ] && echo ".direnv.bak" && cp $HOME/.config/direnv $HOME/.config/direnv.bak > /dev/null 2>&1
-[ -f $HOME/.vim ] && echo ".vim.bak" && cp $HOME/.vim $HOME/.vim.bak > /dev/null 2>&1
-
-echo " "
-echo "Removing existing configs..."
-rm -rf $HOME/.zshrc > /dev/null 2>&1
-rm -rf $HOME/.zcompdump > /dev/null 2>&1
-rm -rf $HOME/.p10k.zsh > /dev/null 2>&1
-rm -rf $HOME/.config/direnv > /dev/null 2>&1
-rm -rf $HOME/.vim > /dev/null 2>&1
-
-curl -fLo $HOME/.vim/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim > /dev/null 2>&1
-sh -c 'curl -fLo "${XDG_DATA_HOME:-$HOME/.local/share}"/nvim/site/autoload/plug.vim --create-dirs https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim' > /dev/null 2>&1
-
-echo " "
-echo "Generate $HOME/.zshrc..."
-$SHELL_DIR/src/generate_zshrc.rb
-echo "Done generating $HOME/.zshrc"
-
-echo " "
-echo "Generate $HOME/.gitconfig..."
-
-export GIT_EMAIL=$(git config --global user.email)
-export GIT_NAME=$(git config --global user.name)
-export GIT_SIGNING_KEY=$(git config --global user.signingkey)
-
-# if GIT_EMAIL is not set, prompt for it
-if [ -z "$GIT_EMAIL" ] && [ "$silent_setup" = false ]; then
-  # try to extract email from existing git config
-  echo " "
-  echo "GIT_EMAIL is not set..."
-  read -p "$(echo ${GREEN}Please enter your email address:${NC}) " GIT_EMAIL
-  export GIT_EMAIL
-  echo " "
-fi
-
-# if GIT_NAME is not set, prompt for it
-if [ -z "$GIT_NAME" ] && [ "$silent_setup" = false ]; then
-  echo " "
-  echo "GIT_NAME is not set"
-  read -p "$(echo ${GREEN}Please enter your full name:${NC}) " GIT_NAME
-  export GIT_NAME
-  echo " "
-fi
-
-# if GIT_SIGNING_KEY is not set, prompt for it
-if [ -z "$GIT_SIGNING_KEY" ] && [ "$silent_setup" = false ]; then
-  # ask if user wants to generate a new key
-  if prompt_for_yn "$(echo ${GREEN}GIT signing key does not exit, do you want to generate a new signing key?${NC}) (y/N)" "N"; then
-    echo "${RED}Generating GPG key...${NC}"
-    gpg --full-generate-key
-
-    echo "Listing GPG keys..."
-    gpg --list-secret-keys --keyid-format LONG
-    read -p "$(echo ${GREEN}please enter the GPG key ID from the above list:${NC}) " GIT_SIGNING_KEY
-
-    echo " "
-    echo "${RED}Do not forget to add your key to github, https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key${NC}"
-  else
-    echo " "
-    echo "GIT_SIGNING_KEY is not set, listing GPG keys..."
-    gpg --list-secret-keys --keyid-format LONG
-    read -p "$(echo ${GREEN}please enter your GPG key ID:${NC}) " GIT_SIGNING_KEY
+  # kubectl completion
+  if command_exists kubectl; then
+    mkdir -p "${custom_dir}/plugins/kubectl-autocomplete/"
+    kubectl completion zsh > "${custom_dir}/plugins/kubectl-autocomplete/kubectl-autocomplete.plugin.zsh"
   fi
 
-  export GIT_SIGNING_KEY
-  echo " "
-fi
+  success "oh-my-zsh plugins installed"
+}
 
-echo " "
-echo "Setting up git and HOME..."
+# Backup existing configs
+backup_existing_configs() {
+  log "Backing up existing configurations..."
 
-echo "All set, generating $HOME/.gitconfig..."
-$SHELL_DIR/src/generate_tempate.rb -i $SHELL_DIR/src/templates/.gitconfig.erb -o $SHELL_DIR/home/.gitconfig
-echo "Done generating $HOME/.gitconfig"
+  if [[ -f "${HOME}/.zshrc" ]]; then
+    cp "${HOME}/.zshrc" "${HOME}/.zshrc.bak" 2>/dev/null || true
+  fi
+  if [[ -f "${HOME}/.p10k.zsh" ]]; then
+    cp "${HOME}/.p10k.zsh" "${HOME}/.p10k.zsh.bak" 2>/dev/null || true
+  fi
+  if [[ -f "${HOME}/.config/direnv" ]]; then
+    cp "${HOME}/.config/direnv" "${HOME}/.config/direnv.bak" 2>/dev/null || true
+  fi
+  if [[ -f "${HOME}/.vim" ]]; then
+    cp "${HOME}/.vim" "${HOME}/.vim.bak" 2>/dev/null || true
+  fi
 
-echo " "
-do_stow
+  success "Existing configs backed up"
+}
 
-if  [ "$silent_setup" = false ]; then
-  gh auth login
-  gh auth setup-git
-else
-  echo "${RED}Do not forget to \`gh auth login && gh auth setup-git\` to authenticate with github${NC}"
-fi
-echo "Done setting up git and HOME"
+# Remove existing configs
+remove_existing_configs() {
+  log "Removing existing configurations..."
 
-if command -v gdate &>/dev/null; then
-  echo "$(gdate)">$HOME/.shell_setup_complete
-else
-  echo "$(date)">$HOME/.shell_setup_complete
-fi
+  rm -rf "${HOME}/.zshrc" 2>/dev/null || true
+  rm -rf "${HOME}/.zcompdump" 2>/dev/null || true
+  rm -rf "${HOME}/.p10k.zsh" 2>/dev/null || true
+  rm -rf "${HOME}/.config/direnv" 2>/dev/null || true
+  rm -rf "${HOME}/.vim" 2>/dev/null || true
 
-echo " "
-# echo "All done! Restart your shell and run \`p10k configure\` to configure powerlevel10k"
-echo "All done!"
-echo " "
+  success "Existing configs removed"
+}
 
+# Install vim-plug
+install_vim_plug() {
+  log "Installing vim-plug..."
 
+  curl -fLo "${HOME}/.vim/autoload/plug.vim" --create-dirs \
+    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim >/dev/null 2>&1
+
+  sh -c 'curl -fLo "${XDG_DATA_HOME:-${HOME}/.local/share}"/nvim/site/autoload/plug.vim --create-dirs \
+    https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim' >/dev/null 2>&1
+
+  success "vim-plug installed"
+}
+
+# Generate .zshrc
+generate_zshrc() {
+  log "Generating ${HOME}/.zshrc..."
+
+  "${SHELL_DIR}/src/generate_zshrc.rb"
+
+  success ".zshrc generated"
+}
+
+# Prompt for git configuration
+prompt_git_config() {
+  local silent_mode="$1"
+
+  # Load existing git config
+  export GIT_EMAIL="${GIT_EMAIL:-$(git config --global user.email 2>/dev/null || echo "")}"
+  export GIT_NAME="${GIT_NAME:-$(git config --global user.name 2>/dev/null || echo "")}"
+  export GIT_SIGNING_KEY="${GIT_SIGNING_KEY:-$(git config --global user.signingkey 2>/dev/null || echo "")}"
+
+  # Prompt for email if not set
+  if [[ -z "${GIT_EMAIL}" ]] && [[ "${silent_mode}" == "false" ]]; then
+    echo ""
+    GIT_EMAIL="$(prompt_for_input "Please enter your email address:" "")"
+    export GIT_EMAIL
+  fi
+
+  # Prompt for name if not set
+  if [[ -z "${GIT_NAME}" ]] && [[ "${silent_mode}" == "false" ]]; then
+    echo ""
+    GIT_NAME="$(prompt_for_input "Please enter your full name:" "")"
+    export GIT_NAME
+  fi
+
+  # Prompt for signing key if not set
+  if [[ -z "${GIT_SIGNING_KEY}" ]] && [[ "${silent_mode}" == "false" ]]; then
+    if prompt_for_yn "GIT signing key does not exist, do you want to generate a new signing key? (y/N)" "N"; then
+      warn "Generating GPG key..."
+      gpg --full-generate-key
+
+      log "Listing GPG keys..."
+      gpg --list-secret-keys --keyid-format LONG
+
+      GIT_SIGNING_KEY="$(prompt_for_input "Please enter the GPG key ID from the above list:" "")"
+
+      echo ""
+      warn "Do not forget to add your key to GitHub: https://docs.github.com/en/authentication/managing-commit-signature-verification/generating-a-new-gpg-key"
+    else
+      echo ""
+      log "Listing GPG keys..."
+      gpg --list-secret-keys --keyid-format LONG
+      GIT_SIGNING_KEY="$(prompt_for_input "Please enter your GPG key ID:" "")"
+    fi
+
+    export GIT_SIGNING_KEY
+    echo ""
+  fi
+
+  # Save to state
+  save_state_var "GIT_EMAIL" "${GIT_EMAIL}"
+  save_state_var "GIT_NAME" "${GIT_NAME}"
+  save_state_var "GIT_SIGNING_KEY" "${GIT_SIGNING_KEY}"
+
+  # Save to local .env file in shell repo for portability
+  local env_file="${SHELL_DIR}/.env"
+  log "Saving git configuration to ${env_file}"
+
+  cat > "${env_file}" <<EOF
+# Git configuration
+# This file is auto-generated by setup.sh
+GIT_EMAIL=${GIT_EMAIL}
+GIT_NAME=${GIT_NAME}
+GIT_SIGNING_KEY=${GIT_SIGNING_KEY}
+EOF
+
+  chmod 600 "${env_file}"
+  success "Git configuration saved to ${env_file}"
+}
+
+# Generate .gitconfig
+generate_gitconfig() {
+  log "Generating ${HOME}/.gitconfig..."
+
+  "${SHELL_DIR}/src/generate_tempate.rb" \
+    -i "${SHELL_DIR}/src/templates/.gitconfig.erb" \
+    -o "${SHELL_DIR}/home/.gitconfig"
+
+  success ".gitconfig generated"
+}
+
+# Setup GitHub CLI
+setup_gh_auth() {
+  local silent_mode="$1"
+
+  if [[ "${silent_mode}" == "false" ]]; then
+    if command_exists gh; then
+      log "Setting up GitHub CLI authentication..."
+      gh auth login
+      gh auth setup-git
+      success "GitHub CLI authenticated"
+    fi
+  else
+    warn "Do not forget to run 'gh auth login && gh auth setup-git' to authenticate with GitHub"
+  fi
+}
+
+# Main setup function
+main() {
+  local silent_mode=false
+
+  # Parse arguments
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --silent|-s)
+        silent_mode=true
+        export NONINTERACTIVE=1
+        ;;
+      --help|-h)
+        usage
+        ;;
+      --stow)
+        do_stow
+        exit 0
+        ;;
+      *)
+        error "Unknown option: $1"
+        usage
+        ;;
+    esac
+    shift
+  done
+
+  log "Shell Dotfiles Setup"
+  echo ""
+
+  # Initialize state management
+  init_or_load_state
+
+  # Step 1: Install oh-my-zsh plugins
+  run_step "INSTALL_OHMYZSH_PLUGINS" \
+    "Installing oh-my-zsh plugins" \
+    install_ohmyzsh_plugins
+
+  # Step 2: Backup existing configs
+  run_step "BACKUP_CONFIGS" \
+    "Backing up existing configurations" \
+    backup_existing_configs
+
+  # Step 3: Remove existing configs
+  run_step "REMOVE_CONFIGS" \
+    "Removing existing configurations" \
+    remove_existing_configs
+
+  # Step 4: Install vim-plug
+  run_step "INSTALL_VIM_PLUG" \
+    "Installing vim-plug" \
+    install_vim_plug
+
+  # Step 5: Generate .zshrc
+  run_step "GENERATE_ZSHRC" \
+    "Generating .zshrc" \
+    generate_zshrc
+
+  # Step 6: Prompt for git config (not wrapped in run_step as it's interactive)
+  if ! is_step_complete "PROMPT_GIT_CONFIG"; then
+    prompt_git_config "${silent_mode}"
+    mark_step_complete "PROMPT_GIT_CONFIG"
+  fi
+
+  # Step 7: Generate .gitconfig
+  run_step "GENERATE_GITCONFIG" \
+    "Generating .gitconfig" \
+    generate_gitconfig
+
+  # Step 8: Stow dotfiles
+  run_step "STOW_DOTFILES" \
+    "Stowing dotfiles" \
+    do_stow
+
+  # Step 9: Setup GitHub CLI (not wrapped as it's interactive)
+  if ! is_step_complete "SETUP_GH_AUTH"; then
+    setup_gh_auth "${silent_mode}"
+    mark_step_complete "SETUP_GH_AUTH"
+  fi
+
+  # Mark completion
+  if command -v gdate &>/dev/null; then
+    gdate > "${HOME}/.shell_setup_complete"
+  else
+    date > "${HOME}/.shell_setup_complete"
+  fi
+
+  echo ""
+  success "Setup complete!"
+  echo ""
+  echo "Restart your shell to apply changes."
+  echo ""
+}
+
+# Run main
+main "$@"

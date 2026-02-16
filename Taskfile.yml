@@ -1,11 +1,144 @@
 version: '3'
 
 tasks:
+  # Installation
+  install:
+    desc: "Run the installation script"
+    cmds:
+      - ./install.sh
+
+  # Stow dotfiles
   stow:
-    desc: "Re-store the home directory"
+    desc: "Re-stow the home directory"
     cmds:
       - stow home -d "./" -t $HOME --adopt
-  generate-zsh:
+
+  # Clean everything
+  clean:
+    desc: "Clean all generated files and state"
+    cmds:
+      - rm -f ~/.shell_install_state
+      - rm -f ~/.shell_install.lock
+      - rm -f ./tmp/shell_install.lock
+      - docker compose -f test/integration/docker-compose.yml down -v 2>/dev/null || true
+      - rm -f ./tmp/test-*.log
+      - echo "✓ Cleaned all generated files and state"
+
+  # Style (lint and fix)
+  style:
+    desc: "Run ShellCheck linting and auto-fix formatting"
+    cmds:
+      - |
+        if ! command -v shellcheck >/dev/null 2>&1; then
+          echo "ShellCheck not installed. Installing..."
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            brew install shellcheck
+          elif [[ -f /etc/arch-release ]]; then
+            sudo pacman -S --needed --noconfirm shellcheck
+          else
+            sudo apt-get install -y shellcheck
+          fi
+        fi
+      - shellcheck install.sh
+      - shellcheck src/setup.sh
+      - shellcheck src/lib/*.sh
+      - |
+        if command -v shfmt >/dev/null 2>&1; then
+          shfmt -i 2 -w install.sh src/setup.sh src/lib/*.sh
+          echo "✓ Scripts formatted"
+        fi
+      - echo "✓ All scripts passed ShellCheck"
+
+  # Build
+  build:
+    desc: "Build Docker images for integration tests"
+    cmds:
+      - |
+        if ! docker compose version >/dev/null 2>&1; then
+          echo "Error: docker compose not available"
+          exit 1
+        fi
+      - echo "Building integration test images..."
+      - docker compose -f test/integration/docker-compose.yml build --parallel
+      - echo "✓ All integration test images built successfully"
+
+  build:clean:
+    desc: "Rebuild Docker images from scratch (no cache)"
+    cmds:
+      - |
+        if ! docker compose version >/dev/null 2>&1; then
+          echo "Error: docker compose not available"
+          exit 1
+        fi
+      - echo "Removing existing images..."
+      - docker compose -f test/integration/docker-compose.yml down --rmi all -v 2>/dev/null || true
+      - docker image rm -f shell-test:ubuntu-22 shell-test:ubuntu-24 shell-test:arch shell-test:debian 2>/dev/null || true
+      - echo "Rebuilding all images from scratch..."
+      - docker compose -f test/integration/docker-compose.yml build --no-cache --parallel
+      - echo "✓ All integration test images rebuilt successfully"
+
+  # Testing
+  test:
+    desc: "Run all tests (unit + integration)"
+    deps:
+      - test:unit
+      - test:integration
+
+  test:unit:
+    desc: "Run unit tests with BATS"
+    cmds:
+      - |
+        if ! command -v bats >/dev/null 2>&1; then
+          echo "BATS not installed. Installing..."
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            brew install bats-core
+          elif [[ -f /etc/arch-release ]]; then
+            sudo pacman -S --needed --noconfirm bats
+          else
+            sudo apt-get install -y bats
+          fi
+        fi
+      - bats test/unit/*.bats
+
+  test:integration:
+    desc: "Run integration tests with Docker (requires 'task build' first). Use CLI_ARGS to specify platforms: task test:integration -- ubuntu-22 debian"
+    cmds:
+      - |
+        if ! docker compose version >/dev/null 2>&1; then
+          echo "Error: docker compose not available"
+          exit 1
+        fi
+      - |
+        # Check if images exist
+        if ! docker image inspect shell-test:ubuntu-22 >/dev/null 2>&1; then
+          echo "Error: Integration test images not built. Run 'task build' first."
+          exit 1
+        fi
+      - test/integration/run-install-test.sh {{.CLI_ARGS}}
+
+  # Generate configs
+  generate:
+    desc: "Generate .zshrc and .gitconfig"
+    deps:
+      - generate:zsh
+      - generate:gitconfig
+
+  generate:zsh:
     desc: "Re-generate .zshrc"
     cmds:
       - $HOME/src/github.com/kalindudc/shell/src/generate_zshrc.rb
+
+  generate:gitconfig:
+    desc: "Re-generate .gitconfig"
+    cmds:
+      - |
+        if [[ -z "${GIT_EMAIL:-}" ]]; then
+          export GIT_EMAIL=$(git config --global user.email 2>/dev/null || echo "")
+        fi
+        if [[ -z "${GIT_NAME:-}" ]]; then
+          export GIT_NAME=$(git config --global user.name 2>/dev/null || echo "")
+        fi
+        if [[ -z "${GIT_SIGNING_KEY:-}" ]]; then
+          export GIT_SIGNING_KEY=$(git config --global user.signingkey 2>/dev/null || echo "")
+        fi
+      - $HOME/src/github.com/kalindudc/shell/src/generate_tempate.rb -i $HOME/src/github.com/kalindudc/shell/src/templates/.gitconfig.erb -o $HOME/src/github.com/kalindudc/shell/home/.gitconfig

@@ -1,0 +1,45 @@
+# ShellCheck configuration for shell dotfiles project
+# See https://www.shellcheck.net/wiki/ for more information
+
+# Enable all optional checks
+enable=all
+
+# Shell dialect (bash)
+shell=bash
+
+# Disable specific checks
+
+# SC1090: Can't follow non-constant source
+# We source files dynamically based on script location
+disable=SC1090
+
+# SC1091: Not following sourced file
+# Our library files may not be in the same directory during testing
+disable=SC1091
+
+# SC2034: Variable appears unused
+# Some variables are exported for use in other scripts
+disable=SC2034
+
+# SC2155: Declare and assign separately
+# We prefer concise declaration+assignment for readability
+disable=SC2155
+
+# SC2310: Function invoked in condition with set -e
+# This is expected behavior for our conditional checks
+disable=SC2310
+
+# SC2312: Command in command substitution
+# Curl piped commands are standard installation patterns
+disable=SC2312
+
+# SC2249: Case without default
+# Not all cases need defaults when all options are covered
+disable=SC2249
+
+# SC2248: Quote numeric variables
+# Return codes don't need quoting
+disable=SC2248
+
+# Source path for library files
+source-path=SCRIPTDIR

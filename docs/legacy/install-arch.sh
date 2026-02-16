@@ -1,5 +1,34 @@
 #!/usr/bin/env bash
 
+# ============================================================================
+# DEPRECATED: This script is no longer maintained.
+# Please use the unified install.sh in the root directory instead.
+# See docs/legacy/README.md for migration instructions.
+# ============================================================================
+
+cat <<'EOF'
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                          DEPRECATION WARNING                              ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+This installation script has been DEPRECATED and is no longer maintained.
+
+Please use the new unified installation script:
+
+    cd ../.. && ./install.sh
+
+Benefits of the new script:
+  - Auto-detects your operating system
+  - Resume from failed steps
+  - Modular and maintainable
+  - Comprehensive testing
+
+For more information, see: docs/legacy/README.md
+
+EOF
+
+read -p "Press Ctrl+C to exit, or Enter to continue with this deprecated script..." 
+
 # Define color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'

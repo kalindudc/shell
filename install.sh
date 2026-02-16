@@ -1,148 +1,327 @@
 #!/usr/bin/env bash
 
-# Define color codes
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-NC='\033[0m'
+# Unified installation script for shell dotfiles
+# Supports macOS (Homebrew), Ubuntu/Debian (apt), and Arch Linux (pacman/yay)
 
-prompt_for_yn() {
-  local prompt="$1"
-  local default="$2"
-  local answer
+set -o errexit
+set -o nounset
+set -o pipefail
 
-  while true; do
-    read -p "$prompt " answer
-    answer=${answer:-$default}
+# Enable debug mode if TRACE is set
+if [[ "${TRACE-0}" == "1" ]]; then
+  set -o xtrace
+fi
 
-    case "$answer" in
-      [Yy]* ) return 0;;
-      [Nn]* ) return 1;;
-      * ) echo "Please answer y or N.";;
+# Get script directory
+INSTALL_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Source library modules
+# shellcheck source=src/lib/common.sh
+source "${INSTALL_SCRIPT_DIR}/src/lib/common.sh"
+# shellcheck source=src/lib/os_detect.sh
+source "${INSTALL_SCRIPT_DIR}/src/lib/os_detect.sh"
+# shellcheck source=src/lib/state.sh
+source "${INSTALL_SCRIPT_DIR}/src/lib/state.sh"
+# shellcheck source=src/lib/packages.sh
+source "${INSTALL_SCRIPT_DIR}/src/lib/packages.sh"
+
+# Installation configuration
+readonly GIT_CLONE_DIR="${HOME}/src/github.com/kalindudc"
+readonly SHELL_REMOTE="https://github.com/kalindudc/shell.git"
+
+# Installation flags
+SKIP_CATEGORIES=()
+RESET_STATE=false
+CONTINUE_INSTALL=false
+OS_OVERRIDE=""
+
+# Display usage information
+usage() {
+  cat <<EOF
+Usage: $0 [OPTIONS]
+
+Unified installation script for shell dotfiles and development environment.
+
+OPTIONS:
+  --help, -h              Show this help message
+  --skip-category=CAT     Skip installation category (core, shell, dev, runtimes, devops, fonts, optional)
+  --reset-state           Reset installation state and start fresh
+  --continue              Continue from last successful step
+  --os=OS                 Override OS detection (macos, ubuntu, arch)
+  --noninteractive        Run in non-interactive mode
+  --trace                 Enable debug tracing
+  --show-state            Show current installation state
+  --stow                  Run stow only (skip installation)
+
+EXAMPLES:
+  ./install.sh                              # Auto-detect and install everything
+  ./install.sh --skip-category=fonts        # Skip font installation
+  ./install.sh --continue                   # Resume from last step
+  ./install.sh --reset-state                # Start fresh
+  NONINTERACTIVE=1 ./install.sh             # Non-interactive mode
+  TRACE=1 ./install.sh                      # Debug mode
+
+EOF
+  exit 0
+}
+
+# Parse command line arguments
+parse_args() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --help|-h)
+        usage
+        ;;
+      --skip-category=*)
+        SKIP_CATEGORIES+=("${1#*=}")
+        ;;
+      --reset-state)
+        RESET_STATE=true
+        ;;
+      --continue)
+        CONTINUE_INSTALL=true
+        ;;
+      --os=*)
+        OS_OVERRIDE="${1#*=}"
+        ;;
+      --noninteractive)
+        export NONINTERACTIVE=1
+        ;;
+      --trace)
+        export TRACE=1
+        set -o xtrace
+        ;;
+      --show-state)
+        init_or_load_state
+        show_state
+        exit 0
+        ;;
+      --stow)
+        "${INSTALL_SCRIPT_DIR}/src/setup.sh" --stow
+        exit 0
+        ;;
+      *)
+        error "Unknown option: $1"
+        usage
+        ;;
     esac
+    shift
   done
 }
 
-GIT_CLONE_DIR="$HOME/src/github.com/kalindudc"
-SHELL_DIR="$GIT_CLONE_DIR/shell"
-SHELL_REMOTE="https://github.com/kalindudc/shell.git"
+# Check if category should be skipped
+should_skip_category() {
+  local category="$1"
 
-mkdir -p $GIT_CLONE_DIR
+  for skip in "${SKIP_CATEGORIES[@]}"; do
+    if [[ "${skip}" == "${category}" ]]; then
+      return 0
+    fi
+  done
 
-skip_brew=false
-# Function to display usage
-usage() {
-  echo "Usage: $0 [--skip-brew] [--stow] [--help]"
-  exit 1
+  return 1
 }
 
-do_stow() {
-  $SHELL_DIR/src/setup.sh --stow
-}
+# Clone or update shell repository
+setup_shell_repo() {
+  mkdir -p "${GIT_CLONE_DIR}"
 
-# Parse options
-while [[ "$#" -gt 0 ]]; do
-  case $1 in
-    --skip-brew)
-      skip_brew=true
-      ;;
-    -h|--help)
-      usage
-      ;;
-    --stow)
-      do_stow
-      exit 0
-      ;;
-    *)
-      echo "Unknown option: $1"
-      usage
-      ;;
-  esac
-  shift
-done
+  SHELL_DIR="${GIT_CLONE_DIR}/shell"
+  export SHELL_DIR
+  save_state_var "SHELL_DIR" "${SHELL_DIR}"
 
-if [ "$skip_brew" = false ]; then
-  brew update
-  brew upgrade
-
-  # Install packages
-  echo "Installing packages..."
-
-  brew install coreutils
-  brew install direnv
-  brew install fd
-  brew install font-hack-nerd-font
-  brew install fzf
-  brew install fzy
-  brew install gcc
-  brew install gh
-  brew install git
-  brew install gpg
-  brew install helm
-  brew install jesseduffield/lazygit/lazygit
-  brew install kubectl
-  brew install neovim
-  brew install openssl
-  brew install pipx
-  brew install pyenv
-  #brew install rbenv
-  brew install readline
-  brew install rg
-  brew install ruby-build
-  brew install sqlite3
-  brew install stow
-  brew install tcl-tk
-  brew install xz
-  brew install zlib
-  brew install zoxide
-  brew install 1password-cli
-  brew install go-task
-  brew install git-delta
-
-  brew install --cask visual-studio-code
-
-  # install fonts
-  brew search '/font-.*-nerd-font/' | awk '{ print $1 }' | xargs -I{} brew install --cask {} || true
-
-  curl -sS https://starship.rs/install.sh | sh
-
-  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-  #curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash
-
-  pipx install dunk
-
-  echo "Done installing packages"
-else
-  echo "Skipping brew installation"
-fi
-
-echo " "
-echo "Setting up $SHELL_DIR..."
-
-# Check if the directory exists
-if [ -d "$SHELL_DIR" ]; then
-  if prompt_for_yn "$(echo ${GREEN}$SHELL_DIR exists, do you want to overwrite the changes wiith upstream changes?${NC}) (y/N)" "N"; then
-    echo "Directory exists. Navigating to $SHELL_DIR."
-    cd "$SHELL_DIR" || exit
-
-    # Discard any changes
-    echo "Discarding any local changes."
-    git reset --hard
-    git clean -fd
-
-    # Pull the latest changes
-    echo "Pulling the latest changes."
-    git pull origin main
+  if [[ -d "${SHELL_DIR}" ]]; then
+    if prompt_for_yn "${SHELL_DIR} exists. Overwrite with upstream changes? (y/N)" "N"; then
+      log "Updating ${SHELL_DIR}..."
+      (
+        cd "${SHELL_DIR}"
+        git reset --hard
+        git clean -fd
+        git pull origin main
+      )
+      success "Repository updated"
+    else
+      log "Using existing ${SHELL_DIR}"
+    fi
   else
-    echo "Skipping $SHELL_DIR"
+    log "Cloning repository to ${SHELL_DIR}..."
+    git clone "${SHELL_REMOTE}" "${SHELL_DIR}"
+    success "Repository cloned"
   fi
-else
-  # Clone the repository
-  echo "$SHELL_DIR does not exist. Cloning the repository."
-  git clone "$REPO_URL" "$SHELL_DIR"
-fi
+}
 
-echo "Done setting up $SHELL_DIR"
+# Main installation orchestration
+main() {
+  log "Shell Dotfiles Installation"
+  echo ""
 
-# starting setup
-$SHELL_DIR/src/setup.sh
+  # Parse arguments
+  parse_args "$@"
+
+  # Setup cleanup handlers
+  setup_cleanup_handlers
+
+  # Acquire installation lock
+  acquire_lock
+
+  # Handle state reset
+  if [[ "${RESET_STATE}" == "true" ]]; then
+    reset_state
+  fi
+
+  # Initialize state management: create file if needed, then load ALL state once
+  # shellcheck disable=SC2154  # STATE_FILE is defined in state.sh
+  if [[ -f "${STATE_FILE}" ]]; then
+    log "Found existing installation state at ${STATE_FILE}"
+    load_state_from_file  # Load ALL variables into environment ONCE
+    
+    # Check if resuming and prompt user
+    if is_resuming && [[ "${CONTINUE_INSTALL}" == "false" ]]; then
+      if prompt_for_yn "Previous installation found. Continue from last step? (Y/n)" "Y"; then
+        CONTINUE_INSTALL=true
+      else
+        reset_state
+        create_state_file
+      fi
+    fi
+  else
+    log "No existing state found, starting fresh installation"
+    create_state_file
+  fi
+
+  # Step 1: OS Detection
+  if ! is_step_complete "OS_DETECT"; then
+    log "Detecting operating system..."
+
+    if [[ -n "${OS_OVERRIDE}" ]]; then
+      override_os "${OS_OVERRIDE}"
+    else
+      init_os_detection
+    fi
+
+    save_all_state_vars
+    mark_step_complete "OS_DETECT"
+  else
+    log "Skipping OS detection (already completed)"
+  fi
+
+  # Step 2: Install Package Manager
+  run_step "INSTALL_PACKAGE_MANAGER" \
+    "Ensuring package manager is installed" \
+    ensure_package_manager
+
+  save_all_state_vars
+
+  # Step 3: Install Core Packages
+  if ! should_skip_category "core"; then
+    run_step "INSTALL_PACKAGES_CORE" \
+      "Installing core packages (git, curl, stow, ruby)" \
+      install_packages_core
+  fi
+
+  # Step 4: Install Shell Packages
+  if ! should_skip_category "shell"; then
+    run_step "INSTALL_PACKAGES_SHELL" \
+      "Installing shell packages (zsh, fzf, ripgrep, zoxide)" \
+      install_packages_shell
+  fi
+
+  # Step 5: Install Development Packages
+  if ! should_skip_category "dev"; then
+    run_step "INSTALL_PACKAGES_DEV" \
+      "Installing development packages (neovim, gh, gcc)" \
+      install_packages_dev
+  fi
+
+  # Step 6: Install Runtime Packages
+  if ! should_skip_category "runtimes"; then
+    run_step "INSTALL_PACKAGES_RUNTIMES" \
+      "Installing runtime packages (pyenv, nvm, go)" \
+      install_packages_runtimes
+  fi
+
+  # Step 7: Install DevOps Packages
+  if ! should_skip_category "devops"; then
+    run_step "INSTALL_PACKAGES_DEVOPS" \
+      "Installing DevOps packages (kubectl, helm)" \
+      install_packages_devops
+  fi
+
+  # Step 8: Install Fonts
+  if ! should_skip_category "fonts"; then
+    run_step "INSTALL_PACKAGES_FONTS" \
+      "Installing Nerd Fonts" \
+      install_packages_fonts
+  fi
+
+  # Step 9: Install Optional Packages
+  if ! should_skip_category "optional"; then
+    run_step "INSTALL_PACKAGES_OPTIONAL" \
+      "Installing optional packages (vscode, ghostty)" \
+      install_packages_optional
+  fi
+
+  # Step 10: Install pipx packages
+  run_step "INSTALL_PIPX_PACKAGES" \
+    "Installing pipx packages" \
+    install_pipx_packages
+
+  # Step 11: Clone/Update Shell Repository
+  run_step "CLONE_SHELL_REPO" \
+    "Setting up shell repository" \
+    setup_shell_repo
+
+  # Step 12: Run setup script
+  if ! is_step_complete "RUN_SETUP"; then
+    log "Running setup script..."
+    if [[ "${NONINTERACTIVE:-0}" == "1" ]]; then
+      "${SHELL_DIR}/src/setup.sh" --silent
+    else
+      "${SHELL_DIR}/src/setup.sh"
+    fi
+    mark_step_complete "RUN_SETUP"
+  fi
+
+  # Step 13: Set zsh as default shell (FINAL STEP)
+  if ! should_skip_category "shell"; then
+    run_step "SET_DEFAULT_SHELL" \
+      "Setting zsh as default shell" \
+      set_default_shell
+  fi
+
+  # Installation complete
+  echo ""
+  success "Installation complete!"
+  echo ""
+
+  # Display next steps
+  cat <<'EOF'
+
+Next Steps:
+
+1. Log out and log back in (or reboot) for shell changes to take effect
+2. After re-login, your default shell will be zsh
+3. If you skipped any steps, you can resume with: ./install.sh --continue
+4. To reset and start fresh: ./install.sh --reset-state
+5. To see installation state: ./install.sh --show-state
+
+Additional Configuration:
+
+- Configure starship: Edit ~/.config/starship.toml
+- Install Node.js: nvm install node
+- Install Python: pyenv install 3.11
+
+Troubleshooting:
+
+- Debug mode: TRACE=1 ./install.sh
+- Skip category: ./install.sh --skip-category=fonts
+- Manual stow: ./install.sh --stow
+- Set shell manually: chsh -s $(which zsh)
+
+EOF
+
+  ring_bell
+}
+
+# Run main function
+main "$@"
