@@ -217,6 +217,16 @@ is_root() {
   [[ "${EUID}" -eq 0 ]]
 }
 
+# Run command with sudo only if not root
+# Usage: maybe_sudo apt-get install package
+maybe_sudo() {
+  if is_root; then
+    "$@"
+  else
+    sudo "$@"
+  fi
+}
+
 # Get script directory
 get_script_dir() {
   local source="${BASH_SOURCE[0]}"
@@ -343,7 +353,7 @@ export -f shell_join chomp
 export -f execute execute_quiet retry
 export -f ring_bell wait_for_user
 export -f version_gt version_ge version_lt version_le version_eq
-export -f command_exists is_root is_ci
+export -f command_exists is_root is_ci maybe_sudo
 export -f get_script_dir get_cpu_cores
 export -f check_architecture
 export -f make_temp_dir safe_cd set_default_shell

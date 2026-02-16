@@ -165,10 +165,10 @@ install_package() {
       brew install "${mapped_name}"
       ;;
     apt)
-      sudo apt-get install -y "${mapped_name}"
+      maybe_sudo apt-get install -y "${mapped_name}"
       ;;
     pacman)
-      sudo pacman -S --needed --noconfirm "${mapped_name}"
+      maybe_sudo pacman -S --needed --noconfirm "${mapped_name}"
       ;;
     *)
       abort "Unknown package manager: ${PACKAGE_MANAGER}"
@@ -230,11 +230,11 @@ install_packages_core() {
       brew upgrade
       ;;
     apt)
-      sudo apt-get update
-      sudo apt-get upgrade -y
+      maybe_sudo apt-get update
+      maybe_sudo apt-get upgrade -y
       ;;
     pacman)
-      sudo pacman -Syu --noconfirm
+      maybe_sudo pacman -Syu --noconfirm
       ;;
   esac
 
@@ -292,7 +292,7 @@ install_packages_dev() {
       local tmp_dir="${INSTALL_SCRIPT_DIR:-${HOME}}/tmp"
       mkdir -p "${tmp_dir}"
       wget -O "${tmp_dir}/git-delta.deb" "${delta_url}"
-      sudo dpkg -i "${tmp_dir}/git-delta.deb"
+      maybe_sudo dpkg -i "${tmp_dir}/git-delta.deb"
       rm "${tmp_dir}/git-delta.deb"
     fi
   elif is_arch && ! command_exists delta; then
@@ -301,7 +301,7 @@ install_packages_dev() {
 
   # Install go-task (snap for Ubuntu, AUR for Arch)
   if is_ubuntu && ! command_exists task; then
-    sudo snap install task --classic
+    maybe_sudo snap install task --classic
   elif is_arch && ! command_exists task; then
     yay -S --needed --noconfirm go-task-bin
   fi
@@ -333,8 +333,8 @@ install_packages_devops() {
       brew install kubectl helm
       ;;
     apt)
-      sudo snap install kubectl --classic
-      sudo snap install helm --classic
+      maybe_sudo snap install kubectl --classic
+      maybe_sudo snap install helm --classic
       ;;
     pacman)
       yay -S --needed --noconfirm kubectl helm
@@ -369,33 +369,33 @@ install_docker() {
     ubuntu)
       # Install docker.io and docker-compose-plugin from apt
       if ! command_exists docker; then
-        sudo apt-get install -y docker.io
-        sudo systemctl enable docker
-        sudo systemctl start docker
+        maybe_sudo apt-get install -y docker.io
+        maybe_sudo systemctl enable docker
+        maybe_sudo systemctl start docker
 
         # Add current user to docker group (if USER is set and not root)
         if [[ -n "${USER:-}" ]] && [[ "${USER}" != "root" ]]; then
-          sudo usermod -aG docker "${USER}"
+          maybe_sudo usermod -aG docker "${USER}"
           warn "You may need to log out and back in for docker group membership to take effect"
         fi
       fi
 
       # Install docker compose (v2 plugin or v1 standalone)
       if ! docker compose version >/dev/null 2>&1 && ! command_exists docker-compose; then
-        sudo apt-get install -y docker-compose-plugin || sudo apt-get install -y docker-compose
+        maybe_sudo apt-get install -y docker-compose-plugin || maybe_sudo apt-get install -y docker-compose
       fi
       ;;
 
     arch)
       # Install docker and docker-compose
       if ! command_exists docker; then
-        sudo pacman -S --needed --noconfirm docker
-        sudo systemctl enable docker
-        sudo systemctl start docker
+        maybe_sudo pacman -S --needed --noconfirm docker
+        maybe_sudo systemctl enable docker
+        maybe_sudo systemctl start docker
 
         # Add current user to docker group (if USER is set and not root)
         if [[ -n "${USER:-}" ]] && [[ "${USER}" != "root" ]]; then
-          sudo usermod -aG docker "${USER}"
+          maybe_sudo usermod -aG docker "${USER}"
           warn "You may need to log out and back in for docker group membership to take effect"
         fi
       fi
@@ -442,7 +442,7 @@ install_packages_optional() {
 
   # Visual Studio Code
   if is_ubuntu; then
-    sudo snap install code --classic
+    maybe_sudo snap install code --classic
   elif is_arch; then
     yay -S --needed --noconfirm visual-studio-code-bin
   elif is_macos; then
@@ -451,7 +451,7 @@ install_packages_optional() {
 
   # Ghostty
   if is_ubuntu; then
-    sudo snap install ghostty --classic || warn "Ghostty not available"
+    maybe_sudo snap install ghostty --classic || warn "Ghostty not available"
   elif is_arch; then
     yay -S --needed --noconfirm ghostty || warn "Ghostty not available"
   fi
@@ -517,14 +517,14 @@ install_pyenv() {
   # Install dependencies first
   case "${OS_DISTRO}" in
     ubuntu)
-      sudo apt-get install -y \
+      maybe_sudo apt-get install -y \
         build-essential libssl-dev zlib1g-dev \
         libbz2-dev libreadline-dev libsqlite3-dev \
         libncursesw5-dev xz-utils tk-dev \
         libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
       ;;
     arch)
-      sudo pacman -S --needed --noconfirm \
+      maybe_sudo pacman -S --needed --noconfirm \
         base-devel openssl zlib xz tk
       ;;
   esac
@@ -558,10 +558,10 @@ install_pipx_packages() {
         brew install pipx
         ;;
       apt)
-        sudo apt-get install -y pipx
+        maybe_sudo apt-get install -y pipx
         ;;
       pacman)
-        sudo pacman -S --needed --noconfirm python-pipx
+        maybe_sudo pacman -S --needed --noconfirm python-pipx
         ;;
     esac
   fi
