@@ -38,7 +38,7 @@ For detailed installation options, see **[Installation Guide](docs/installation.
 Shell startup times on modern hardware:
 - **Apple Silicon Macs** - Under 400ms
 - **Intel Macs (2018+)** - Under 700ms
-- **Linux systems** - Under 500ms
+- **Linux systems** - Under 200ms
 
 ## Documentation
 
