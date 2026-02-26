@@ -13,7 +13,7 @@ A plan is a structured prompt that supplies an AI coding agent with everything i
 
 A traditional plan over-complicates and over-details to a point where context is misinterpreted, making it difficult for any AI agent to effectively implement. Instead, a plan keeps the goal and justification sections yet adds three AI-critical layers:
 
-**Context** -- Precise file paths and content, library versions and library context, code snippet examples. LLMs generate higher-quality code when given direct, in-prompt references instead of broad descriptions. Usage of a `./tmp/docs/` directory to pipe in library and other docs for this plan.
+**Context** -- Precise file paths and content, library versions and library context, code snippet examples. LLMs generate higher-quality code when given direct, in-prompt references instead of broad descriptions. All relevant context must be embedded directly in the plan document itself — plans are always standalone.
 
 **Implementation Details and Strategy** -- Explicitly states how a feature will be built. This includes the use of specific libraries, code standards, repo practices / existing patterns, or agent patterns (ReAct, Plan-and-Execute). Usage of typehints, dependencies, architectural patterns and other tools to ensure the code is built correctly.
 
