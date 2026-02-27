@@ -136,6 +136,14 @@ After all tasks are completed:
 3. Report final status: tasks completed (N/N), validation gates (pass/fail), files touched, deviations. Use the `git_diff_summary` tool for the final changeset summary -- it provides structured file categorization and counts instead of raw diff output.
 4. Update the plan with `## Implementation Status: COMPLETED` at the top
 
+## Self-Improvement
+
+This skill improves through use. After execution:
+- Append observations to `SKILL_NOTES.md` in this skill's directory
+- Note edge cases, successful patterns, and open questions
+
+Before modifications, check `SKILL_NOTES.md` for known edge cases.
+
 ## Rules
 
 - NEVER skip a task -- execute them in strict order

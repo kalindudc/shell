@@ -57,6 +57,15 @@ Be concise. Target under 500 words for an investigation report. Include:
 
 Write the report to `./tmp/` for persistence. If the investigation is complex, summarize the primary root cause and list additional threads the user can request.
 
+## Self-Improvement
+
+This skill improves through use. After execution:
+- Append observations to `SKILL_NOTES.md` in this skill's directory
+- Note edge cases, successful patterns, and open questions
+- Run `/global/improve-skill debugger` to review accumulated observations
+
+Before execution, check `SKILL_NOTES.md` for known edge cases.
+
 ## Rules
 
 - NEVER modify, create, or delete source files -- only write to `./tmp/`

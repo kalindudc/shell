@@ -121,6 +121,14 @@ foo/bar/
 
 **Anti-patterns:** Empty descriptions, description-code misalignment, generic descriptions ("Fix bug"), missing rationale (WHAT without WHY), over-verbose walls of text.
 
+## Self-Improvement
+
+This skill improves through use. After execution:
+- Append observations to `SKILL_NOTES.md` in this skill's directory
+- Note edge cases, successful patterns, and open questions
+
+Before modifications, check `SKILL_NOTES.md` for known edge cases.
+
 ## Rules
 
 - Be thorough in analyzing the changes

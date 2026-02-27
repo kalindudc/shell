@@ -47,6 +47,15 @@ When answering a specific question (via `@codebase-explorer`), answer it directl
 
 **Final step -- always:** End your response with a summary for the user. List all files written to `./tmp/` with their paths, and provide a brief description of what each contains. If no files were written, state that explicitly.
 
+## Self-Improvement
+
+This skill improves through use. After execution:
+- Append observations to `SKILL_NOTES.md` in this skill's directory
+- Note edge cases, successful patterns, and open questions
+- Run `/global/improve-skill codebase-explorer` to review accumulated observations
+
+Before execution, check `SKILL_NOTES.md` for known edge cases.
+
 ## Rules
 
 - NEVER modify, create, or delete source files -- only write to `./tmp/`

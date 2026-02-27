@@ -181,3 +181,17 @@ Do not improvise debugging inline. Instead:
 4. The investigation report in `./tmp/` serves as the handoff artifact for the build agent.
 
 If you cannot invoke the command directly (e.g. running as a subagent), **load the `debugger` skill directly** rather than attempting ad-hoc debugging.
+
+---
+
+## Skill Improvement
+
+**After using any skill, append observations to its SKILL_NOTES.md.**
+
+Skills improve through accumulated usage observations. The workflow:
+
+1. During or after using a skill, **append observations** to `SKILL_NOTES.md` in the skill's directory. Note edge cases, successful patterns, and open questions.
+2. Periodically run `/global/improve-skill <skill-name>` to review accumulated observations and propose targeted improvements to the skill.
+3. Improvements are always human-gated -- the agent proposes, the user decides.
+
+Do not rewrite skills from scratch. Skills evolve through small, targeted improvements backed by real usage data.

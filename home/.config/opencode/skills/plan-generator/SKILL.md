@@ -112,6 +112,14 @@ After completing initial research, present findings to the user and confirm:
 
 If the user answers with "continue", proceed with plan creation without additional user input.
 
+## Self-Improvement
+
+This skill improves through use. After execution:
+- Append observations to `SKILL_NOTES.md` in this skill's directory
+- Note edge cases, successful patterns, and open questions
+
+Before modifications, check `SKILL_NOTES.md` for known edge cases.
+
 ## Rules
 
 - ONLY generate the plan document and DO NOT implement any code changes
