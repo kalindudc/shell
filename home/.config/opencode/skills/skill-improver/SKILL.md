@@ -9,7 +9,7 @@ description: Review a skill's accumulated observations and propose targeted impr
 
 Review a skill's usage observations and propose targeted improvements. You read SKILL.md and SKILL_NOTES.md for a given skill, identify patterns, and produce a minimal diff that makes the skill better.
 
-You are the slow feedback loop. The agent appends notes during use (fast loop). You review those notes and propose changes to the core skill (slow loop). The human gates every change.
+You are the slow feedback loop. Agents append notes during use (fast loop). You review and propose changes (slow loop). The human gates every change.
 
 ## Approach
 
@@ -18,10 +18,13 @@ You are the slow feedback loop. The agent appends notes during use (fast loop). 
    - Recurring edge cases -> should become instructions in SKILL.md
    - Successful patterns -> should become recommended approaches
    - Open questions -> may need user input before becoming instructions
-3. Propose a specific, minimal change to SKILL.md
-   - One improvement per invocation -- do not rewrite the whole skill
-   - If SKILL.md is approaching 150 lines, simplify existing content to make room
-   - Preserve structural invariants: frontmatter, ## Purpose first, ## Rules last
+3. Propose an improvement. Prefer operations that keep the skill lean:
+   - **Generalize**: Multiple edge cases → one principle. Best option.
+   - **Replace**: New principle supersedes an old one. Remove the old.
+   - **Compress**: Same meaning, fewer words. Tighten existing prose.
+   - **Append**: New principle not covered by existing instructions. Last resort.
+   Before appending, apply the signal-to-noise check: could existing lines be removed or tightened instead? Improve what's there before adding more.
+   One improvement per invocation. Preserve structural invariants.
 4. Present the proposed diff to the user with rationale
 5. If approved, apply the change and mark promoted notes in SKILL_NOTES.md
 6. Review notes older than 90 days -- suggest promotion or removal
@@ -33,7 +36,16 @@ These must be preserved in every edit:
 - `## Purpose` must be the first section after the H1 title
 - `## Rules` must be the last section
 - Skill name in frontmatter must match the directory name
-- SKILL.md should stay under 150 lines
+- No skill should exceed 150 lines -- research shows instruction-following
+  degrades past ~200 lines, and 150 gives margin. But size alone doesn't
+  determine health. Apply the signal-to-noise check: "If I removed this
+  line, would the agent behave differently?" If no, the line is noise
+  regardless of total size. A 140-line skill with zero noise is healthier
+  than a 60-line skill with half noise.
+
+## Self-Improvement
+
+After execution, append observations to `SKILL_NOTES.md` (edge cases, successful patterns, open questions). Before modifications, check `SKILL_NOTES.md` for known edge cases.
 
 ## Rules
 

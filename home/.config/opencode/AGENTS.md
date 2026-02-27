@@ -193,5 +193,6 @@ Skills improve through accumulated usage observations. The workflow:
 1. During or after using a skill, **append observations** to `SKILL_NOTES.md` in the skill's directory. Note edge cases, successful patterns, and open questions.
 2. Periodically run `/global/improve-skill <skill-name>` to review accumulated observations and propose targeted improvements to the skill.
 3. Improvements are always human-gated -- the agent proposes, the user decides.
+4. Run `/global/skill-health` periodically to check skill size and note staleness.
 
-Do not rewrite skills from scratch. Skills evolve through small, targeted improvements backed by real usage data.
+Do not rewrite skills from scratch. Skills evolve through small, targeted improvements backed by real usage data. Prefer generalizing existing instructions over appending new ones -- keep skills lean.
