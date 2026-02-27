@@ -121,7 +121,7 @@ Never kill the opencode process directly.
 
 ---
 
-The complete workflow is: `/global/plan` -> `/global/implement` -> `/global/generate-pr-description`. Each stage is optional -- use what's needed.
+The complete workflow is: `/global/explore` -> `/global/debug` -> `/global/plan` -> `/global/implement` -> `/global/generate-pr-description`. Each stage is optional -- use what's needed.
 
 ## Planning
 
@@ -151,3 +151,33 @@ Do not manually implement plan tasks without loading the `implementer` skill. In
 4. The complete workflow is: `/plan` → `/implement` → `/generate-pr-description`
 
 If you cannot invoke the command directly (e.g. running as a subagent), **load the `implementer` skill directly** rather than attempting to manually implement the plan.
+
+---
+
+## Exploration
+
+**When exploring an unfamiliar codebase or service -- use `/global/explore`.**
+
+Do not improvise codebase exploration inline. Instead:
+
+1. **Invoke the `/global/explore` command** with a description of what to explore or a specific question as arguments.
+2. The command loads the `codebase-explorer` skill which provides a structured exploration approach -- start with structure, narrow hierarchically, research what you don't know.
+3. For quick questions about the current codebase, use `@codebase-explorer` to invoke the explorer subagent directly.
+4. Exploration is read-only for source files -- analysis artifacts may be written to `./tmp/` only.
+
+If you cannot invoke the command directly (e.g. running as a subagent), **load the `codebase-explorer` skill directly** rather than attempting ad-hoc exploration.
+
+---
+
+## Debugging
+
+**When investigating a bug or unexpected behavior -- use `@debugger` or `/global/debug`.**
+
+Do not improvise debugging inline. Instead:
+
+1. **Use `@debugger`** to invoke the debugger subagent for a focused investigation session, or invoke `/global/debug` with a description of the issue.
+2. The debugger loads the `debugger` skill which provides a scientific debugging approach: reproduce first, explain before hypothesizing, backtrack when hypotheses fail, verify with tests.
+3. The debugger does not modify source files -- it diagnoses and writes artifacts to `./tmp/` only. Switch back to the `build` agent to implement the fix.
+4. The investigation report in `./tmp/` serves as the handoff artifact for the build agent.
+
+If you cannot invoke the command directly (e.g. running as a subagent), **load the `debugger` skill directly** rather than attempting ad-hoc debugging.

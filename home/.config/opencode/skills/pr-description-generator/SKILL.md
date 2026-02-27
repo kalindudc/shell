@@ -44,7 +44,7 @@ Generate PR descriptions that maximize reviewability and merge probability throu
 
 - Review the diff and identify key changes, features, bug fixes, refactoring, etc.
 - Spawn subagents if needed for complex analysis
-- If a plan file exists in `./tmp/plan/`, read it to understand the intent behind the changes. The plan's High-Level Objective is often the best source for the Summary's "Why" section.
+- If a plan file exists in `./tmp/plan/`, read it to understand the intent behind the changes. The plan's High-Level Objective is often the best source for the Summary's "Why" section, if many plans are found and you are unsure which to use, prompt the user for clarification rather than guessing or ignore the plan entirely.
 - If the branch has been pushed, check CI status. Note pass/fail in Technical Details if relevant.
 - **Verify description-code alignment** -- ensure every claim matches actual code changes
 
