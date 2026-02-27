@@ -27,6 +27,10 @@ The approach is scientific debugging: reproduce, explain what the code does, for
 - `webfetch` -- look up error messages, library docs, known issues
 - `todowrite` -- track hypotheses, evidence, and open threads
 - `write` to `./tmp/` for reports, dependency maps, or notes. **Important:** the Write tool requires a prior Read of the file. For new files, run `touch <path>` via Bash first, then Read the file, then Write to it.
+- `test_run_parsed` -- use instead of raw bash when running tests for reproduction or verification. Returns structured pass/fail with parsed stack traces instead of raw terminal output.
+- `stack_trace_resolve` -- when the user provides a stack trace, resolve it first. Handles source maps, container paths, and compiled output. Start your investigation from the resolved file:line references, not the raw trace.
+- `ast_query` -- use to find similar patterns to a bug (e.g., "are there other places that call this function without error handling?"). Structural search catches what grep misses.
+- `git_blame_context` -- use during evidence collection to understand when and why code changed. Single call replaces 4+ git commands.
 
 **Adapt to the symptom type:**
 - Test failure -- start with the test output, trace to the assertion, read the code under test

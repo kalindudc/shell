@@ -46,5 +46,6 @@ home/.config/opencode/*
 !home/.config/opencode/agents/
 !home/.config/opencode/skills/
 !home/.config/opencode/scripts/
+!home/.config/opencode/tools/
 
 

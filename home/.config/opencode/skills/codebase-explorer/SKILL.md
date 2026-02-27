@@ -26,6 +26,8 @@ Start with structure, then follow curiosity. Adapt to the repo -- not every repo
 - `webfetch` to research unfamiliar technologies -- understanding a repo means understanding its ecosystem
 - `todowrite` to track what you've explored, what's left, and open questions
 - `write` to `./tmp/` for reports, dependency maps, or notes. **Important:** the Write tool requires a prior Read of the file. For new files, run `touch <path>` via Bash first, then Read the file, then Write to it.
+- `ast_query` -- use for structural code queries: "find all route handlers", "find all classes extending BaseModel", "find all functions returning Promise". Prefer this over grep when searching for code patterns by structure rather than text.
+- `git_blame_context` -- use when investigating why code exists or who owns a module. Single call replaces the git blame + git show + git log chain.
 
 **What to look for** (adapt to what the repo actually contains):
 - Entry points -- where does execution start?

@@ -79,6 +79,8 @@ Run the verification command appropriate for the change type:
 - **Style changes**: Lint command (confirm style compliance)
 - **Structural changes**: Verify files exist/don't exist as expected
 
+When running tests, prefer the `test_run_parsed` tool over raw bash for structured results. It returns pass/fail per test with parsed failure locations instead of raw terminal output.
+
 Compare RESULT vs EXPECT:
 - If verification **passes**: proceed to Step 5
 - If verification **fails**: enter the Retry Protocol (see below)
@@ -131,7 +133,7 @@ After all tasks are completed:
 
 1. Run ALL Validation Gates from the plan
 2. Run the full build + test + lint cycle
-3. Report final status: tasks completed (N/N), validation gates (pass/fail), files touched, deviations
+3. Report final status: tasks completed (N/N), validation gates (pass/fail), files touched, deviations. Use the `git_diff_summary` tool for the final changeset summary -- it provides structured file categorization and counts instead of raw diff output.
 4. Update the plan with `## Implementation Status: COMPLETED` at the top
 
 ## Rules

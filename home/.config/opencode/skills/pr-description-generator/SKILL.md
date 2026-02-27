@@ -37,7 +37,7 @@ Generate PR descriptions that maximize reviewability and merge probability throu
 ### 3. Get the git diff
 
 - Run `git diff <parent_branch>...HEAD` to get all changes
-- Run `git diff --stat <parent_branch>...HEAD` for a file change summary
+- Use the `git_diff_summary` tool for a structured overview of changes with file categorization (source/test/config/docs/migration) and insertion/deletion counts. This replaces the need to chain `git diff --stat` and `git diff --numstat` manually.
 - Run `git log --oneline <parent_branch>...HEAD` to understand the commit narrative. Use commit messages to inform the Summary and Technical Details.
 
 ### 4. Analyze the changes
