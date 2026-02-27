@@ -38,12 +38,15 @@ Generate PR descriptions that maximize reviewability and merge probability throu
 
 - Run `git diff <parent_branch>...HEAD` to get all changes
 - Run `git diff --stat <parent_branch>...HEAD` for a file change summary
+- Run `git log --oneline <parent_branch>...HEAD` to understand the commit narrative. Use commit messages to inform the Summary and Technical Details.
 
 ### 4. Analyze the changes
 
 - Review the diff and identify key changes, features, bug fixes, refactoring, etc.
 - Spawn subagents if needed for complex analysis
-- **Verify description-code alignment** — ensure every claim matches actual code changes (misalignment causes 51.7% lower acceptance)
+- If a plan file exists in `./tmp/plan/`, read it to understand the intent behind the changes. The plan's High-Level Objective is often the best source for the Summary's "Why" section.
+- If the branch has been pushed, check CI status. Note pass/fail in Technical Details if relevant.
+- **Verify description-code alignment** -- ensure every claim matches actual code changes
 
 ### 5. Generate the PR description using the template below
 
@@ -107,35 +110,23 @@ foo/bar/
 ## Output Format
 
 - Output the final PR description to `./tmp/pr/<branch_name>-pr.md`
-- Copy to clipboard with `pbcopy`
+- Copy to clipboard if available (`pbcopy` on macOS, `xclip -selection clipboard` on Linux). Skip if neither is present.
 - **Max 5 minute read time — this is non-negotiable**
 
 ## Template Usage Guidelines
 
-### Always include (every PR)
-- **Summary** with both Why and What — never skip the Why
-- **Review guidance** — even a single sentence directing reviewer attention
-- **Changed files** tree
-- **Technical details** — but only what's non-obvious
+**Always include:** Summary (with Why and What), Review guidance, Changed files tree, Technical details (non-obvious only).
 
-### Include when applicable
-- **Deploy / migration** — only when there are deployment steps or breaking changes
-- **Related** — only when issues/tickets/prior PRs exist
-- **Screenshots** — only for UI/frontend changes (add inline where helpful)
+**Include when applicable:** Deploy/migration, Related issues/PRs, Screenshots (UI changes only).
 
-### Anti-patterns to avoid
-- **Empty descriptions** — 34% of PRs have none; significantly harder to review
-- **Description-code misalignment** — claiming changes that don't exist
-- **Generic descriptions** — "Fix bug", "Add patch", "Phase 1" give zero context
-- **Missing rationale** — explaining WHAT without WHY forces reviewers to guess
-- **Over-verbose descriptions** — structure and signal-to-noise ratio matter more than length. A wall of text is worse than no description.
+**Anti-patterns:** Empty descriptions, description-code misalignment, generic descriptions ("Fix bug"), missing rationale (WHAT without WHY), over-verbose walls of text.
 
 ## Rules
 
 - Be thorough in analyzing the changes
-- Spawn subagents if needed for complex analysis
 - Always format in markdown
-- FOLLOW KISS — if it can be shorter, make it shorter
-- **Every claim must match actual code changes** — verify alignment before output
+- FOLLOW KISS -- if it can be shorter, make it shorter
+- NEVER over reference related issues or PRs, if you are unsure if a an issue/PR is relevant, omit it or prompt the user for clarification rather than guessing
+- **Every claim must match actual code changes** -- verify alignment before output
 - Omit optional sections entirely rather than filling them with placeholder content
-- **Brevity is a feature, not a compromise** — say more with less
+- **Brevity is a feature, not a compromise** -- say more with less

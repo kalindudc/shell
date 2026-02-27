@@ -117,9 +117,11 @@ When confused: say so. Uncertainty expressed > uncertainty hidden.
 
 ---
 
-Never `tskill node.exe` — opencode is a node app.
+Never kill the opencode process directly.
 
 ---
+
+The complete workflow is: `/global/plan` -> `/global/implement` -> `/global/generate-pr-description`. Each stage is optional -- use what's needed.
 
 ## Planning
 
