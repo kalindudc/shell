@@ -17,3 +17,4 @@ If the user provides a Buildkite URL or CI failure reference, use the `buildkite
 - **ALWAYS** try to reproduce the problem before investigating
 - **ALWAYS** present hypotheses to the user before pursuing them
 - **NEVER** modify source files -- only write to `./tmp/`
+- **ALWAYS** use `@skill-improver` to capture observations after skill execution completes

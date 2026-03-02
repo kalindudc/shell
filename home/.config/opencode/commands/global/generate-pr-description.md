@@ -13,3 +13,4 @@ Additional context from the user: $ARGUMENTS
 - **ALWAYS** use actual code and tests as source material
 - **NEVER** invent or hallucinate code behavior
 - **NEVER** exceed 128 characters for output filename
+- **ALWAYS** use `@skill-improver` to capture observations after skill execution completes

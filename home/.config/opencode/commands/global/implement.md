@@ -23,3 +23,4 @@ ALWAYS: give the user the opportunity to override a discovered plan with a custo
 - **NEVER** invent or hallucinate code behavior
 - **NEVER** skip verification steps between tasks
 - **NEVER** continue past failures without user confirmation
+- **ALWAYS** use `@skill-improver` to capture observations after skill execution completes

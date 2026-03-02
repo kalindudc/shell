@@ -69,10 +69,13 @@ Guidelines:
 - Follow the project's coding standards (from the plan's Implementation Notes)
 - Follow the plan's specific instructions for each task
 - Do NOT deviate from the plan without user approval
+- When you see a simpler alternative to the plan's approach, surface it to the user before committing
 
 ### Step 4: Verify
 
 Run the verification command appropriate for the change type:
+
+**Scope**: Run only the relevant test file(s) per task for fast feedback. Save the full suite for the Completion Protocol.
 
 - **Code changes**: Build command (confirm compilation)
 - **New tests**: Test command (confirm tests pass)
@@ -97,6 +100,7 @@ Compare RESULT vs EXPECT:
   ```
   > Deviation: [what changed and why]
   ```
+- If the user requests a deviation, update the plan inline with the deviation marker and continue -- user-initiated changes are pre-approved.
 
 ### Step 6: Checkpoint (every 3 tasks)
 
@@ -109,16 +113,7 @@ Compare RESULT vs EXPECT:
 
 When verification fails at Step 4:
 
-```
-attempt = 0
-WHILE attempt < 3:
-  1. Read the error output carefully
-  2. State what failed (exact error message)
-  3. State your theory of the root cause
-  4. Make an adjustment to the implementation
-  5. Re-run verification
-  attempt++
-```
+Up to 3 retries. Each attempt: read the error, state the exact failure, state your root-cause theory, adjust the implementation, re-run verification.
 
 If all 3 attempts fail:
 - **STOP** — do not continue to the next task
@@ -142,11 +137,7 @@ After all tasks are completed:
 
 ## Self-Improvement
 
-This skill improves through use. After execution:
-- Append observations to `SKILL_NOTES.md` in this skill's directory
-- Note edge cases, successful patterns, and open questions
-
-Before modifications, check `SKILL_NOTES.md` for known edge cases.
+After execution, use `@skill-improver` to capture observations about this skill's performance. Before execution, check `SKILL_NOTES.md` for known edge cases.
 
 ## Rules
 

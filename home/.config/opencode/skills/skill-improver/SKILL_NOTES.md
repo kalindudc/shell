@@ -1,12 +1,28 @@
 # Skill Notes: skill-improver
 
-> Accumulated observations from real usage. The agent appends entries here after skill execution.
+> Accumulated observations from real usage. Agents append entries here after skill execution.
 > Run `/global/improve-skill skill-improver` to review and promote valuable entries into SKILL.md.
+>
+> ## Entry Format
+>
+> ```
+> ### YYYY-MM-DD | <Category> | <Skill that was executing>
+> **Context:** [1 sentence: what task was being performed]
+> **Observation:** [1-2 sentences: what happened, what was unexpected]
+> **Takeaway:** [1 sentence: actionable insight or open question]
+> **Actionability:** ready-to-promote | needs-more-data | question-for-user
+> ```
+>
+> Categories: `Edge Case` | `Successful Pattern` | `Open Question` | `Deviation` | `Tool Limitation`
+>
+> **Migration policy:** When migrating entries from external sources, use the original date if known. If the original date is lost, use the migration date. Never use placeholder tags like `[migrated]` in place of dates.
 
 ## Edge Cases
 
 ## Successful Patterns
 
-- 2026-02-27: Correctly declined to propose changes to `pr-description-generator` when SKILL_NOTES.md had only a single same-day entry. One observation is not a pattern — requires recurring themes before proposing a skill edit.
-
 ## Open Questions
+
+## Deviations
+
+## Tool Limitations

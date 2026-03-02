@@ -61,12 +61,7 @@ Write the report to `./tmp/` for persistence. If the investigation is complex, s
 
 ## Self-Improvement
 
-This skill improves through use. After execution:
-- Append observations to `SKILL_NOTES.md` in this skill's directory
-- Note edge cases, successful patterns, and open questions
-- Run `/global/improve-skill debugger` to review accumulated observations
-
-Before execution, check `SKILL_NOTES.md` for known edge cases.
+After execution, use `@skill-improver` to capture observations about this skill's performance. Before execution, check `SKILL_NOTES.md` for known edge cases.
 
 ## Rules
 

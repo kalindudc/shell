@@ -186,13 +186,14 @@ If you cannot invoke the command directly (e.g. running as a subagent), **load t
 
 ## Skill Improvement
 
-**After using any skill, append observations to its SKILL_NOTES.md.**
+**After using any skill, capture observations in its SKILL_NOTES.md.**
 
-Skills improve through accumulated usage observations. The workflow:
+Skills improve through a feedback system:
 
-1. During or after using a skill, **append observations** to `SKILL_NOTES.md` in the skill's directory. Note edge cases, successful patterns, and open questions.
-2. Periodically run `/global/improve-skill <skill-name>` to review accumulated observations and propose targeted improvements to the skill.
-3. Improvements are always human-gated -- the agent proposes, the user decides.
-4. Run `/global/skill-health` periodically to check skill size and note staleness.
+**Fast loop -- Capture observations immediately after skill execution:**
+1. Use `@skill-improver` to invoke the skill-improver subagent with context about what happened.
+2. The agent appends a structured entry to the skill's `SKILL_NOTES.md` (date, category, observation, takeaway).
+3. If `@skill-improver` is unavailable, append directly using the entry format in SKILL_NOTES.md.
+4. Capture immediately -- do not batch observations. The closer to execution, the higher the quality.
 
-Do not rewrite skills from scratch. Skills evolve through small, targeted improvements backed by real usage data. Prefer generalizing existing instructions over appending new ones -- keep skills lean.
+**CRITICAL:** Never run `/global/improve-skill`, this is human-gated with manual verification

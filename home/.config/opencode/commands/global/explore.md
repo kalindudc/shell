@@ -16,3 +16,4 @@ If no specific question is provided, produce a concise structured overview of th
 - **ALWAYS** load the `codebase-explorer` skill first for detailed instructions
 - **ALWAYS** include file:line references for every factual claim
 - **NEVER** modify source files -- only write to `./tmp/`
+- **ALWAYS** use `@skill-improver` to capture observations after skill execution completes

@@ -14,10 +14,12 @@ You are the slow feedback loop. Agents append notes during use (fast loop). You 
 ## Approach
 
 1. Read the target skill's SKILL.md and SKILL_NOTES.md
+   - Entries in SKILL_NOTES.md follow a structured format (date, category, context, observation, takeaway, actionability). Use the actionability field to prioritize: "ready-to-promote" entries are candidates for improvement. "needs-more-data" entries need more occurrences. "question-for-user" entries should be surfaced to the user before acting.
 2. Identify patterns in the notes:
    - Recurring edge cases -> should become instructions in SKILL.md
    - Successful patterns -> should become recommended approaches
    - Open questions -> may need user input before becoming instructions
+   - Project-specific or single-codebase observations -> remove (they can never generalize into skill instructions)
 3. Propose an improvement. Prefer operations that keep the skill lean:
    - **Generalize**: Multiple edge cases → one principle. Best option.
    - **Replace**: New principle supersedes an old one. Remove the old.
@@ -45,7 +47,7 @@ These must be preserved in every edit:
 
 ## Self-Improvement
 
-After execution, append observations to `SKILL_NOTES.md` (edge cases, successful patterns, open questions). Before modifications, check `SKILL_NOTES.md` for known edge cases.
+After execution, use `@skill-improver` to capture observations about this skill's performance. Before execution, check `SKILL_NOTES.md` for known edge cases.
 
 ## Rules
 
