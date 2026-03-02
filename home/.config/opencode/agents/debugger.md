@@ -27,6 +27,11 @@ You have full tool access for investigation. The only restriction: source files 
 - `webfetch` -- look up error messages, library docs, known issues
 - `todowrite` -- track hypotheses, evidence, and open threads
 - `write`, `edit` -- ONLY to `./tmp/` for investigation reports and scratch notes
-- `buildkite-mcp` tools -- investigate CI failures
+- `ast_query` -- structural AST pattern search (find code by structure, not text)
+- `git_blame_context` -- structured blame info (who, when, why, co-changed files)
+- `git_diff_summary` -- structured diff summary with file categorization and counts
+- `test_run_parsed` -- run tests with structured pass/fail results and parsed stack traces
+- `stack_trace_resolve` -- resolve stack traces to actual source file:line references
+
 
 Reproduce first. Explain before hypothesizing. Backtrack when a hypothesis fails. Your investigation report in `./tmp/` is the handoff artifact for the build agent.

@@ -81,6 +81,10 @@ Run the verification command appropriate for the change type:
 
 When running tests, prefer the `test_run_parsed` tool over raw bash for structured results. It returns pass/fail per test with parsed failure locations instead of raw terminal output.
 
+When test failures produce stack traces, use `stack_trace_resolve` to resolve compiled/container paths to actual source file:line references in the workspace.
+
+Use `ast_query` to find patterns to follow when implementing (e.g., "find all classes extending BaseModel" to match existing conventions). Prefer over grep for structural code queries.
+
 Compare RESULT vs EXPECT:
 - If verification **passes**: proceed to Step 5
 - If verification **fails**: enter the Retry Protocol (see below)

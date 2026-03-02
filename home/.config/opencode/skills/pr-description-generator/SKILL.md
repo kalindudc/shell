@@ -27,6 +27,7 @@ Generate PR descriptions that maximize reviewability and merge probability throu
 - If available, run `gt log` to determine the parent branch from the stack
 - If not available, determine if the user specified a parent branch in the arguments
 - If unclear, prompt the user for more information on the parent branch
+- **Ensure the parent branch is in its latest state from remote** before diffing
 
 ### 2. Gather the related GitHub issue
 

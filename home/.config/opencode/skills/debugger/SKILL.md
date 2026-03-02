@@ -31,6 +31,8 @@ The approach is scientific debugging: reproduce, explain what the code does, for
 - `stack_trace_resolve` -- when the user provides a stack trace, resolve it first. Handles source maps, container paths, and compiled output. Start your investigation from the resolved file:line references, not the raw trace.
 - `ast_query` -- use to find similar patterns to a bug (e.g., "are there other places that call this function without error handling?"). Structural search catches what grep misses.
 - `git_blame_context` -- use during evidence collection to understand when and why code changed. Single call replaces 4+ git commands.
+- `git_diff_summary` -- use to understand what changed between branches or commits. Returns structured file categorization (source/test/config/docs/migration) and insertion/deletion counts. Helpful for scoping how large a recent change was.
+
 
 **Adapt to the symptom type:**
 - Test failure -- start with the test output, trace to the assertion, read the code under test

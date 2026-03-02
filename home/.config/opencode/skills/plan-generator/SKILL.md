@@ -32,6 +32,16 @@ Begin with thorough research to gather all necessary context:
 - Identify relevant files, directories, and patterns to follow
 - Use the `codebase-explorer` skill for systematic research if the repo is unfamiliar
 
+### Available Custom Tools
+
+Use these tools during the research process to gather context efficiently:
+- `ast_query` -- structural AST pattern search. Use to find code patterns to follow (e.g., "find all classes extending BaseModel", "find all route handlers"). Prefer over grep for structural queries.
+- `git_blame_context` -- structured blame info (who, when, why, co-changed files). Use to understand why existing code exists before planning changes around it.
+- `git_diff_summary` -- structured diff summary with file categorization and counts. Use to understand recent changes to relevant modules.
+- `test_run_parsed` -- run tests with structured pass/fail results. Use to verify the baseline test suite passes before planning.
+- `stack_trace_resolve` -- resolve stack traces to actual source file:line references.
+
+
 ## Plan Template
 
 Use the following structure for every plan:

@@ -28,6 +28,10 @@ Start with structure, then follow curiosity. Adapt to the repo -- not every repo
 - `write` to `./tmp/` for reports, dependency maps, or notes. **Important:** the Write tool requires a prior Read of the file. For new files, run `touch <path>` via Bash first, then Read the file, then Write to it.
 - `ast_query` -- use for structural code queries: "find all route handlers", "find all classes extending BaseModel", "find all functions returning Promise". Prefer this over grep when searching for code patterns by structure rather than text.
 - `git_blame_context` -- use when investigating why code exists or who owns a module. Single call replaces the git blame + git show + git log chain.
+- `git_diff_summary` -- use to understand recent changes. Returns structured file categorization (source/test/config/docs/migration) and insertion/deletion counts. Useful for gauging activity in a module or understanding what changed between branches.
+- `test_run_parsed` -- use when running tests to understand the test strategy or verify the test suite works. Returns structured pass/fail per test with parsed failure locations instead of raw terminal output.
+- `stack_trace_resolve` -- use when encountering stack traces in logs or error output. Resolves compiled/container paths to actual source file:line in the workspace.
+
 
 **What to look for** (adapt to what the repo actually contains):
 - Entry points -- where does execution start?
