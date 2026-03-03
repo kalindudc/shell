@@ -113,14 +113,16 @@ Keep plans concise:
 
 ## User Interaction
 
-After completing initial research, present findings to the user and confirm:
+After completing initial research, present a summary of findings:
 
 - The scope of the plan
 - Patterns to follow and existing features to mirror
 - Implementation approach, dependencies, and libraries
 - Validation criteria
 
-If the user answers with "continue", proceed with plan creation without additional user input.
+**If research is unambiguous** (one clear approach, obvious patterns to follow, well-defined scope): state what you found and proceed directly to plan creation.
+
+**If research is ambiguous** (multiple valid approaches, unclear scope, competing patterns, or trade-offs that need a judgment call): **STOP and wait for explicit user confirmation** before proceeding. Present the alternatives and let the user decide.
 
 ## Self-Improvement
 

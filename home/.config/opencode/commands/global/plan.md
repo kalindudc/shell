@@ -4,8 +4,6 @@ description: Creates a structured plan for implementing a vertical slice of work
 
 Load the `plan-generator` skill and follow its instructions to create a comprehensive plan for: $ARGUMENTS
 
-If the user answers with "continue", proceed with plan creation without additional user input.
-
 ## Rules
 
 - **ALWAYS** load the `plan-generator` skill first for detailed instructions
