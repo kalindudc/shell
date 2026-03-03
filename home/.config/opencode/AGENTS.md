@@ -121,7 +121,7 @@ Never kill the opencode process directly.
 
 ---
 
-The complete workflow is: `/global/explore` -> `/global/debug` -> `/global/plan` -> `/global/implement` -> `/global/pr-desc`. Each stage is optional -- use what's needed.
+The complete workflow is: `/global/explore` -> `/global/debug` -> `/global/plan` -> `/global/implement` -> `/global/pr-desc`. Each stage is optional -- use what's needed. For reviewing PRs, use `/global/pr-review`.
 
 ## Planning
 
@@ -197,3 +197,18 @@ Skills improve through a feedback system:
 4. Capture immediately -- do not batch observations. The closer to execution, the higher the quality.
 
 **CRITICAL:** Never run `/global/improve-skill`, this is human-gated with manual verification
+
+---
+
+## PR Review
+
+**When reviewing a pull request -- use `/global/pr-review`.**
+
+Do not improvise PR reviews inline. Instead:
+
+1. **Invoke the `/global/pr-review` command** with a PR number or URL as the argument.
+2. The command loads the `pr-reviewer` skill which provides a research-backed review methodology: understand the change, evaluate against a structured checklist, categorize findings with severity labels.
+3. The review output is written to `./tmp/pr-review/` -- the user decides what feedback to post.
+4. The reviewer never posts comments directly on the PR without user approval.
+
+If you cannot invoke the command directly, **load the `pr-reviewer` skill directly**.
