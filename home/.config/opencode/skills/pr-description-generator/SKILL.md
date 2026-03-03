@@ -97,7 +97,7 @@ foo/bar/
 
 - **Implementation:** [Key decisions and approach — not a line-by-line walkthrough]
 - **Edge cases:** [What tricky scenarios are handled]
-- **Testing:** [What was tested and how to run it]
+- **Testing:** [What was tested and how to run it. Omit if the diff contains no source or test files (e.g., docs-only or config-only PRs).]
 
 ## Notes for reviewers
 

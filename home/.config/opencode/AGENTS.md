@@ -121,7 +121,7 @@ Never kill the opencode process directly.
 
 ---
 
-The complete workflow is: `/global/explore` -> `/global/debug` -> `/global/plan` -> `/global/implement` -> `/global/generate-pr-description`. Each stage is optional -- use what's needed.
+The complete workflow is: `/global/explore` -> `/global/debug` -> `/global/plan` -> `/global/implement` -> `/global/pr-desc`. Each stage is optional -- use what's needed.
 
 ## Planning
 
@@ -132,7 +132,7 @@ Do not improvise a plan inline or produce ad-hoc planning output. Instead:
 1. **Invoke the `/global/plan` command** with a description of the feature or task as arguments.
 2. The command contains all necessary research steps, concept definitions, and template references. Do not manually replicate its logic.
 3. The plan is the **prerequisite to implementation** — no code changes until a plan exists and the user has approved it. Use `/global/implement` to execute the plan.
-4. The complete workflow is: `/global/plan` → `/global/implement` → `/global/generate-pr-description`
+4. The complete workflow is: `/global/plan` → `/global/implement` → `/global/pr-desc`
 
 If you cannot invoke the command directly (e.g. running as a subagent), **ask the user** to run `/global/plan` for you rather than attempting to manually replicate the planning process.
 
@@ -148,7 +148,7 @@ Do not manually implement plan tasks without loading the `implementer` skill. In
    Example: `/implement ./tmp/plan/feature-name-plan.md`
 2. The command loads the `implementer` skill which provides the execution methodology, verification loop, and retry protocol.
 3. Implementation requires an approved plan — if no plan exists, use `/global/plan` first.
-4. The complete workflow is: `/plan` → `/implement` → `/generate-pr-description`
+4. The complete workflow is: `/plan` → `/implement` → `/pr-desc`
 
 If you cannot invoke the command directly (e.g. running as a subagent), **load the `implementer` skill directly** rather than attempting to manually implement the plan.
 

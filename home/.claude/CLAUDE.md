@@ -11,7 +11,7 @@ Shared agent instructions, commands, templates, and concepts live in the OpenCod
 
 The following resources are available in the OpenCode config directory at `$HOME/.config/opencode/`:
 
-- **Commands**: `$HOME/.config/opencode/commands/` -- reusable command templates (generate-pr-description, plan, prp workflows)
+- **Commands**: `$HOME/.config/opencode/commands/` -- reusable command templates (pr-desc, plan, prp workflows)
 - **Templates**: `$HOME/.config/opencode/templates/` -- PR and plan templates
 - **Concepts**: `$HOME/.config/opencode/concepts/` -- plan concept documentation
 

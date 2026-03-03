@@ -7,12 +7,12 @@ description: Execute implementation plans by systematically completing each task
 
 ## Purpose
 
-This skill fills the workflow gap between plan creation (`/global/plan`) and PR generation (`/global/generate-pr-description`). It takes a plan file produced by the `plan-generator` skill and executes every Low-Level Task systematically — producing working code on the first pass.
+This skill fills the workflow gap between plan creation (`/global/plan`) and PR generation (`/global/pr-desc`). It takes a plan file produced by the `plan-generator` skill and executes every Low-Level Task systematically — producing working code on the first pass.
 
 The complete workflow is:
 
 ```
-/global/plan → /global/implement → /global/generate-pr-description
+/global/plan → /global/implement → /global/pr-desc
 ```
 
 ## Plan Ingestion

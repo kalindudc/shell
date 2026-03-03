@@ -29,7 +29,8 @@ You are the slow feedback loop. Agents append notes during use (fast loop). You 
    One improvement per invocation. Preserve structural invariants.
 4. Present the proposed diff to the user with rationale
 5. If approved, apply the change and mark promoted notes in SKILL_NOTES.md
-6. Review notes older than 90 days -- suggest promotion or removal
+6. Clean up promoted entries older than 7 days -- remove them from SKILL_NOTES.md (their insight already lives in SKILL.md)
+7. Review notes older than 90 days -- suggest promotion or removal
 
 ## Structural Invariants
 
