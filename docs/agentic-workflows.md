@@ -201,20 +201,21 @@ When promoting observations to principles:
 ## The Workflow Chain
 
 ```
-/explore -> /debug -> /plan -> /implement -> /generate-pr-description
+/explore -> /debug -> /plan -> /plan-review -> /implement -> /pr-desc
 ```
 
-Each stage is optional. Use what's needed.
+Each stage is optional. Use what's needed. See `docs/planning-methodology.md` for the plan -> review -> implement pipeline in detail.
 
 | Stage | Purpose | Agent | Output |
 |-------|---------|-------|--------|
 | Explore | Understand codebase | `codebase-explorer` | Report in `./tmp/` |
 | Debug | Diagnose a bug | `debugger` | Report in `./tmp/` |
 | Plan | Design implementation | default | Plan in `./tmp/plan/` |
+| Plan Review | Validate plan before implementing | default | Review in `./tmp/plan-review/` |
 | Implement | Execute plan | default | Code changes |
 | PR Description | Document changes | default | PR desc in `./tmp/pr/` |
 
-Handoffs: explorer report -> planning, debugger report -> implementation, plan -> implementation, plan + git diff -> PR description.
+Handoffs: explorer report -> planning, debugger report -> implementation, plan -> review, review -> implementation, plan + git diff -> PR description.
 
 ---
 

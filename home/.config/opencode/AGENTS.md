@@ -121,7 +121,7 @@ Never kill the opencode process directly.
 
 ---
 
-The complete workflow is: `/global/explore` -> `/global/debug` -> `/global/plan` -> `/global/implement` -> `/global/pr-desc`. Each stage is optional -- use what's needed. For reviewing PRs, use `/global/pr-review`.
+The complete workflow is: `/global/explore` -> `/global/debug` -> `/global/plan` -> `/global/plan-review` -> `/global/implement` -> `/global/pr-desc`. Each stage is optional -- use what's needed. For reviewing PRs, use `/global/pr-review`.
 
 ## Planning
 
@@ -132,7 +132,7 @@ Do not improvise a plan inline or produce ad-hoc planning output. Instead:
 1. **Invoke the `/global/plan` command** with a description of the feature or task as arguments.
 2. The command contains all necessary research steps, concept definitions, and template references. Do not manually replicate its logic.
 3. The plan is the **prerequisite to implementation** — no code changes until a plan exists and the user has approved it. Use `/global/implement` to execute the plan.
-4. The complete workflow is: `/global/plan` → `/global/implement` → `/global/pr-desc`
+4. The complete workflow is: `/global/plan` → `/global/plan-review` → `/global/implement` → `/global/pr-desc`
 
 If you cannot invoke the command directly (e.g. running as a subagent), **ask the user** to run `/global/plan` for you rather than attempting to manually replicate the planning process.
 
@@ -148,9 +148,26 @@ Do not manually implement plan tasks without loading the `implementer` skill. In
    Example: `/implement ./tmp/plan/feature-name-plan.md`
 2. The command loads the `implementer` skill which provides the execution methodology, verification loop, and retry protocol.
 3. Implementation requires an approved plan — if no plan exists, use `/global/plan` first.
-4. The complete workflow is: `/plan` → `/implement` → `/pr-desc`
+4. The complete workflow is: `/plan` → `/plan-review` → `/implement` → `/pr-desc`
 
 If you cannot invoke the command directly (e.g. running as a subagent), **load the `implementer` skill directly** rather than attempting to manually implement the plan.
+
+---
+
+## Plan Review
+
+**When reviewing an implementation plan before executing it -- use `/global/plan-review`.**
+
+Do not skip plan review for complex or high-risk plans. Instead:
+
+1. **Invoke the `/global/plan-review` command** with a path to the plan file as the argument.
+   Example: `/global/plan-review ./tmp/plan/feature-name-plan.md`
+2. The command loads the `plan-reviewer` skill which provides a structured review methodology adapted from Fagan Inspection, IEEE 1028, ATAM, and NASA PDR.
+3. The review verifies factual claims, checks referenced files/APIs exist, evaluates feasibility and risk, and produces a structured report.
+4. The review output is written to `./tmp/plan-review/` -- the user decides whether to proceed to implementation.
+5. Plan review is optional but recommended for complex plans. Simple plans may skip directly to `/global/implement`.
+
+If you cannot invoke the command directly (e.g. running as a subagent), **load the `plan-reviewer` skill directly** rather than attempting ad-hoc plan review.
 
 ---
 
