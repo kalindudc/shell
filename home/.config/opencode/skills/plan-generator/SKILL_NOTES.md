@@ -19,6 +19,12 @@
 
 ## Edge Cases
 
+### 2026-03-02 | Edge Case | plan-generator
+**Context:** Researching design options for a tiered CDN vanity domain feature.
+**Observation:** Initial design options missed a critical data dimension -- generated DNS names are per (edge, backend) pair, not per backend alone. The user caught the error; multiple rounds of scope clarification were needed before the plan was correct.
+**Takeaway:** When a feature involves generated/derived names, always trace the full parameter space of the naming function (e.g. `fqdn(edge, backend)`) to understand cardinality before proposing config structures.
+**Actionability:** ready-to-promote
+
 ## Successful Patterns
 
 ### 2026-03-02 | Successful Pattern | plan-generator
@@ -32,6 +38,12 @@
 **Observation:** When the second plan depends on understanding gathered for the first, the research phase can be shared -- web research informed both plans.
 **Takeaway:** Reuse research across related plans in the same session rather than re-gathering independently.
 **Actionability:** needs-more-data
+
+### 2026-03-02 | Successful Pattern | plan-generator
+**Context:** After writing a plan for tiered CDN vanity domains, the user requested a concrete table of all generated DNS names.
+**Observation:** Producing a table of (edge, backend, generated_name, proposed_vanity) required tracing through config files, .edge files, and compiler defaults -- but was highly valuable for the user to create external DNS records.
+**Takeaway:** For plans involving DNS/naming changes, always produce a concrete table of all affected names as a deliverable alongside the plan.
+**Actionability:** ready-to-promote
 
 ## Open Questions
 

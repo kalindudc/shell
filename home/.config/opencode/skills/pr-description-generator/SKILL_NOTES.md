@@ -63,6 +63,12 @@
 **Takeaway:** The `git_diff_summary` tool's auto-categorization is the fastest way to determine PR type (docs-only, source-only, mixed); prefer it over manual inspection.
 **Actionability:** ready-to-promote
 
+### 2026-03-03 | Successful Pattern | pr-description-generator
+**Context:** Generating a PR description for a DNS zone config-only PR (1 file, 28 insertions / 3 deletions — all in `zones/shopifystaging.com.yml`, adding 4 CNAME records for tiered CDN backends in staging).
+**Observation:** The `git_diff_summary` tool correctly categorized the zone YAML file as "config", and the Testing subsection was omitted since there are no tests for a pure DNS config change. This extends the existing "omit Testing for docs-only PRs" pattern to config-only PRs as well — the rule is really "omit Testing when there are no source/test files changed."
+**Takeaway:** The "omit Testing" heuristic should key off "no source or test files in the diff" rather than "docs-only"; config-only PRs are a second confirmed category where it applies.
+**Actionability:** ready-to-promote
+
 ## Open Questions
 
 ### 2026-02-27 | Open Question | pr-description-generator
