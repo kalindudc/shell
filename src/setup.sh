@@ -343,6 +343,11 @@ main() {
     mark_step_complete "SETUP_GH_AUTH"
   fi
 
+  # Step 10: Bootstrap OpenCode skill notes
+  run_step "BOOTSTRAP_SKILL_NOTES" \
+    "Bootstrapping OpenCode skill notes" \
+    "${SHELL_DIR}/src/scripts/bootstrap-skill-notes.sh"
+
   # Mark completion
   if command -v gdate &>/dev/null; then
     gdate > "${HOME}/.shell_setup_complete"

@@ -48,4 +48,5 @@ home/.config/opencode/*
 !home/.config/opencode/scripts/
 !home/.config/opencode/tools/
 
-
+# SKILL_NOTES.md files are local observations, bootstrapped by src/scripts/bootstrap-skill-notes.sh
+home/.config/opencode/skills/*/SKILL_NOTES.md
