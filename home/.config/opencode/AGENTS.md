@@ -201,6 +201,22 @@ If you cannot invoke the command directly (e.g. running as a subagent), **load t
 
 ---
 
+## Memory Analysis
+
+**When analyzing past session data, usage patterns, or costs -- use `/global/memory`.**
+
+Do not manually parse memory files inline. Instead:
+
+1. **Invoke the `/global/memory` command** with a question or topic as arguments.
+   Example: `/global/memory what is my most used model?`
+2. The command loads the `memory-analyzer` skill which queries session data from `~/.config/opencode/memory/`.
+3. For quick aggregate stats, the analyzer reads `index.json`. For detailed analysis, it scans individual session files.
+4. Memory analysis is read-only -- it never modifies session recordings.
+
+If you cannot invoke the command directly (e.g. running as a subagent), **load the `memory-analyzer` skill directly**.
+
+---
+
 ## Skill Improvement
 
 **After using any skill, capture observations in its SKILL_NOTES.md.**

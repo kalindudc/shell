@@ -116,6 +116,21 @@ grep '^\[subagent:'    session.md   # all subagent work
 
 Subagent sessions (detected by `"subagent"` in the title) are linked to the most recently created parent session in the same project. Subagent output is appended to the parent's `.md` file -- no separate files are created. On subagent completion, the mapping is cleaned up without triggering parent finalization.
 
+## Analysis
+
+Session data can be queried through the `memory-analyzer` skill and `/global/memory` command:
+
+```sh
+/global/memory what is my most used model?
+/global/memory estimate my total LLM spending
+/global/memory which skills do I use most?
+/global/memory show sessions from last week
+```
+
+The analyzer reads `index.json` for aggregate stats, individual `.json` files for detailed metrics, and `.md` logs for conversation content. It never modifies memory files.
+
+See `~/.config/opencode/skills/memory-analyzer/SKILL.md` for the full methodology.
+
 ## Implementation
 
 The plugin lives at `home/.config/opencode/plugins/session-recorder.ts`. See the [plugin README](../../home/.config/opencode/plugins/README.md) for configuration and testing.
