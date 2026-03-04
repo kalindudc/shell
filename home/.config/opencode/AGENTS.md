@@ -4,7 +4,7 @@
 
 **When reality contradicts your model, stop. Fix the model before doing anything else.**
 
----
+**Never kill the opencode process directly.**
 
 ## Before Every Action
 
@@ -22,12 +22,25 @@ MATCHES: [yes/no]
 THEREFORE: [next step, or STOP if unexpected]
 ```
 
+**Example:**
+
+```
+DOING: Adding error handling to the parseConfig function
+EXPECT: The function returns a Result type instead of throwing
+IF WRONG: The function signature may not support Result; need to check return type callers
+
+RESULT: Edit succeeded, but 3 callers now have type errors
+MATCHES: No -- expected clean compilation
+THEREFORE: STOP. Need to update callers before proceeding.
+```
+
 ---
 
 ## On Failure
 
 **Stop. Words first, not another tool call.**
 
+0. Reproduce the failure (run the command/test that triggered it)
 1. State what failed (exact error)
 2. State your theory
 3. State proposed fix and expected outcome
@@ -45,6 +58,8 @@ Never silently retry. Failure is information.
 - Read the output
 - Confirm it worked
 
+For destructive operations (file deletion, schema changes, irreversible git commands), verify after *every* action, not every 3.
+
 More than 5 actions without verification = accumulating unjustified beliefs.
 
 ---
@@ -57,6 +72,8 @@ More than 5 actions without verification = accumulating unjustified beliefs.
 - Scope change discovered
 - Uncertainty + consequence
 
+For irreversible or high-stakes decisions, enumerate 2-3 alternatives with tradeoffs before committing or asking.
+
 **Cheap to ask. Expensive to guess wrong.**
 
 ---
@@ -68,6 +85,7 @@ Before removing/changing anything, explain why it exists.
 - "Looks unused" → Prove it. Trace references.
 - "Seems redundant" → What problem was it solving?
 - Can't explain it? Don't touch it.
+- Can't determine the purpose after ~5 minutes or 3 search attempts? Ask the user rather than blocking indefinitely.
 
 ---
 
@@ -75,7 +93,7 @@ Before removing/changing anything, explain why it exists.
 
 - **No premature abstraction**: Need 3 real examples before extracting
 - **No silent fallbacks**: `or {}` hides failures. Let it crash.
-- **One test at a time**: Run it, watch it pass, then write the next
+- **TDD**: Write the test first. Verify it fails. Implement the code. Verify the test passes. Then write the next test.
 
 ---
 
@@ -89,6 +107,8 @@ When stopping, leave:
 4. Recommendations
 5. Files touched
 
+If you detect the conversation exceeding ~50 tool calls or significant context length, proactively offer a handoff summary to the user, even mid-task.
+
 ---
 
 ## Communication
@@ -101,7 +121,7 @@ When stopping, leave:
 ## Context Decay
 
 Every ~10 actions in long tasks:
-- Scroll back to original goal
+- Re-state the original goal and current constraints in your next output
 - Verify you still understand why
 - If not, stop and ask the User
 
@@ -113,133 +133,26 @@ You optimize for completion. This drives you to batch and report success. Resist
 
 **Do less. Verify more. Report what you observed.**
 
+When you feel the urge to say "done" or "this should work", treat that as a trigger to run one more verification step before reporting.
+
 When confused: say so. Uncertainty expressed > uncertainty hidden.
 
----
-
-Never kill the opencode process directly.
-
----
+## Workflow Routing
 
 The complete workflow is: `/global/explore` -> `/global/debug` -> `/global/plan` -> `/global/plan-review` -> `/global/implement` -> `/global/pr-desc`. Each stage is optional -- use what's needed. For reviewing PRs, use `/global/pr-review`.
 
-## Planning
+For changes affecting 1-2 files with obvious implementation (typo fixes, simple config changes, small bug fixes with clear root cause), inline execution is acceptable. Use the full workflow for multi-file features, non-obvious bugs, or architectural changes.
 
-**When planning any feature, task, or implementation — always use `/global/plan`.**
+Always use the command to invoke the skill. If unavailable (e.g., running as a subagent), load the skill directly. Never improvise inline. `/global/improve-skill` is human-gated -- never run it autonomously.
 
-Do not improvise a plan inline or produce ad-hoc planning output. Instead:
-
-1. **Invoke the `/global/plan` command** with a description of the feature or task as arguments.
-2. The command contains all necessary research steps, concept definitions, and template references. Do not manually replicate its logic.
-3. The plan is the **prerequisite to implementation** — no code changes until a plan exists and the user has approved it. Use `/global/implement` to execute the plan.
-4. The complete workflow is: `/global/plan` → `/global/plan-review` → `/global/implement` → `/global/pr-desc`
-
-If you cannot invoke the command directly (e.g. running as a subagent), **ask the user** to run `/global/plan` for you rather than attempting to manually replicate the planning process.
-
----
-
-## Implementation
-
-**When implementing a plan — always use `/global/implement` (or `/implement` in a project context).**
-
-Do not manually implement plan tasks without loading the `implementer` skill. Instead:
-
-1. **Use the `/implement` command** with the path to the plan file as the argument.
-   Example: `/implement ./tmp/plan/feature-name-plan.md`
-2. The command loads the `implementer` skill which provides the execution methodology, verification loop, and retry protocol.
-3. Implementation requires an approved plan — if no plan exists, use `/global/plan` first.
-4. The complete workflow is: `/plan` → `/plan-review` → `/implement` → `/pr-desc`
-
-If you cannot invoke the command directly (e.g. running as a subagent), **load the `implementer` skill directly** rather than attempting to manually implement the plan.
-
----
-
-## Plan Review
-
-**When reviewing an implementation plan before executing it -- use `/global/plan-review`.**
-
-Do not skip plan review for complex or high-risk plans. Instead:
-
-1. **Invoke the `/global/plan-review` command** with a path to the plan file as the argument.
-   Example: `/global/plan-review ./tmp/plan/feature-name-plan.md`
-2. The command loads the `plan-reviewer` skill which provides a structured review methodology adapted from Fagan Inspection, IEEE 1028, ATAM, and NASA PDR.
-3. The review verifies factual claims, checks referenced files/APIs exist, evaluates feasibility and risk, and produces a structured report.
-4. The review output is written to `./tmp/plan-review/` -- the user decides whether to proceed to implementation.
-5. Plan review is optional but recommended for complex plans. Simple plans may skip directly to `/global/implement`.
-
-If you cannot invoke the command directly (e.g. running as a subagent), **load the `plan-reviewer` skill directly** rather than attempting ad-hoc plan review.
-
----
-
-## Exploration
-
-**When exploring an unfamiliar codebase or service -- use `/global/explore`.**
-
-Do not improvise codebase exploration inline. Instead:
-
-1. **Invoke the `/global/explore` command** with a description of what to explore or a specific question as arguments.
-2. The command loads the `codebase-explorer` skill which provides a structured exploration approach -- start with structure, narrow hierarchically, research what you don't know.
-3. For quick questions about the current codebase, use `@codebase-explorer` to invoke the explorer subagent directly.
-4. Exploration is read-only for source files -- analysis artifacts may be written to `./tmp/` only.
-
-If you cannot invoke the command directly (e.g. running as a subagent), **load the `codebase-explorer` skill directly** rather than attempting ad-hoc exploration.
-
----
-
-## Debugging
-
-**When investigating a bug or unexpected behavior -- use `@debugger` or `/global/debug`.**
-
-Do not improvise debugging inline. Instead:
-
-1. **Use `@debugger`** to invoke the debugger subagent for a focused investigation session, or invoke `/global/debug` with a description of the issue.
-2. The debugger loads the `debugger` skill which provides a scientific debugging approach: reproduce first, explain before hypothesizing, backtrack when hypotheses fail, verify with tests.
-3. The debugger does not modify source files -- it diagnoses and writes artifacts to `./tmp/` only. Switch back to the `build` agent to implement the fix.
-4. The investigation report in `./tmp/` serves as the handoff artifact for the build agent.
-
-If you cannot invoke the command directly (e.g. running as a subagent), **load the `debugger` skill directly** rather than attempting ad-hoc debugging.
-
----
-
-## Memory Analysis
-
-**When analyzing past session data, usage patterns, or costs -- use `/global/memory`.**
-
-Do not manually parse memory files inline. Instead:
-
-1. **Invoke the `/global/memory` command** with a question or topic as arguments.
-   Example: `/global/memory what is my most used model?`
-2. The command loads the `memory-analyzer` skill which queries session data from `~/.config/opencode/memory/`.
-3. For quick aggregate stats, the analyzer reads `index.json`. For detailed analysis, it scans individual session files.
-4. Memory analysis is read-only -- it never modifies session recordings.
-
-If you cannot invoke the command directly (e.g. running as a subagent), **load the `memory-analyzer` skill directly**.
-
----
-
-## Skill Improvement
-
-**After using any skill, capture observations in its SKILL_NOTES.md.**
-
-Skills improve through a two-loop feedback system. The `skill-improver` skill defines both protocols.
-
-**Fast loop** — After skill execution, use `@skill-improver` to capture observations. If unavailable, append directly using the entry format in SKILL_NOTES.md. Capture immediately; batch multiple observations from the same session into one entry.
-
-**Slow loop** — Human-gated. Run `/global/improve-skill` to review accumulated notes and propose SKILL.md changes.
-
-**CRITICAL:** Never run `/global/improve-skill`, this is human-gated with manual verification
-
----
-
-## PR Review
-
-**When reviewing a pull request -- use `/global/pr-review`.**
-
-Do not improvise PR reviews inline. Instead:
-
-1. **Invoke the `/global/pr-review` command** with a PR number or URL as the argument.
-2. The command loads the `pr-reviewer` skill which provides a research-backed review methodology: understand the change, evaluate against a structured checklist, categorize findings with severity labels.
-3. The review output is written to `./tmp/pr-review/` -- the user decides what feedback to post.
-4. The reviewer never posts comments directly on the PR without user approval.
-
-If you cannot invoke the command directly, **load the `pr-reviewer` skill directly**.
+| Task | Command | Skill | Notes |
+|------|---------|-------|-------|
+| Planning | `/global/plan` | plan-generator | Prerequisite to implementation; no code changes until approved |
+| Plan Review | `/global/plan-review` | plan-reviewer | Optional for simple plans; recommended for complex/high-risk. Single-agent review cannot replace multi-perspective inspection; supplement with human review for high-risk plans |
+| Implementation | `/global/implement` | implementer | Requires approved plan; `/global/plan` first if none exists |
+| Debugging | `/global/debug` or `@debugger` | debugger | Read-only; writes to `./tmp/` only |
+| Exploration | `/global/explore` or `@codebase-explorer` | codebase-explorer | Read-only; writes to `./tmp/` only |
+| PR Review | `/global/pr-review` | pr-reviewer | Never post comments without user approval |
+| PR Description | `/global/pr-desc` | pr-description-generator | -- |
+| Memory Analysis | `/global/memory` | memory-analyzer | Read-only; never modifies session files |
+| Skill Notes | `@skill-improver` | skill-improver | Fast loop only; slow loop (`/global/improve-skill`) is human-gated |
