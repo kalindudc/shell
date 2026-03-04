@@ -611,6 +611,10 @@ describe("session-recorder plugin", () => {
     await fireEvent("message.updated", {
       info: { id: "msg_m1", sessionID: METRICS_SESSION, role: "user", agent: "build", model: { modelID: "claude-opus-4-6" } },
     })
+    // Assistant message fires twice: first at creation (no tokens), then at completion (with tokens)
+    await fireEvent("message.updated", {
+      info: { id: "msg_m2", sessionID: METRICS_SESSION, role: "assistant", modelID: "claude-opus-4-6" },
+    })
     await fireEvent("message.updated", {
       info: { id: "msg_m2", sessionID: METRICS_SESSION, role: "assistant", modelID: "claude-opus-4-6", tokens: { input: 500, output: 200, cache: { read: 100, write: 50 } } },
     })
@@ -631,7 +635,7 @@ describe("session-recorder plugin", () => {
     }
 
     expect(metricsJson).not.toBeNull()
-    expect(metricsJson.project).toBe("metrics-project")
+    expect(metricsJson.project).toBe("metrics") // derived from path.basename("/tmp/metrics")
     expect(metricsJson.title).toBe("Metrics Test Session")
     expect(metricsJson.outcome).toBe("completed")
     expect(metricsJson.model).toBe("claude-opus-4-6")

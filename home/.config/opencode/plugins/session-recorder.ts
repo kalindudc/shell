@@ -268,7 +268,8 @@ async function lateInit(sessionId: string, deps: Deps): Promise<SessionState | u
 
     const startTime = toISO(info.time?.created)
     const fp = sessionBasePath(startTime) + ".md"
-    const state = makeState(sessionId, fp, info.projectID ?? "unknown", info.directory ?? "", info.title ?? sessionId, startTime)
+    const project = info.directory ? path.basename(info.directory) : info.projectID ?? "unknown"
+    const state = makeState(sessionId, fp, project, info.directory ?? "", info.title ?? sessionId, startTime)
 
     if (isSubagent(state.title)) {
       const parent = findParent(sessionId, state.project)
@@ -310,7 +311,8 @@ async function onSessionCreated(props: any, deps: Deps): Promise<void> {
 
   const startTime = toISO(info.time?.created)
   const fp = sessionBasePath(startTime) + ".md"
-  const state = makeState(info.id, fp, info.projectID ?? "unknown", info.directory ?? "", info.title ?? info.id, startTime)
+  const project = info.directory ? path.basename(info.directory) : info.projectID ?? "unknown"
+  const state = makeState(info.id, fp, project, info.directory ?? "", info.title ?? info.id, startTime)
 
   if (isSubagent(state.title)) {
     const parent = findParent(info.id, state.project)
@@ -333,23 +335,33 @@ async function onMessageUpdated(props: any, deps: Deps): Promise<void> {
   const state = await resolveOrInit(info.sessionID, deps)
   if (!state) return
 
-  const msgId = info.id ?? `${info.sessionID}-${state.messageCount}`
-  if (state.seenMessages.has(msgId)) return
-  state.seenMessages.add(msgId)
-  state.messageCount += 1
-
+  // Extract metadata on every update -- later events carry final values.
+  // message.updated fires at creation (tokens=0) and again at completion (tokens populated).
   if (info.role === "user") {
     if (info.agent && !state.agent) state.agent = info.agent
     if (info.model?.modelID && !state.model) state.model = info.model.modelID
   } else if (info.role === "assistant") {
     if (info.modelID && !state.model) state.model = info.modelID
-    if (info.tokens) {
+  }
+
+  // Accumulate tokens only once per message -- skip the initial zero-value event,
+  // record when real values arrive (input+output > 0), ignore further duplicates.
+  const msgId = info.id ?? `${info.sessionID}-${state.messageCount}`
+  if (info.tokens) {
+    const total = (info.tokens.input ?? 0) + (info.tokens.output ?? 0)
+    if (total > 0 && !state.finalizedParts.has(`tokens:${msgId}`)) {
+      state.finalizedParts.add(`tokens:${msgId}`)
       state.tokenUsage.input += info.tokens.input ?? 0
       state.tokenUsage.output += info.tokens.output ?? 0
       state.tokenUsage.cacheRead += info.tokens.cache?.read ?? 0
       state.tokenUsage.cacheWrite += info.tokens.cache?.write ?? 0
     }
   }
+
+  // Dedup: only count and log each message once
+  if (state.seenMessages.has(msgId)) return
+  state.seenMessages.add(msgId)
+  state.messageCount += 1
 
   await appendToLog(state.filePath, `\n[${info.role} ${nowHHMMSS()}]\n`)
 }
