@@ -48,6 +48,7 @@ Generate PR descriptions that maximize reviewability and merge probability throu
 - If a plan file exists in `./tmp/plan/`, read it to understand the intent behind the changes. The plan's High-Level Objective is often the best source for the Summary's "Why" section, if many plans are found and you are unsure which to use, prompt the user for clarification rather than guessing or ignore the plan entirely.
 - If the branch has been pushed, check CI status. Note pass/fail in Technical Details if relevant.
 - **Verify description-code alignment** -- ensure every claim matches actual code changes
+- If a prior draft exists in `./tmp/pr/`, delete it and generate from scratch -- stale drafts anchor on outdated claims
 
 ### 5. Generate the PR description using the template below
 

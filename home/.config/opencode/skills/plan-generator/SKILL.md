@@ -24,12 +24,15 @@ Begin with thorough research to gather all necessary context:
 
 ### 2. Web Research
 - Research the concept, library documentation, and sample implementations
+- Research platform/framework extension points and API constraints before drafting architecture -- feasibility shapes design
+- Prefer named formal standards and peer-reviewed methodologies over generic "best practices" articles
 
 ### 3. Template Analysis
 - Review past plans in `./tmp/plan/` for consistency and inspiration, but, follow our concept, standard and template
 
 ### 4. Codebase Exploration
 - Identify relevant files, directories, and patterns to follow
+- Read full content of ALL pattern files (not just the closest analog) -- consistency comes from breadth
 - Use the `codebase-explorer` skill for systematic research if the repo is unfamiliar
 
 ### Available Custom Tools
@@ -113,16 +116,13 @@ Keep plans concise:
 
 ## User Interaction
 
-After completing initial research, present a summary of findings:
+After completing initial research, present a summary: scope, patterns to follow, approach, and validation criteria.
 
-- The scope of the plan
-- Patterns to follow and existing features to mirror
-- Implementation approach, dependencies, and libraries
-- Validation criteria
+**If research is unambiguous**: state what you found and proceed directly to plan creation.
 
-**If research is unambiguous** (one clear approach, obvious patterns to follow, well-defined scope): state what you found and proceed directly to plan creation.
+**If scope is abstract or ambiguous**: present a concrete architectural strawman early to force clarification -- don't wait until the full plan is drafted. STOP and wait for user confirmation before proceeding.
 
-**If research is ambiguous** (multiple valid approaches, unclear scope, competing patterns, or trade-offs that need a judgment call): **STOP and wait for explicit user confirmation** before proceeding. Present the alternatives and let the user decide.
+Plans always produce working software. Research informs Implementation Notes; Low-Level Tasks describe code to write (CREATE/UPDATE files), never report sections.
 
 ## Self-Improvement
 

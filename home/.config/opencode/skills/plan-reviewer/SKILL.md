@@ -51,7 +51,7 @@ Evaluate each dimension. Each produces findings with severity labels. Skip dimen
 
 **Correctness** ("compare output against requirements"):
 - Do referenced files, functions, classes exist? (Use Read, ast_query, Glob)
-- Do referenced libraries/APIs exist and support described usage? (Use webfetch)
+- Do referenced libraries/APIs exist and support described usage? Check installed source/type definitions as ground truth (docs omit signature details). Use webfetch for external APIs.
 - Are code snippets syntactically valid?
 - If the plan cites research, verify claims match sources (use webfetch)
 

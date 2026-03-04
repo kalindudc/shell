@@ -11,10 +11,19 @@ Review a skill's usage observations and propose targeted improvements. You read 
 
 You are the slow feedback loop. Agents append notes during use (fast loop). You review and propose changes (slow loop). The human gates every change.
 
-## Approach
+## Fast Loop (Appending Notes)
 
-1. Read the target skill's SKILL.md and SKILL_NOTES.md
-   - Entries in SKILL_NOTES.md follow a structured format (date, category, context, observation, takeaway, actionability). Use the actionability field to prioritize: "ready-to-promote" entries are candidates for improvement. "needs-more-data" entries need more occurrences. "question-for-user" entries should be surfaced to the user before acting.
+When invoked to append an observation (not review/improve), follow this protocol:
+
+1. **Pre-check**: Read the target skill's SKILL.md. If the observation restates an existing instruction, do not append.
+2. **Deduplicate**: Read SKILL_NOTES.md. If a promoted entry already captures this insight, do not append.
+3. **Batch per session**: If multiple observations come from the same task, write ONE entry with multiple bullets under Observation/Takeaway — not separate entries.
+4. **Tag honestly**: Use `needs-more-data` only for genuinely novel observations with <2 data points. If 2+ entries already exist for the same pattern, tag `ready-to-promote`.
+5. **Self-observation**: When observing the skill-improver itself, append directly to `skill-improver/SKILL_NOTES.md` — do not invoke `@skill-improver` recursively.
+
+## Slow Loop (Reviewing Notes)
+
+1. Read the target skill's SKILL.md and SKILL_NOTES.md. Prioritize by actionability: `ready-to-promote` first, then `question-for-user` (surface to user), then `needs-more-data`.
 2. Identify patterns in the notes:
    - Recurring edge cases -> should become instructions in SKILL.md
    - Successful patterns -> should become recommended approaches
@@ -26,11 +35,12 @@ You are the slow feedback loop. Agents append notes during use (fast loop). You 
    - **Compress**: Same meaning, fewer words. Tighten existing prose.
    - **Append**: New principle not covered by existing instructions. Last resort.
    Before appending, apply the signal-to-noise check: could existing lines be removed or tightened instead? Improve what's there before adding more.
-   One improvement per invocation. Preserve structural invariants.
+   One improvement per skill per invocation. In batch mode (no specific skill), collect all proposals before presenting. Preserve structural invariants.
 4. Present the proposed diff to the user with rationale
 5. If approved, apply the change and mark promoted notes in SKILL_NOTES.md
-6. Clean up promoted entries older than 7 days -- remove them from SKILL_NOTES.md (their insight already lives in SKILL.md)
+6. Collapse promoted entries to: `Promoted YYYY-MM-DD: [topic] → [target section]`. Delete fully after 7 days.
 7. Review notes older than 90 days -- suggest promotion or removal
+8. Re-evaluate stale `needs-more-data`: if 2+ entries exist for the same pattern, upgrade to `ready-to-promote`
 
 ## Structural Invariants
 
@@ -48,7 +58,7 @@ These must be preserved in every edit:
 
 ## Self-Improvement
 
-After execution, use `@skill-improver` to capture observations about this skill's performance. Before execution, check `SKILL_NOTES.md` for known edge cases.
+Before execution, check `SKILL_NOTES.md` for known edge cases. For self-observation, see Fast Loop step 5 — append directly, do not recurse.
 
 ## Rules
 

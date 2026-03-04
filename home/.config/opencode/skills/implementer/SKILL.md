@@ -9,11 +9,7 @@ description: Execute implementation plans by systematically completing each task
 
 This skill fills the workflow gap between plan creation (`/global/plan`) and PR generation (`/global/pr-desc`). It takes a plan file produced by the `plan-generator` skill and executes every Low-Level Task systematically — producing working code on the first pass.
 
-The complete workflow is:
-
-```
-/global/plan → /global/implement → /global/pr-desc
-```
+Workflow: `/global/plan` → `/global/implement` → `/global/pr-desc`
 
 ## Plan Ingestion
 
@@ -68,8 +64,9 @@ Guidelines:
 - Prefer editing existing files over creating new ones
 - Follow the project's coding standards (from the plan's Implementation Notes)
 - Follow the plan's specific instructions for each task
-- Do NOT deviate from the plan without user approval
-- When you see a simpler alternative to the plan's approach, surface it to the user before committing
+- When multiple tasks target the same file, treat the plan as a specification and batch implementation -- the plan's value is in completeness, not edit granularity
+- Do NOT deviate from the plan without user approval -- surface simpler alternatives before committing
+- When a plan conflicts with tooling/environment conventions, research the convention before overriding it
 
 ### Step 4: Verify
 

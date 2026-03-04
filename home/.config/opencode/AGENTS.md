@@ -205,13 +205,11 @@ If you cannot invoke the command directly (e.g. running as a subagent), **load t
 
 **After using any skill, capture observations in its SKILL_NOTES.md.**
 
-Skills improve through a feedback system:
+Skills improve through a two-loop feedback system. The `skill-improver` skill defines both protocols.
 
-**Fast loop -- Capture observations immediately after skill execution:**
-1. Use `@skill-improver` to invoke the skill-improver subagent with context about what happened.
-2. The agent appends a structured entry to the skill's `SKILL_NOTES.md` (date, category, observation, takeaway).
-3. If `@skill-improver` is unavailable, append directly using the entry format in SKILL_NOTES.md.
-4. Capture immediately -- do not batch observations. The closer to execution, the higher the quality.
+**Fast loop** — After skill execution, use `@skill-improver` to capture observations. If unavailable, append directly using the entry format in SKILL_NOTES.md. Capture immediately; batch multiple observations from the same session into one entry.
+
+**Slow loop** — Human-gated. Run `/global/improve-skill` to review accumulated notes and propose SKILL.md changes.
 
 **CRITICAL:** Never run `/global/improve-skill`, this is human-gated with manual verification
 

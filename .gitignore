@@ -40,6 +40,7 @@ home/.claude/*
 
 # ignore opencode files, with some exceptions
 home/.config/opencode/*
+!home/.config/opencode/tui.json
 !home/.config/opencode/commands/
 !home/.config/opencode/concepts/
 !home/.config/opencode/templates/
@@ -47,6 +48,8 @@ home/.config/opencode/*
 !home/.config/opencode/skills/
 !home/.config/opencode/scripts/
 !home/.config/opencode/tools/
+!home/.config/opencode/plugins/
+!home/.config/opencode/session-recorder.json
 
 # SKILL_NOTES.md files are local observations, bootstrapped by src/scripts/bootstrap-skill-notes.sh
 home/.config/opencode/skills/*/SKILL_NOTES.md

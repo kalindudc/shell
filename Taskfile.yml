@@ -100,6 +100,17 @@ tasks:
         fi
       - bats test/unit/*.bats
 
+  test:opencode:
+    desc: "Run OpenCode plugin tests with Bun"
+    cmds:
+      - |
+        BUN="${HOME}/.bun/bin/bun"
+        if ! "$BUN" --version >/dev/null 2>&1; then
+          echo "Error: bun not found at ${BUN}"
+          exit 1
+        fi
+      - ${HOME}/.bun/bin/bun test ${HOME}/.config/opencode/plugins/test/*.test.ts
+
   test:integration:
     desc: "Run integration tests with Docker (requires 'task build' first). Use CLI_ARGS to specify platforms: task test:integration -- ubuntu-22 debian"
     cmds:

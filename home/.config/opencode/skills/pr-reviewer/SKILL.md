@@ -15,11 +15,11 @@ Goal: "Would merging this improve the codebase?"
 
 ### 1. Fetch PR context
 
-Pre-requisites already resolved the PR and checked out the remote branch.
+Pre-requisites already resolved the PR and checked out the remote branch. If `gh pr checkout` fails (deleted branch), use `gh pr view --json headRefOid` + `git checkout <sha> --detach`.
 
 - `gh pr view <number> --json title,body,author,baseRefName,headRefName,files,additions,deletions,url`
-- `gh pr diff <number>` (use three-dot diff `git diff main...HEAD` when branch has merged main)
-- `git_diff_summary` for file categorization
+- `gh pr diff <number>` -- the authoritative diff source. Prefer over `git-diff-summary` for scope (it can include merged-in changes on diverged branches).
+- For merged-main branches: use three-dot diff (`git diff base...HEAD`) and `gh pr view --json commits` to disambiguate PR-specific changes from merged-in noise
 - `git_blame_context` on critical changed regions for prior change rationale
 - If PR references an issue, fetch via `gh issue view`
 
@@ -34,6 +34,8 @@ Pre-requisites already resolved the PR and checked out the remote branch.
 ### 3. Evaluate
 
 Check only dimensions that apply: design, functionality, complexity, tests, naming, style, docs.
+
+Scan for hidden artifacts: whitespace/alignment hunks hiding unrelated additions, AI-injected URL tracking params (`?utm_source=openai`), dead code introduced via conflict resolution.
 
 ### 4. Validate
 
