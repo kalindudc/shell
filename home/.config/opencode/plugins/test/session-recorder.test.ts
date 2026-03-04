@@ -248,6 +248,20 @@ describe("session-recorder plugin", () => {
     expect(content).toMatch(/\[system \d{2}:\d{2}:\d{2}\] context compacted/)
   })
 
+  test("session.updated renames session and logs to markdown", async () => {
+    await fireEvent("session.updated", {
+      info: {
+        id: SESSION_ID,
+        title: "Renamed Test Session",
+        time: { updated: Date.now() },
+      },
+    })
+
+    const files = await findSessionLogs()
+    const content = await readFile(files[0], "utf-8")
+    expect(content).toMatch(/\[system \d{2}:\d{2}:\d{2}\] renamed: "Renamed Test Session"/)
+  })
+
   test("session.idle finalizes session with correct metadata", async () => {
     await fireEvent("session.idle", {
       sessionID: SESSION_ID,
@@ -270,6 +284,7 @@ describe("session-recorder plugin", () => {
     expect(jsons.length).toBe(1)
     const jsonData = JSON.parse(await readFile(jsons[0], "utf-8"))
     expect(jsonData.session_id).toBe(SESSION_ID)
+    expect(jsonData.title).toBe("Renamed Test Session") // updated by session.updated before finalization
     expect(jsonData.outcome).toBe("completed")
     expect(jsonData.compacted).toBe(true)
     expect(jsonData.skills_used).toContain("debugger")

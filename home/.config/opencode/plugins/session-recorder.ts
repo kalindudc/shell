@@ -442,6 +442,22 @@ async function onSessionDeleted(props: any, deps: Deps): Promise<void> {
   }
 }
 
+async function onSessionUpdated(props: any, deps: Deps): Promise<void> {
+  const info = props?.info
+  if (!info?.id) return
+
+  const state = resolveSession(info.id)
+  if (!state) return
+
+  const newTitle = info.title
+  if (newTitle && newTitle !== state.title) {
+    const oldTitle = state.title
+    state.title = newTitle
+    await appendToLog(state.filePath, `\n[system ${nowHHMMSS()}] renamed: "${newTitle}"\n`)
+    await debugLog(`session.updated: ${info.id} renamed "${oldTitle}" -> "${newTitle}"`, "info")
+  }
+}
+
 async function onToolExecuteAfter(
   input: { tool: string; sessionID: string; callID: string; args: any },
   output: { title: string; output: string; metadata: any },
@@ -470,6 +486,7 @@ const EVENT_HANDLERS: Record<string, (props: any, deps: Deps) => Promise<void>> 
   "session.error": onSessionError,
   "session.compacted": onSessionCompacted,
   "session.deleted": onSessionDeleted,
+  "session.updated": onSessionUpdated,
 }
 
 // =========================================================================
