@@ -1,5 +1,5 @@
 /**
- * Session Recorder Plugin for OpenCode (v0.2.0)
+ * Session Recorder Plugin for OpenCode (v0.2.1)
  *
  * Dual-format architecture: .json for metrics, .md for conversation logs.
  * Zero external dependencies beyond @opencode-ai/plugin.
@@ -13,7 +13,7 @@ import { existsSync } from "fs"
 import path from "path"
 
 // -- Config & Constants --
-const PLUGIN_VERSION = "0.2.0"
+const PLUGIN_VERSION = "0.2.1"
 
 interface SessionRecorderConfig {
   enabled: boolean
@@ -83,7 +83,7 @@ interface SessionState {
   filesTouched: Set<string>
   messageCount: number
   compacted: boolean
-  tokenUsage: { input: number; output: number; cacheRead: number; cacheWrite: number }
+  tokenUsage: { input: number; output: number; cacheRead: number; cacheWrite: number; cost: number }
   seenMessages: Set<string>
   finalizedParts: Set<string>
 }
@@ -131,7 +131,7 @@ function makeState(id: string, fp: string, project: string, directory: string, t
     model: "", agent: "",
     skillsUsed: new Set(), commandsUsed: new Set(), toolsUsed: new Map(),
     filesTouched: new Set(), messageCount: 0, compacted: false,
-    tokenUsage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    tokenUsage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0 },
     seenMessages: new Set(), finalizedParts: new Set(),
   }
 }
@@ -161,7 +161,8 @@ async function writeSessionJson(state: SessionState, outcome: string, endTime: s
     tools_used: Object.fromEntries(state.toolsUsed),
     files_touched: [...state.filesTouched].sort(),
     token_usage: { input: state.tokenUsage.input, output: state.tokenUsage.output,
-      cache_read: state.tokenUsage.cacheRead, cache_write: state.tokenUsage.cacheWrite },
+      cache_read: state.tokenUsage.cacheRead, cache_write: state.tokenUsage.cacheWrite,
+      cost: state.tokenUsage.cost },
   }
   await writeFile(jsonPath, JSON.stringify(data, null, 2) + "\n", "utf-8")
 }
@@ -178,7 +179,8 @@ async function appendSummaryFooter(state: SessionState, outcome: string, endTime
     `- **Commands**: ${[...state.commandsUsed].sort().join(", ") || "none"}`,
     `- **Tools**: ${[...state.toolsUsed.entries()].map(([k, v]) => `${k}(${v})`).join(", ") || "none"}`,
     `- **Files touched**: ${[...state.filesTouched].sort().join(", ") || "none"}`,
-    `- **Tokens**: input=${state.tokenUsage.input} output=${state.tokenUsage.output} cache_read=${state.tokenUsage.cacheRead}`,
+    `- **Tokens**: input=${state.tokenUsage.input} output=${state.tokenUsage.output} cache_read=${state.tokenUsage.cacheRead} cache_write=${state.tokenUsage.cacheWrite}`,
+    `- **Cost**: $${state.tokenUsage.cost.toFixed(4)}`,
     `- **Compacted**: ${state.compacted}`,
     `- **End time**: ${endTime}`,
     "",
@@ -192,7 +194,7 @@ interface IndexData {
   session_count: number
   skills: Record<string, { count: number; last_used: string }>
   commands: Record<string, { count: number; last_used: string }>
-  models: Record<string, { sessions: number; input_tokens: number; output_tokens: number }>
+  models: Record<string, { sessions: number; input_tokens: number; output_tokens: number; cache_read_tokens: number; cache_write_tokens: number; cost: number }>
   recent_sessions: Array<{ date: string; duration: string; outcome: string; skills: string; project: string }>
 }
 
@@ -229,10 +231,13 @@ function updateIndex(state: SessionState, outcome: string, durationMinutes: numb
       data.commands[cmd].last_used = today
     }
     if (state.model) {
-      if (!data.models[state.model]) data.models[state.model] = { sessions: 0, input_tokens: 0, output_tokens: 0 }
+      if (!data.models[state.model]) data.models[state.model] = { sessions: 0, input_tokens: 0, output_tokens: 0, cache_read_tokens: 0, cache_write_tokens: 0, cost: 0 }
       data.models[state.model].sessions += 1
       data.models[state.model].input_tokens += state.tokenUsage.input
       data.models[state.model].output_tokens += state.tokenUsage.output
+      data.models[state.model].cache_read_tokens += state.tokenUsage.cacheRead
+      data.models[state.model].cache_write_tokens += state.tokenUsage.cacheWrite
+      data.models[state.model].cost += Math.round(state.tokenUsage.cost * 10000) / 10000
     }
     data.recent_sessions.unshift({
       date: state.startTime.slice(0, 16).replace("T", " "),
@@ -355,6 +360,7 @@ async function onMessageUpdated(props: any, deps: Deps): Promise<void> {
       state.tokenUsage.output += info.tokens.output ?? 0
       state.tokenUsage.cacheRead += info.tokens.cache?.read ?? 0
       state.tokenUsage.cacheWrite += info.tokens.cache?.write ?? 0
+      state.tokenUsage.cost += info.cost ?? 0
     }
   }
 

@@ -50,6 +50,7 @@ home/.config/opencode/*
 !home/.config/opencode/tools/
 !home/.config/opencode/plugins/
 !home/.config/opencode/session-recorder.json
+home/.config/opencode/**/*interview*
 
 # SKILL_NOTES.md files are local observations, bootstrapped by src/scripts/bootstrap-skill-notes.sh
 home/.config/opencode/skills/*/SKILL_NOTES.md

@@ -594,6 +594,70 @@ describe("session-recorder plugin", () => {
     expect(data.recent_sessions.length).toBeGreaterThanOrEqual(3)
   })
 
+  // -- NEW TEST: index.json tracks cost and cache tokens per model --
+  test("index.json tracks cost and cache tokens per model", async () => {
+    const COST_SESSION = "ses_cost_track_001"
+    await fireEvent("session.created", {
+      info: {
+        id: COST_SESSION,
+        projectID: "test-project",
+        directory: "/tmp/test",
+        title: "Cost Tracking Test",
+        time: { created: Date.now() + 30000 },
+      },
+    })
+
+    // Simulate assistant message with cost and cache tokens
+    // First fire: creation (tokens=0, cost=0) -- skipped by dedup
+    await fireEvent("message.updated", {
+      info: {
+        id: "msg_cost_1",
+        sessionID: COST_SESSION,
+        role: "assistant",
+        modelID: "claude-opus-4-6",
+        cost: 0,
+        tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
+      },
+    })
+    // Second fire: completion (real values)
+    await fireEvent("message.updated", {
+      info: {
+        id: "msg_cost_1",
+        sessionID: COST_SESSION,
+        role: "assistant",
+        modelID: "claude-opus-4-6",
+        cost: 0.05,
+        tokens: { input: 5, output: 300, reasoning: 0, cache: { read: 50000, write: 2000 } },
+      },
+    })
+
+    // Second assistant message
+    await fireEvent("message.updated", {
+      info: {
+        id: "msg_cost_2",
+        sessionID: COST_SESSION,
+        role: "assistant",
+        modelID: "claude-opus-4-6",
+        cost: 0.03,
+        tokens: { input: 2, output: 150, reasoning: 0, cache: { read: 30000, write: 1000 } },
+      },
+    })
+
+    await fireEvent("session.idle", { sessionID: COST_SESSION })
+
+    // Verify index has cost and cache tokens
+    const indexPath = path.join(tmpDir, "index.json")
+    const data = JSON.parse(await readFile(indexPath, "utf-8"))
+    const model = data.models["claude-opus-4-6"]
+    expect(model).toBeDefined()
+
+    // These should include the values from THIS session (additive to prior sessions)
+    // Check that cache tokens are tracked (they should be > 0 now)
+    expect(model.cache_read_tokens).toBeGreaterThanOrEqual(80000)  // 50000 + 30000
+    expect(model.cache_write_tokens).toBeGreaterThanOrEqual(3000)   // 2000 + 1000
+    expect(model.cost).toBeGreaterThanOrEqual(0.08)                 // 0.05 + 0.03
+  })
+
   // -- NEW TEST: session .json contains queryable metrics --
   test("session .json contains queryable metrics", async () => {
     const METRICS_SESSION = "ses_metrics_001"
@@ -616,7 +680,7 @@ describe("session-recorder plugin", () => {
       info: { id: "msg_m2", sessionID: METRICS_SESSION, role: "assistant", modelID: "claude-opus-4-6" },
     })
     await fireEvent("message.updated", {
-      info: { id: "msg_m2", sessionID: METRICS_SESSION, role: "assistant", modelID: "claude-opus-4-6", tokens: { input: 500, output: 200, cache: { read: 100, write: 50 } } },
+      info: { id: "msg_m2", sessionID: METRICS_SESSION, role: "assistant", modelID: "claude-opus-4-6", cost: 0.042, tokens: { input: 500, output: 200, cache: { read: 100, write: 50 } } },
     })
     await fireToolAfter("bash", METRICS_SESSION, "call_m1", "Run build", { command: "npm run build" })
     await fireToolAfter("edit", METRICS_SESSION, "call_m2", "Edited main.ts", { filePath: "/tmp/metrics/main.ts" })
@@ -651,6 +715,7 @@ describe("session-recorder plugin", () => {
     expect(metricsJson.token_usage.output).toBe(200)
     expect(metricsJson.token_usage.cache_read).toBe(100)
     expect(metricsJson.token_usage.cache_write).toBe(50)
+    expect(metricsJson.token_usage.cost).toBe(0.042)
     expect(typeof metricsJson.duration_minutes).toBe("number")
     expect(metricsJson.start_time).toBeDefined()
     expect(metricsJson.end_time).toBeDefined()
