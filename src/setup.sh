@@ -139,13 +139,11 @@ install_vim_plug() {
   success "vim-plug installed"
 }
 
-# Generate .zshrc
+# Generate .zshrc and completions
 generate_zshrc() {
-  log "Generating ${HOME}/.zshrc..."
-
+  log "Generating ${HOME}/.zshrc and completions..."
   "${SHELL_DIR}/src/generate_zshrc.rb"
-
-  success ".zshrc generated"
+  success ".zshrc and completions generated"
 }
 
 # Prompt for git configuration

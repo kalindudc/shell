@@ -1,0 +1,102 @@
+plugins:
+  - rubocop-minitest
+
+AllCops:
+  TargetRubyVersion: 4.0
+  NewCops: enable
+  SuggestExtensions: false
+  Include:
+    - "home/bin/todo"
+    - "home/bin/lib/**/*.rb"
+    - "home/bin/test/**/*.rb"
+    - "src/**/*.rb"
+  Exclude:
+    - "vendor/**/*"
+    - "tmp/**/*"
+
+# ── Layout ───────────────────────────────────────────────────────────
+
+Layout/LineLength:
+  Max: 150
+
+# ── Metrics ──────────────────────────────────────────────────────────
+
+Metrics/MethodLength:
+  Max: 65
+  Exclude:
+    - "home/bin/lib/todo/completions.rb"
+
+Metrics/AbcSize:
+  Max: 60
+  Exclude:
+    - "home/bin/lib/todo/completions.rb"
+
+Metrics/CyclomaticComplexity:
+  Max: 25
+
+Metrics/PerceivedComplexity:
+  Max: 25
+
+Metrics/ParameterLists:
+  Max: 8
+
+Metrics/ClassLength:
+  Max: 200
+  Exclude:
+    - "home/bin/test/**/*.rb"
+
+Metrics/ModuleLength:
+  Max: 120
+
+Metrics/BlockLength:
+  Exclude:
+    - "home/bin/test/**/*.rb"
+    - "home/bin/lib/todo/completions.rb"
+
+Minitest/MultipleAssertions:
+  Max: 10
+
+# ── Naming ───────────────────────────────────────────────────────────
+
+Naming/HeredocDelimiterNaming:
+  Exclude:
+    - "src/**/*.rb"
+
+Naming/MethodParameterName:
+  AllowedNames:
+    - t
+    - id
+
+Naming/PredicateMethod:
+  Enabled: false
+
+# ── Style ────────────────────────────────────────────────────────────
+
+Style/Documentation:
+  Enabled: false
+
+Style/GlobalVars:
+  Enabled: false
+
+Style/MixinUsage:
+  Enabled: false
+
+Style/TopLevelMethodDefinition:
+  Enabled: false
+
+# We use $stderr.puts intentionally
+Style/StderrPuts:
+  Enabled: false
+
+# printf with %s tokens is fine for CLI output formatting
+Style/FormatStringToken:
+  Enabled: false
+
+# Unused fmt: is part of the command module contract
+Lint/UnusedMethodArgument:
+  AllowUnusedKeywordArguments: true
+
+# Endless methods are fine in Ruby 3.0+
+Style/EndlessMethod:
+  Enabled: true
+  EnforcedStyle: allow_always

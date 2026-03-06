@@ -13,35 +13,33 @@
 #
 
 require 'erb'
-require "optparse"
+require 'optparse'
 require 'logger'
 
 def init
-  @options = {output: nil, template: nil, debug: false, print_output: false}
+  @options = { output: nil, template: nil, debug: false, print_output: false }
   OptionParser.new do |opt|
-    opt.on('-oOUTPUT_PATH', '--output=OUTPUT_PATH', "template output file path") { |o| @options[:output] = o }
-    opt.on('-iINPUT_TEMPLATE', '--input=INPUT_TEMPLATE', "TEMPLATE.erb input template") { |o| @options[:template] = o }
-    opt.on('--debug', 'enable debug mode') { |o| @options[:debug] = true }
-    opt.on('--print', 'output generated .zshrc to STDOUT') { |o| @options[:print_output] = true }
+    opt.on('-oOUTPUT_PATH', '--output=OUTPUT_PATH', 'template output file path') { |o| @options[:output] = o }
+    opt.on('-iINPUT_TEMPLATE', '--input=INPUT_TEMPLATE', 'TEMPLATE.erb input template') { |o| @options[:template] = o }
+    opt.on('--debug', 'enable debug mode') { |_o| @options[:debug] = true }
+    opt.on('--print', 'output generated .zshrc to STDOUT') { |_o| @options[:print_output] = true }
   end.parse!
 
   # Verify the template file exists
-  if @options[:template].nil? or !File.file?(@options[:template])
-    raise "Error: .zshrc.erb template file not found at #{@options[:template]}"
-  end
+  raise "Error: .zshrc.erb template file not found at #{@options[:template]}" if @options[:template].nil? || !File.file?(@options[:template])
 
   # Verify the output file path is writable
-  if !@options[:print_output] and (@options[:output].nil? or !File.directory?(File.dirname(@options[:output])))
+  if !@options[:print_output] && (@options[:output].nil? || !File.directory?(File.dirname(@options[:output])))
     raise "Error: Output file path #{@options[:output]} is not writable"
   end
 
-  @logger = Logger.new(STDOUT)
-  if (@options[:debug])
-    @logger.level = Logger::DEBUG
-  else
-    @logger.level = Logger::INFO
-  end
-  @logger.info("Using options #{@options.to_s}")
+  @logger = Logger.new($stdout)
+  @logger.level = if @options[:debug]
+                    Logger::DEBUG
+                  else
+                    Logger::INFO
+                  end
+  @logger.info("Using options #{@options}")
 end
 
 def main
@@ -65,7 +63,5 @@ def main
     @logger.info("Generated template file saved to #{@options[:output]}")
   end
 end
-
-private
 
 main

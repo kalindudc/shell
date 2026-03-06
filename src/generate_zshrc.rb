@@ -22,51 +22,50 @@
 #
 
 require 'erb'
-require "optparse"
+require 'fileutils'
+require 'optparse'
 require 'logger'
 
-DEFAULT_OUTPUT_PATH = "#{File.expand_path("..", File.dirname(__FILE__))}/home/.zshrc"
-DEFAULT_ZSHRC_TEMPLATE_PATH = "#{File.expand_path(".", File.dirname(__FILE__))}/templates/.zshrc.erb"
+DEFAULT_OUTPUT_PATH = "#{File.expand_path('..', File.dirname(__FILE__))}/home/.zshrc".freeze
+DEFAULT_ZSHRC_TEMPLATE_PATH = "#{File.expand_path('.', File.dirname(__FILE__))}/templates/.zshrc.erb".freeze
 
-BASE_TEMPLATE = "#{File.expand_path(".", File.dirname(__FILE__))}/templates/base.sh.erb"
-ALIASES_TEMPLATE = "#{File.expand_path(".", File.dirname(__FILE__))}/templates/aliases.sh.erb"
-GIT_TEMPLATE = "#{File.expand_path(".", File.dirname(__FILE__))}/templates/git.sh.erb"
-FUNCTIONS_TEMPLATE = "#{File.expand_path(".", File.dirname(__FILE__))}/templates/functions.sh.erb"
-KUBERNETES_TEMPLATE = "#{File.expand_path(".", File.dirname(__FILE__))}/templates/kubernetes.sh.erb"
-AGENTS_TEMPLATE = "#{File.expand_path(".", File.dirname(__FILE__))}/templates/agents.sh.erb"
+BASE_TEMPLATE = "#{File.expand_path('.', File.dirname(__FILE__))}/templates/base.sh.erb".freeze
+ALIASES_TEMPLATE = "#{File.expand_path('.', File.dirname(__FILE__))}/templates/aliases.sh.erb".freeze
+GIT_TEMPLATE = "#{File.expand_path('.', File.dirname(__FILE__))}/templates/git.sh.erb".freeze
+FUNCTIONS_TEMPLATE = "#{File.expand_path('.', File.dirname(__FILE__))}/templates/functions.sh.erb".freeze
+KUBERNETES_TEMPLATE = "#{File.expand_path('.', File.dirname(__FILE__))}/templates/kubernetes.sh.erb".freeze
+AGENTS_TEMPLATE = "#{File.expand_path('.', File.dirname(__FILE__))}/templates/agents.sh.erb".freeze
 
 def init
   @options = {
     output: DEFAULT_OUTPUT_PATH,
     zshrc_template: DEFAULT_ZSHRC_TEMPLATE_PATH,
     debug: false,
-    print_output: false,
+    print_output: false
   }
 
   OptionParser.new do |opt|
     opt.on('-oOUTPUT_PATH', '--output=OUTPUT_PATH', ".zshrc output file path. Default path: #{DEFAULT_OUTPUT_PATH}") { |o| @options[:output] = o }
-    opt.on('-iINPUT_TEMPLATE', '--input=INPUT_TEMPLATE', ".zshrc.erb input template. Default path: #{DEFAULT_ZSHRC_TEMPLATE_PATH}") { |o| @options[:zshrc_template] = o }
-    opt.on('--debug', 'enable debug mode') { |o| @options[:debug] = true }
-    opt.on('--print', 'output generated .zshrc to STDOUT') { |o| @options[:print_output] = true }
+    opt.on('-iINPUT_TEMPLATE', '--input=INPUT_TEMPLATE', ".zshrc.erb input template. Default path: #{DEFAULT_ZSHRC_TEMPLATE_PATH}") do |o|
+      @options[:zshrc_template] = o
+    end
+    opt.on('--debug', 'enable debug mode') { |_o| @options[:debug] = true }
+    opt.on('--print', 'output generated .zshrc to STDOUT') { |_o| @options[:print_output] = true }
   end.parse!
 
   # Verify the .zshrc.erb template file exists
-  if !File.file?(@options[:zshrc_template])
-    raise "Error: .zshrc.erb template file not found at #{@options[:zshrc_template]}"
-  end
+  raise "Error: .zshrc.erb template file not found at #{@options[:zshrc_template]}" unless File.file?(@options[:zshrc_template])
 
   # Verify the output file path is writable
-  if !File.writable?(@options[:output])
-    raise "Error: Output file path #{@options[:output]} is not writable"
-  end
+  raise "Error: Output file path #{@options[:output]} is not writable" unless File.writable?(@options[:output])
 
-  @logger = Logger.new(STDOUT)
-  if (@options[:debug])
-    @logger.level = Logger::DEBUG
-  else
-    @logger.level = Logger::INFO
-  end
-  @logger.info("Using options #{@options.to_s}")
+  @logger = Logger.new($stdout)
+  @logger.level = if @options[:debug]
+                    Logger::DEBUG
+                  else
+                    Logger::INFO
+                  end
+  @logger.info("Using options #{@options}")
 end
 
 def main
@@ -90,13 +89,13 @@ def main
   @logger.info("Rendering template #{AGENTS_TEMPLATE}")
   agents_template_contents = render_template(AGENTS_TEMPLATE)
 
-  misc_template_contents = <<EOF
-if [[ "$(uname)" == "Linux" ]]; then
-  # Use xclip to copy/paste to clipboard
-  alias pbcopy='xclip -selection clipboard'
-  alias pbpaste='xclip -selection clipboard -o'
-fi
-EOF
+  misc_template_contents = <<~EOF
+    if [[ "$(uname)" == "Linux" ]]; then
+      # Use xclip to copy/paste to clipboard
+      alias pbcopy='xclip -selection clipboard'
+      alias pbpaste='xclip -selection clipboard -o'
+    fi
+  EOF
 
   @logger.info("Rendering template #{@options[:zshrc_template]}")
 
@@ -115,9 +114,30 @@ EOF
     File.write(@options[:output], zshrc_contents)
     @logger.info("Generated .zshrc file saved to #{@options[:output]}")
   end
+
+  # Generate zsh completions
+  generate_completions
 end
 
-private
+def generate_completions
+  shell_dir = File.expand_path('..', File.dirname(__FILE__))
+  completions_dir = File.join(shell_dir, 'home', '.config', 'zsh', 'completions')
+  todo_bin = File.join(shell_dir, 'home', 'bin', 'todo')
+
+  FileUtils.mkdir_p(completions_dir)
+
+  if File.executable?(todo_bin)
+    output = `#{todo_bin} --completions zsh 2>/dev/null`
+    if $?.success? && !output.empty? # rubocop:disable Style/SpecialGlobalVars
+      File.write(File.join(completions_dir, '_todo'), output)
+      @logger.info("Generated zsh completions at #{completions_dir}/_todo")
+    else
+      @logger.warn('Failed to generate todo completions')
+    end
+  else
+    @logger.warn("todo binary not found at #{todo_bin}, skipping completions")
+  end
+end
 
 def render_template(file_path)
   template = File.read(file_path)

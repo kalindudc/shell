@@ -1,6 +1,13 @@
 version: '3'
 
 tasks:
+  # Development setup
+  up:
+    desc: "Install development dependencies"
+    cmds:
+      - bundle install
+      - echo "✓ Development dependencies installed"
+
   # Installation
   install:
     desc: "Run the installation script"
@@ -39,15 +46,22 @@ tasks:
             sudo apt-get install -y shellcheck
           fi
         fi
-      - shellcheck install.sh
-      - shellcheck src/setup.sh
-      - shellcheck src/lib/*.sh
+      - shellcheck install.sh src/setup.sh src/lib/*.sh home/bin/lib/*.sh
+      - |
+        for f in home/bin/*; do
+          [[ -f "$f" ]] || continue
+          if head -1 "$f" | grep -q 'bash'; then
+            shellcheck "$f"
+          fi
+        done
       - |
         if command -v shfmt >/dev/null 2>&1; then
           shfmt -i 2 -w install.sh src/setup.sh src/lib/*.sh
           echo "✓ Scripts formatted"
         fi
       - echo "✓ All scripts passed ShellCheck"
+      - bundle exec rubocop -A
+      - echo "✓ All Ruby files passed RuboCop"
 
   # Build
   build:
@@ -79,10 +93,11 @@ tasks:
 
   # Testing
   test:
-    desc: "Run all tests (unit + integration)"
+    desc: "Run all tests (unit + integration + bin)"
     deps:
       - test:unit
       - test:integration
+      - test:bin
 
   test:unit:
     desc: "Run unit tests with BATS"
@@ -99,6 +114,23 @@ tasks:
           fi
         fi
       - bats test/unit/*.bats
+
+  test:bin:
+    desc: "Run home/bin/ tool tests (BATS + Ruby)"
+    cmds:
+      - |
+        if ! command -v bats >/dev/null 2>&1; then
+          echo "BATS not installed. Installing..."
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            brew install bats-core
+          elif [[ -f /etc/arch-release ]]; then
+            sudo pacman -S --needed --noconfirm bats
+          else
+            sudo apt-get install -y bats
+          fi
+        fi
+      - bats home/bin/test/bats/*.bats
+      - bundle exec ruby -e "Dir.glob('home/bin/test/**/*.rb').sort.each { |f| require_relative f }"
 
   test:opencode:
     desc: "Run OpenCode plugin tests with Bun"
@@ -135,7 +167,7 @@ tasks:
       - generate:gitconfig
 
   generate:zsh:
-    desc: "Re-generate .zshrc"
+    desc: "Re-generate .zshrc and completions"
     cmds:
       - $HOME/src/github.com/kalindudc/shell/src/generate_zshrc.rb
 

@@ -1,71 +1,66 @@
 #!/usr/bin/env bash
 
 #
-# This script can be used to quickly clone any gihub repo to a
-# predestined directory. The default clone location is $HOME/src/github.com.
-# The repos will be organized in the following way,
-#    $HOME/src/github.com/<owner>/<repo>
+# Quickly clone any GitHub repo to a predestined directory.
+# Default clone location: $HOME/src/github.com/<owner>/<repo>
 #
-# For example:
-#   $ clone kubernetes/ingress-nginx
-# will clone https://github.com/kubernetes/kubernetes.git
-# to $HOME/src/github.com/kubernetes/kubernetes
-#
-# Similarly if a owner is not provided, the $DEFAULT owner will be used. Change
-# this variable to use your github user.
-#
-# For example:
-#   $ clone shell
-# will clone https://github.com/kalindudc/shell.git to
-# to $HOME/src/github.com/kalindudc/shell
+# Examples:
+#   clone kubernetes/ingress-nginx
+#   clone shell                      # uses DEFAULT owner
 #
 
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/cli_common.sh
+source "${SCRIPT_DIR}/lib/cli_common.sh"
 
 DEFAULT="kalindudc"
-GIT_PROJECTS_PATH="$HOME/src/github.com"
+GIT_PROJECTS_PATH="${HOME}/src/github.com"
 
 help() {
-  printf "You must specify a repository to clone.\n\n"
-  printf "usage: clone <repo> [<path> || $GIT_PROJECT_PATH]\n\n"
+  cli_print_help "clone" "quickly clone GitHub repos" \
+    "<repo>|Clone a repo (owner/repo or just repo)" \
+    "<repo> <path>|Clone to a custom path" \
+    "-h, --help|Show this help"
+  printf "Default owner: %s\nDefault path: %s\n" "${DEFAULT}" "${GIT_PROJECTS_PATH}"
 }
 
-if [[ $# -eq 0 || $1 = "-h" || $1 = "--help" ]]; then
+if [[ $# -eq 0 || "${1}" = "-h" || "${1}" = "--help" ]]; then
   help
   exit 0
 fi
 
-actual_project_path=$GIT_PROJECTS_PATH
+actual_project_path="${GIT_PROJECTS_PATH}"
 repo="$1"
-[[ $# -gt 2 ]] && root_path="$2" || root_path="$actual_project_path"
 
 https_git_prefix="https://github.com/"
 ssh_git_prefix="git@github.com:"
 suffix=".git"
 
-if [[ $repo == *"$suffix" ]]; then
-  filtered_repo=${repo#"$https_git_prefix"}
-  filtered_repo=${filtered_repo#"$ssh_git_prefix"}
-  filtered_repo=${filtered_repo%"$suffix"}
-  repo=$filtered_repo
+if [[ "${repo}" == *"${suffix}" ]]; then
+  filtered_repo="${repo#"${https_git_prefix}"}"
+  filtered_repo="${filtered_repo#"${ssh_git_prefix}"}"
+  filtered_repo="${filtered_repo%"${suffix}"}"
+  repo="${filtered_repo}"
 fi
 
-
-if [[ $repo != *"/"* ]]; then
-  actual_project_path="$actual_project_path/$DEFAULT/$repo"
-  repo="$DEFAULT/$repo"
+if [[ "${repo}" != *"/"* ]]; then
+  actual_project_path="${actual_project_path}/${DEFAULT}/${repo}"
+  repo="${DEFAULT}/${repo}"
 else
-  actual_project_path="$actual_project_path/$repo"
+  actual_project_path="${actual_project_path}/${repo}"
 fi
 
-full_uri="https://github.com/$repo.git"
-test_repo=$(git ls-remote $full_uri 2>&1)
+full_uri="https://github.com/${repo}.git"
+test_repo=$(git ls-remote "${full_uri}" 2>&1)
 
-if [[ $test_repo == *"Repository not found"* ]]; then
-  echo "The provided repo does not exist: $1"
+if [[ "${test_repo}" == *"Repository not found"* ]]; then
+  printf "The provided repo does not exist: %s\n" "$1"
   help
   exit 1
 else
-  [ -d $actual_project_path ] || mkdir -p $actual_project_path
-  git clone $full_uri $actual_project_path
-  cd $actual_project_path
+  [[ -d "${actual_project_path}" ]] || mkdir -p "${actual_project_path}"
+  git clone "${full_uri}" "${actual_project_path}"
+  cd "${actual_project_path}" || exit
 fi

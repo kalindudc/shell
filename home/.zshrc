@@ -31,6 +31,9 @@ export ENHANCD_FILTER="fzf --height 40%:fzy:fzf:peco:sk:zf"
 export PYENV_ROOT="$HOME/.pyenv"
 [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
 
+# Custom completions for home/bin/ tools
+fpath=($HOME/.config/zsh/completions $fpath)
+
 fpath=($HOME/.zsh ZSH_CUSTOM:-${ZSH:-$HOME/.oh-my-zsh}/custom}/plugins/zsh-completions/src $fpath)
 
 autoload -Uz compinit
@@ -461,6 +464,3 @@ else
   ENDTIME=$(($(date +%s%3N)))
 fi
 printf 'Start time %.4fs\n' $(echo "($ENDTIME - $STARTTIME)/1000" | bc -l)
-
-# Added by tec agent
-[[ -x /Users/kalindu/.local/state/tec/profiles/base/current/global/init ]] && eval "$(/Users/kalindu/.local/state/tec/profiles/base/current/global/init zsh)"

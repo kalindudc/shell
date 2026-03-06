@@ -5,12 +5,9 @@
 
 set -euo pipefail
 
-# Color codes
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/cli_common.sh
+source "${SCRIPT_DIR}/lib/cli_common.sh"
 
 # Default values
 SAVE_RESULTS=false
@@ -55,71 +52,71 @@ done
 
 # Temporary zprof setup if requested
 ZSHRC_BACKUP=""
-if [[ "$WITH_ZPROF" == true && "$SHELL_CMD" == *"zsh"* ]]; then
-  ZSHRC="$HOME/.zshrc"
-  if [[ -f "$ZSHRC" ]]; then
+if [[ "${WITH_ZPROF}" == true && "${SHELL_CMD}" == *"zsh"* ]]; then
+  ZSHRC="${HOME}/.zshrc"
+  if [[ -f "${ZSHRC}" ]]; then
     ZSHRC_BACKUP="${ZSHRC}.timezsh.backup"
-    cp "$ZSHRC" "$ZSHRC_BACKUP"
+    cp "${ZSHRC}" "${ZSHRC_BACKUP}"
     
     # Add zprof at the top
-    echo "zmodload zsh/zprof" | cat - "$ZSHRC" > "${ZSHRC}.tmp"
-    mv "${ZSHRC}.tmp" "$ZSHRC"
+    echo "zmodload zsh/zprof" | cat - "${ZSHRC}" > "${ZSHRC}.tmp"
+    mv "${ZSHRC}.tmp" "${ZSHRC}"
     
     # Add zprof output at the bottom
-    echo "" >> "$ZSHRC"
-    echo "zprof" >> "$ZSHRC"
+    echo "" >> "${ZSHRC}"
+    echo "zprof" >> "${ZSHRC}"
     
-    echo -e "${YELLOW}Added zprof instrumentation to .zshrc${NC}"
+    printf "%s\n" "$(cli_color yellow "Added zprof instrumentation to .zshrc")"
   fi
 fi
 
 # Function to restore .zshrc
 cleanup() {
-  if [[ -n "$ZSHRC_BACKUP" && -f "$ZSHRC_BACKUP" ]]; then
-    mv "$ZSHRC_BACKUP" "$HOME/.zshrc"
-    echo -e "${GREEN}Restored original .zshrc${NC}"
+  if [[ -n "${ZSHRC_BACKUP}" && -f "${ZSHRC_BACKUP}" ]]; then
+    mv "${ZSHRC_BACKUP}" "${HOME}/.zshrc"
+    printf "%s\n" "$(cli_color green "Restored original .zshrc")"
   fi
 }
 
 # Register cleanup on exit
 trap cleanup EXIT
 
-echo -e "${BLUE}Benchmarking shell startup time...${NC}"
-echo -e "Shell: ${GREEN}$SHELL_CMD${NC}"
-echo -e "Iterations: ${GREEN}$ITERATIONS${NC}"
+printf "%s\n" "$(cli_color blue "Benchmarking shell startup time...")"
+printf "Shell: %s\n" "$(cli_color green "${SHELL_CMD}")"
+printf "Iterations: %s\n" "$(cli_color green "${ITERATIONS}")"
 echo ""
 
 # Array to store times
 declare -a times
 
 # Run benchmark
-for i in $(seq 1 $ITERATIONS); do
+for i in $(seq 1 "${ITERATIONS}"); do
   # Capture time output
-  output=$( { time $SHELL_CMD -i -c exit; } 2>&1 )
+  output=$( { time ${SHELL_CMD} -i -c exit; } 2>&1 )
   
   # Extract real time (format: "0m0.123s" or "0.123s")
-  real_time=$(echo "$output" | grep real | awk '{print $2}' | sed 's/[ms]//g')
+  real_time=$(echo "${output}" | grep real | awk '{print $2}' | sed 's/[ms]//g')
   
   # Convert to milliseconds
-  if [[ "$real_time" == *"m"* ]]; then
+  if [[ "${real_time}" == *"m"* ]]; then
     # Format: XmY.Zs -> convert to seconds
-    minutes=$(echo "$real_time" | cut -d'm' -f1)
-    seconds=$(echo "$real_time" | cut -d'm' -f2)
-    total_seconds=$(echo "$minutes * 60 + $seconds" | bc)
+    minutes=$(echo "${real_time}" | cut -d'm' -f1)
+    seconds=$(echo "${real_time}" | cut -d'm' -f2)
+    total_seconds=$(echo "${minutes} * 60 + ${seconds}" | bc)
   else
     # Format: X.Ys -> already in seconds
-    total_seconds="$real_time"
+    total_seconds="${real_time}"
   fi
   
   # Convert to milliseconds
-  ms=$(echo "$total_seconds * 1000" | bc | cut -d'.' -f1)
-  times+=("$ms")
+  ms=$(echo "${total_seconds} * 1000" | bc | cut -d'.' -f1)
+  times+=("${ms}")
   
-  echo -e "Run $i: ${ms}ms"
+  printf "Run %s: %sms\n" "${i}" "${ms}"
 done
 
 echo ""
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+printf "%s\n" "$(cli_color blue "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")"
 
 # Calculate statistics
 total=0
@@ -130,37 +127,37 @@ for time in "${times[@]}"; do
   total=$((total + time))
   
   if (( time < min )); then
-    min=$time
+    min=${time}
   fi
   
   if (( time > max )); then
-    max=$time
+    max=${time}
   fi
 done
 
 avg=$((total / ITERATIONS))
 
 # Display results in table format
-echo -e "${BLUE}Results:${NC}"
-echo -e "  $(printf '%-15s' "Average:")${GREEN}${avg}ms${NC}"
-echo -e "  $(printf '%-15s' "Minimum:")${GREEN}${min}ms${NC}"
-echo -e "  $(printf '%-15s' "Maximum:")${YELLOW}${max}ms${NC}"
-echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+printf "%s\n" "$(cli_color blue "Results:")"
+printf "  %-15s%s\n" "Average:" "$(cli_color green "${avg}ms")"
+printf "  %-15s%s\n" "Minimum:" "$(cli_color green "${min}ms")"
+printf "  %-15s%s\n" "Maximum:" "$(cli_color yellow "${max}ms")"
+printf "%s\n" "$(cli_color blue "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")"
 
 # Save results if requested
-if [[ "$SAVE_RESULTS" == true ]]; then
+if [[ "${SAVE_RESULTS}" == true ]]; then
   RESULTS_DIR="/tmp/benchmarks/results"
-  mkdir -p "$RESULTS_DIR"
+  mkdir -p "${RESULTS_DIR}"
   
   TIMESTAMP=$(date +%Y%m%d-%H%M%S)
-  RESULT_FILE="$RESULTS_DIR/benchmark-$TIMESTAMP.txt"
+  RESULT_FILE="${RESULTS_DIR}/benchmark-${TIMESTAMP}.txt"
   
   {
     echo "Shell Startup Benchmark"
     echo "======================="
     echo "Date: $(date)"
-    echo "Shell: $SHELL_CMD"
-    echo "Iterations: $ITERATIONS"
+    echo "Shell: ${SHELL_CMD}"
+    echo "Iterations: ${ITERATIONS}"
     echo ""
     echo "Results:"
     echo "  Average: ${avg}ms"
@@ -169,16 +166,16 @@ if [[ "$SAVE_RESULTS" == true ]]; then
     echo ""
     echo "Individual runs:"
     for i in "${!times[@]}"; do
-      echo "  Run $((i+1)): ${times[$i]}ms"
+      echo "  Run $((i+1)): ${times[${i}]}ms"
     done
-  } > "$RESULT_FILE"
+  } > "${RESULT_FILE}"
   
   echo ""
-  echo -e "${GREEN}Results saved to: $RESULT_FILE${NC}"
+  printf "%s\n" "$(cli_color green "Results saved to: ${RESULT_FILE}")"
 fi
 
 # If with-zprof, remind user to check output
-if [[ "$WITH_ZPROF" == true && "$SHELL_CMD" == *"zsh"* ]]; then
+if [[ "${WITH_ZPROF}" == true && "${SHELL_CMD}" == *"zsh"* ]]; then
   echo ""
-  echo -e "${YELLOW}Note: Start a new shell to see zprof output${NC}"
+  printf "%s\n" "$(cli_color yellow "Note: Start a new shell to see zprof output")"
 fi

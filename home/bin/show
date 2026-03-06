@@ -1,45 +1,40 @@
 #!/usr/bin/env bash
 
-CONF_DIR="$HOME/conf/show"
-CONF_PATH="$CONF_DIR/show_conf.json"
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/cli_common.sh
+source "${SCRIPT_DIR}/lib/cli_common.sh"
+
+TOOL_NAME="show"
+CONF_DIR="$(cli_conf_dir "${TOOL_NAME}")"
+CONF_PATH="${CONF_DIR}/show_conf.json"
 
 help() {
-  printf "show - command line tool to quickly store and retrieve text\n\n"
-  printf "usage: show <option>\n\n"
-  printf "Available options\n"
-  printf "\tshow <key> - retrieve text stored at <key>\n"
-  printf "\tshow init - initialize configuration file\n"
-  printf "\tshow list - list currently stored keys\n"
-  printf "\tshow add <key> <value> - store a <key> <value> pair\n"
-  printf "\tshow delete <key> - delete a <key>\n\n"
-  printf "Configuration file can be found at $CONF_PATH.\n"
+  cli_print_help "${TOOL_NAME}" "quickly store and retrieve text" \
+    "<key>|Retrieve text stored at <key>" \
+    "init|Initialize configuration file" \
+    "list|List currently stored keys" \
+    "add <key> <value>|Store a key/value pair" \
+    "delete <key>|Delete a key" \
+    "-A, --all|Show all stored data" \
+    "-h, --help|Show this help"
+  printf "Configuration file: %s\n" "${CONF_PATH}"
 }
 
-# init, create .json if doesnt exist
 init() {
-  if [[ -f "$CONF_PATH" ]]; then
-    printf "$CONF_PATH already exists\n"
-    printf "skipping init()\n"
+  if [[ -f "${CONF_PATH}" ]]; then
+    printf "%s already exists, skipping init\n" "${CONF_PATH}"
   else
-    printf "initializing...\n"
-    status=$(mkdir -p "$CONF_DIR" && touch "$CONF_PATH")
-    printf "{}" > "$CONF_PATH"
-    printf "Configuration file generated at $CONF_PATH\n"
+    cli_ensure_conf "${TOOL_NAME}" "show_conf.json:{}"
+    printf "Configuration file generated at %s\n" "${CONF_PATH}"
   fi
 }
 
 list() {
-  if [[ -f "$CONF_PATH" ]]; then
-    cat $CONF_PATH | jq -r 'keys[]' | nl
-  else
-    printf "$CONF_PATH does not exist exists\n"
-    printf "run 'show init'\n"
-  fi
+  cli_require_conf "${TOOL_NAME}"
+  jq -r 'keys[]' "${CONF_PATH}" | nl
 }
-
-# add
-# delete
-# regular show
 
 # handle input
 if [[ $# -lt 1 ]]; then
@@ -47,46 +42,35 @@ if [[ $# -lt 1 ]]; then
   exit 0
 fi
 
-if [[ $1 == "init" ]]; then
-  init
-  exit 0
-fi
+case "$1" in
+  init)        init; exit 0 ;;
+  list)        list; exit 0 ;;
+  -h|--help)   help; exit 0 ;;
+esac
 
-if [[ $1 == "list" ]]; then
-  list
-  exit 0
-fi
-
-if [[ ! -f "$CONF_PATH" ]]; then
-  printf "configuration file does not exist, please run [show init]\n"
-  exit -1
-fi
+cli_require_conf "${TOOL_NAME}"
 
 if [[ $1 == "add" ]]; then
   if [[ $# -lt 3 ]]; then
-    printf "invalid number of paramters for the option [add]\n\n"
+    printf "Error: invalid number of parameters for 'add'\n\n" >&2
     help
-    exit -1
+    exit 1
   fi
-
-  new_json=$(jq -c ".\"$2\"=\"$3\"" $CONF_PATH)
-  printf "$new_json" > "$CONF_PATH"
-  printf "added \"$2\" to retrieve \"$3\"\n"
+  new_json=$(jq -c ".\"$2\"=\"$3\"" "${CONF_PATH}")
+  printf '%s' "${new_json}" > "${CONF_PATH}"
+  printf "Added \"%s\" to retrieve \"%s\"\n" "$2" "$3"
 elif [[ $1 == "delete" ]]; then
   if [[ $# -lt 2 ]]; then
-    printf "invalid number of paramters for the option [delete]\n\n"
+    printf "Error: invalid number of parameters for 'delete'\n\n" >&2
     help
-    exit -1
+    exit 1
   fi
-  new_json=$(jq -c "del(.\"$2\")" $CONF_PATH)
-  printf "$new_json" > "$CONF_PATH"
-  printf "deleted \"$2\"\n"
+  new_json=$(jq -c "del(.\"$2\")" "${CONF_PATH}")
+  printf '%s' "${new_json}" > "${CONF_PATH}"
+  printf "Deleted \"%s\"\n" "$2"
 elif [[ $1 == "-A" || $1 == "--all" ]]; then
-  json_data=$(jq "." $CONF_PATH)
-  printf "$json_data\n"
-elif [[ $1 == "-h" || $1 == "--help" ]]; then
-  help
+  jq "." "${CONF_PATH}"
 else
-  json_data=$(jq ".\"$1\"" $CONF_PATH | tr -d "\"")
-  printf "$json_data\n"
+  json_data=$(jq -r ".\"$1\"" "${CONF_PATH}")
+  printf '%s\n' "${json_data}"
 fi

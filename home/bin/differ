@@ -1,120 +1,107 @@
 #!/usr/bin/env bash
 
-CONF_DIR="$HOME/conf/differ"
-CONF_PATH="$CONF_DIR/differ.json"
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/cli_common.sh
+source "${SCRIPT_DIR}/lib/cli_common.sh"
+
+TOOL_NAME="differ"
+CONF_DIR="$(cli_conf_dir "${TOOL_NAME}")"
+CONF_PATH="${CONF_DIR}/differ.json"
 
 help() {
-  printf "differ - command line tool to quickly compare two texts\n\n"
-  printf "usage: differ f1 (f2?)\n"
-  printf "\tinput files must be fully quantified paths or URLs\n\n"
-  printf "Available options\n"
-  printf "\tdiffer store <f1> - store a main file to diff against\n"
-  printf "\t\t if a main file exists and only a single file is given to the differ,\n\t\tthe given file will be compared with the main file.\n"
-  printf "\tdiffer conf - print the conf file\n"
-  printf "Configuration file can be found at $CONF_PATH.\n"
+  cli_print_help "${TOOL_NAME}" "quickly compare two texts" \
+    "f1 f2|Diff two files or URLs" \
+    "f1|Diff file against stored main" \
+    "store <f1>|Store a main file to diff against" \
+    "conf|Print the configuration file" \
+    "-h, --help|Show this help"
+  printf "Input files must be fully qualified paths or URLs.\n"
+  printf "Configuration file: %s\n" "${CONF_PATH}"
 }
 
-# help output
-if [[ $1 == "-h" || $1 == "--help" || $1 == "help" ]]; then
-  if [[ -f $SLACK_STATUS_LOC ]]; then
-    keys=$(jq keys -c -C $SLACK_STATUS_LOC)
-  fi
-  help
-  exit 0
-fi
+resolve_file() {
+  local path="$1"
+  local tmp_name="$2"
 
-diff_with_main() {
-  main=$(jq -r '.main' "$CONF_PATH")
-  if [[ -z "$main" ]]; then
-    printf "No main file stored, please store a main file first\n"
-    help
-    exit 0
+  if [[ -f "${path}" ]]; then
+    echo "${path}"
+    return
   fi
 
-  do_diff "$main" "$1"
+  if [[ "${path}" =~ ^https?:// ]]; then
+    printf "Downloading %s\n" "${path}" >&2
+    curl -s "${path}" > "/tmp/${tmp_name}"
+    echo "/tmp/${tmp_name}"
+    return
+  fi
+
+  printf "%s does not exist\n" "${path}" >&2
+  exit 1
 }
 
 do_diff() {
-
-  file1=$1
-  file2=$2
-
-  if [[ ! -f "$file1" ]]; then
-    # check if it's a url
-    if [[ $file1 =~ ^https?:// ]]; then
-      printf "Downloading $file1\n"
-      curl -s "$file1" > /tmp/differ1
-      file1=/tmp/differ1
-    else
-      printf "$file1 does not exist\n"
-      exit 0
-    fi
-  fi
-
-  if [[ ! -f "$file2" ]]; then
-    # check if it's a url
-    if [[ $file2 =~ ^https?:// ]]; then
-      printf "Downloading $file2\n"
-      curl -s "$file2" > /tmp/differ2
-      file2=/tmp/differ2
-    else
-      printf "$file2 does not exist\n"
-      exit 0
-    fi
-  fi
-
-  git diff --no-index --color-words "$file1" "$file2"
+  local file1 file2
+  file1="$(resolve_file "$1" "differ1")"
+  file2="$(resolve_file "$2" "differ2")"
+  git diff --no-index --color-words "${file1}" "${file2}" || true
 }
 
-if [[ ! -f "$CONF_PATH" ]]; then
-  printf "$CONF_PATH does not exist, initializing...\n"
-  status=$(mkdir -p "$CONF_DIR" && touch "$CONF_PATH")
-  printf "{}" > "$CONF_PATH"
-  printf "Configuration file generated at $CONF_PATH\n"
-fi
-
-if [[ $1 == "store" ]]; then
-  if [[ -z "$2" ]]; then
-    printf "No file given to store\n"
+diff_with_main() {
+  local main
+  main="$(jq -r '.main // empty' "${CONF_PATH}")"
+  if [[ -z "${main}" ]]; then
+    printf "No main file stored, please store a main file first\n" >&2
     help
-    exit 0
+    exit 1
   fi
+  do_diff "${main}" "$1"
+}
 
-  file=$2
-  if [[ ! -f "$2" ]]; then
-    # check if it's not a url
-    if [[ ! $2 =~ ^https?:// ]]; then
-      printf "$2 does not exist\n"
-      exit 0
+# Handle help
+case "${1:-}" in
+  -h|--help|help) help; exit 0 ;;
+esac
+
+# Ensure config exists (auto-init)
+if [[ ! -f "${CONF_PATH}" ]]; then
+  cli_ensure_conf "${TOOL_NAME}" "differ.json:{}"
+  printf "Configuration file generated at %s\n" "${CONF_PATH}"
+fi
+
+case "${1:-}" in
+  store)
+    if [[ -z "${2:-}" ]]; then
+      printf "Error: no file given to store\n" >&2
+      help
+      exit 1
     fi
-  else
-    file=$(realpath $2)
-  fi
-
-  jq ".main=\"$file\"" "$CONF_PATH" > "$CONF_PATH.tmp"
-  mv "$CONF_PATH.tmp" "$CONF_PATH"
-  printf "Main file stored as $2\n"
-  exit 0
-fi
-
-if [[ $1 == "conf" ]]; then
-  cat "$CONF_PATH"
-  exit 0
-fi
-
-f1="$1"
-f2="$2"
-
-if [[ -z "$f1" ]]; then
-  printf "No file given to diff against\n"
-  help
-  exit 0
-fi
-
-if [[ -z "$f2" ]]; then
-  printf "Comparing with $(jq -r '.main' "$CONF_PATH")\n"
-  diff_with_main $f1
-else
-  do_diff $f1 $f2
-fi
-
+    file="$2"
+    if [[ -f "$2" ]]; then
+      file="$(realpath "$2")"
+    elif [[ ! "$2" =~ ^https?:// ]]; then
+      printf "%s does not exist\n" "$2" >&2
+      exit 1
+    fi
+    jq --arg f "${file}" '.main = $f' "${CONF_PATH}" > "${CONF_PATH}.tmp"
+    mv "${CONF_PATH}.tmp" "${CONF_PATH}"
+    printf "Main file stored as %s\n" "$2"
+    ;;
+  conf)
+    cat "${CONF_PATH}"
+    ;;
+  "")
+    printf "Error: no file given to diff against\n" >&2
+    help
+    exit 1
+    ;;
+  *)
+    if [[ -z "${2:-}" ]]; then
+      printf "Comparing with %s\n" "$(jq -r '.main' "${CONF_PATH}")"
+      diff_with_main "$1"
+    else
+      do_diff "$1" "$2"
+    fi
+    ;;
+esac

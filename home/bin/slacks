@@ -1,153 +1,137 @@
 #!/usr/bin/env bash
 
-# get the full path of the current directory
-CURRENT_DIR="$(
-  cd -- "$(dirname "$0")" >/dev/null 2>&1
-  pwd -P
-)"
+# slacks - command line helper for slack status management
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/cli_common.sh
+source "${SCRIPT_DIR}/lib/cli_common.sh"
 
 SLACK_API_URL="https://slack.com/api/users.profile.set"
-[[ $SLACK_STATUS_JSON_LOC ]] && SLACK_STATUS_LOC=$SLACK_STATUS_JSON_LOC || SLACK_STATUS_LOC=$CURRENT_DIR/conf/slack_status.json
-
-log="false"
+[[ -n "${SLACK_STATUS_JSON_LOC:-}" ]] && SLACK_STATUS_LOC="${SLACK_STATUS_JSON_LOC}" || SLACK_STATUS_LOC="${SCRIPT_DIR}/conf/slack_status.json"
 
 help() {
-  printf "slacks - command line helper for slack\n"
-  printf "\nusage: \tslacks [options]"
-  printf "\nslack is a tool for processing basic commands for slack. \n\tCurrently, only status changes are supported.\n"
-  printf "\nSet the following env variables prior to using slack:\n\tSLACK_TOKEN = <user token with users.profile:write scope>\n"
-  printf "\tSLACK_STATUS_JSON_LOC = <location of json file appropriate slack status information>\n"
-  printf "\nAlternatively, see src/bin/conf/.env.template and src/bin/cong/slack_status.json\n"
-  printf "ex: slacks [custom,c] <status message> <status emoji> <duration in seconds>\n"
-  printf "\nRunning 'slacks' without any options will clear the current slack status\n\n"
-  printf "\nTo schedule a slack status use the option [-s] followed by the time and date\n"
-  printf "ex: slacks -s \"9:00am July 30 2021\" custom \"Out of the office\" :vacation: 432000\n"
+  cli_print_help "slacks" "command line helper for slack" \
+    "(no args)|Clear current slack status" \
+    "custom, c <msg> <emoji> <dur>|Set a custom status" \
+    "<key> [msg?] [dur?]|Set status from config file" \
+    "-s <time> <cmd>|Schedule a status change" \
+    "-h, --help|Show this help" \
+    "-hv, --help-verbose|Show help with full config"
 
-  if [[ ! -f $SLACK_STATUS_LOC ]]; then
+  printf "\nSet the following env variables:\n"
+  printf "  SLACK_TOKEN = <user token with users.profile:write scope>\n"
+  printf "  SLACK_STATUS_JSON_LOC = <location of json file with status info>\n"
+
+  if [[ -f "${SLACK_STATUS_LOC}" ]]; then
+    local keys
+    keys=$(jq keys -c -C "${SLACK_STATUS_LOC}")
+    printf "\nCurrent json file: %s\n" "${SLACK_STATUS_LOC}"
+    printf "Available options: %s\n" "${keys}"
+  else
     printf "\nCurrent json file location is INVALID.\n"
   fi
-
-  if [[ -f $SLACK_STATUS_LOC ]]; then
-    printf "\nCurrent json file location: \n\tSLACK_STATUS_JSON_LOC=$SLACK_STATUS_LOC\n"
-    printf "\nAvialable options: $keys\n"
-    printf "ex: slacks <option> <duration?>\n"
-    printf "    slacks <option> <custom message?> <duration?>\n"
-  fi
-
 }
 
 process_duration() {
-  if [[ $1 =~ ^[0-9]+$ ]]; then
-    if [[ $1 -gt 0 ]]; then
-      printf "&duration=%s" "$1"
-    fi
+  if [[ $1 =~ ^[0-9]+$ ]] && [[ $1 -gt 0 ]]; then
+    printf "&duration=%s" "$1"
   fi
 }
 
-# help output
-if [[ $1 == "-h" || $1 == "--help" || $1 == "help" ]]; then
-  if [[ -f $SLACK_STATUS_LOC ]]; then
-    keys=$(jq keys -c -C $SLACK_STATUS_LOC)
-  fi
-  help
-  exit 0
-fi
+# Handle help
+case "${1:-}" in
+  -h|--help|help)
+    help
+    exit 0
+    ;;
+  -hv|--help-verbose)
+    if [[ -f "${SLACK_STATUS_LOC}" ]]; then
+      jq '.' -C "${SLACK_STATUS_LOC}"
+    fi
+    help
+    exit 0
+    ;;
+esac
 
-if [[ $1 == "-hv" || $1 == "--help-verbose" ]]; then
-  if [[ -f $SLACK_STATUS_LOC ]]; then
-    keys=$(jq '.' -C $SLACK_STATUS_LOC)
-  fi
-  help
-  exit 0
-fi
+# Set all necessary env variables
+[[ -f "${SCRIPT_DIR}/conf/.env" ]] && source "${SCRIPT_DIR}/conf/.env"
 
-# set all necessary env variables
-[[ -f $CURRENT_DIR/conf/.env ]] && source $CURRENT_DIR/conf/.env
-
-if [[ -z "$SLACK_TOKEN" ]]; then
+if [[ -z "${SLACK_TOKEN:-}" ]]; then
   printf "SLACK_TOKEN is empty\n\n"
   help
   exit 0
 fi
 
-if [[ $1 == "-s" ]]; then
+if [[ "${1:-}" == "-s" ]]; then
   if [[ $# -le 1 ]]; then
-    printf "Invalid use of , slack -s\n"
+    printf "Invalid use of slacks -s\n"
     help
-    exit -1
+    exit 1
   fi
 
-  schedule=$2
+  schedule="$2"
+  shift 2
 
-  shift
-  shift
-
-  job="export PATH=$CURRENT_DIR:$PATH && export SLACK_STATUS_LOC=$SLACK_STATUS_LOC && slack $@ > /tmp/slack.log"
-  at $schedule <<< "$job"
-  printf "slack status scheduled for $schedule with 'slack $@'\n"
+  job="export PATH=${SCRIPT_DIR}:\$PATH && export SLACK_STATUS_LOC=${SLACK_STATUS_LOC} && slacks $* > /tmp/slack.log"
+  at "${schedule}" <<< "${job}"
+  printf "Slack status scheduled for %s with 'slacks %s'\n" "${schedule}" "$*"
   exit 0
 fi
 
 declare -i duration
 declare -i total_duration
 
-message="\"\""
-emoji="\"\""
+message='""'
+emoji='""'
 duration=0
 
-[[ $log == "true" ]] && printf "slack: working ...\n\n"
-
-if [[ $1 == "custom" || $1 == "c" ]]; then
+if [[ "${1:-}" == "custom" || "${1:-}" == "c" ]]; then
   if [[ $# -ge 4 ]]; then
     message="\"$2\""
     emoji="\"$3\""
     duration=$4
   else
-    printf "Invalid use of, slack custom\n\n"
-    printf "slack custom <status message> <status emoji> <duration in seconds>\n"
-    exit -1
+    printf "Invalid use of slacks custom\n\n"
+    printf "slacks custom <status message> <status emoji> <duration in seconds>\n"
+    exit 1
   fi
-elif [[ $# -gt 0 && -e $SLACK_STATUS_LOC ]]; then
+elif [[ $# -gt 0 && -e "${SLACK_STATUS_LOC}" ]]; then
+  data=$(jq ".$1" "${SLACK_STATUS_LOC}" 2>/dev/null)
+  if [[ "${data}" != "null" && -n "${data}" ]]; then
+    message=$(jq ".$1.msg" "${SLACK_STATUS_LOC}" 2>/dev/null)
+    emoji=$(jq ".$1.emoji" "${SLACK_STATUS_LOC}" 2>/dev/null)
+    duration=$(jq ".$1.dur" "${SLACK_STATUS_LOC}" 2>/dev/null)
 
-  [[ $log == "true" ]] && printf "Using status JSON file: $SLACK_STATUS_LOC\n"
-  [[ $log == "true" ]] && printf "Using status $1\n\n"
-
-  data=$(jq .$1 $SLACK_STATUS_LOC 2>/dev/null)
-  if [[ $data != "null" && $data != "" ]]; then
-    message=$(jq ".$1.msg" $SLACK_STATUS_LOC 2>/dev/null)
-    emoji=$(jq .$1.emoji $SLACK_STATUS_LOC 2>/dev/null)
-    duration=$(jq .$1.dur $SLACK_STATUS_LOC 2>/dev/null)
-
-    if [[ $3 ]]; then
+    if [[ -n "${3:-}" ]]; then
       message="\"$2\""
       duration=$3
-    elif [[ $2 ]]; then
+    elif [[ -n "${2:-}" ]]; then
       duration=$2
     fi
   else
-    printf "Invalid slack status command: $1\n"
-    keys=$(jq keys -c -C $SLACK_STATUS_LOC)
-    printf "\nAvialable options: $keys\n"
-    exit -1
+    printf "Invalid slack status command: %s\n" "$1"
+    local_keys=$(jq keys -c -C "${SLACK_STATUS_LOC}")
+    printf "\nAvailable options: %s\n" "${local_keys}"
+    exit 1
   fi
 fi
 
-[[ $log == "true" ]] && printf "using parameters: \n\n{\n\n  \"msg\":$message,\n\n  \"emoji\":$emoji,\n\n  \"dur\":$duration\n\n}\n\n"
-
-total_duration=$(date -v +"$duration"S +%s)
-json_data="{\"profile\":{\"status_text\":$message,\"status_emoji\": $emoji,\"status_expiration\": \"$total_duration\"}}"
+total_duration=$(date -v +"${duration}"S +%s)
+json_data="{\"profile\":{\"status_text\":${message},\"status_emoji\": ${emoji},\"status_expiration\": \"${total_duration}\"}}"
 
 res=$(curl -s \
-  -H "Authorization: Bearer $SLACK_TOKEN" \
+  -H "Authorization: Bearer ${SLACK_TOKEN}" \
   -H "Content-type: application/json; charset=utf-8" \
-  -d "$json_data" \
-  $SLACK_API_URL)
+  -d "${json_data}" \
+  "${SLACK_API_URL}")
 
-if printf "$res" | grep -q "\"ok\":true"; then
-  printf "Status Updated with $message and $emoji for $duration seconds.\n"
+if printf '%s' "${res}" | grep -q '"ok":true'; then
+  printf "Status Updated with %s and %s for %d seconds.\n" "${message}" "${emoji}" "${duration}"
 else
   printf "Could not set status: ERROR\n\n"
-  printf "Tried to set: {$message, $emoji, $total_duration}\n"
-  printf "JSON Data: $json_data\n"
-  printf "\n$res\n\n"
+  printf "Tried to set: {%s, %s, %s}\n" "${message}" "${emoji}" "${total_duration}"
+  printf "JSON Data: %s\n" "${json_data}"
+  printf "\n%s\n\n" "${res}"
 fi
