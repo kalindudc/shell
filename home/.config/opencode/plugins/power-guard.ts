@@ -1,16 +1,23 @@
 /**
- * Power Guard Plugin for OpenCode (v1.0.0)
+ * Power Guard Plugin for OpenCode (v1.1.0)
  *
- * Prevents macOS system idle sleep while OpenCode sessions are actively working.
- * Uses `caffeinate -i` to hold a power assertion only when agents are busy.
+ * Prevents macOS system sleep while OpenCode sessions are actively working.
+ * Uses `caffeinate -s -i` to hold power assertions only when agents are busy.
+ *
+ *   -s = PreventSystemSleep    (prevents all system sleep on AC power)
+ *   -i = PreventUserIdleSystemSleep (prevents idle sleep, works on battery too)
  *
  * Behavior:
- *   - When any session transitions to "busy", spawns `caffeinate -i`
+ *   - When any session transitions to "busy", spawns `caffeinate -s -i`
  *   - When ALL sessions become idle/complete/error, kills caffeinate
  *   - Cleans up caffeinate process on OpenCode exit
  *
- * This does NOT prevent lid-close sleep (macOS firmware-level, cannot be overridden).
- * It DOES prevent the system from idle-sleeping while your agents are working.
+ * Limitations:
+ *   - Lid-close sleep CANNOT be prevented (macOS firmware/SMC-level).
+ *     Keep the lid open while agents are working, or use clamshell mode
+ *     (external display + power adapter + external input device).
+ *   - The -s assertion is only effective on AC power; on battery, only
+ *     idle sleep prevention (-i) is active.
  *
  * macOS only -- no-ops gracefully on other platforms.
  */
@@ -50,9 +57,10 @@ export const PowerGuardPlugin: Plugin = async (ctx) => {
     if (caffeinateProc) return
 
     try {
-      // -i = prevent idle sleep
+      // -s = prevent system sleep (AC power only; broader than idle)
+      // -i = prevent idle sleep (works on battery too; fallback for -s)
       // -w <pid> = release when this process (opencode) exits
-      caffeinateProc = spawn("caffeinate", ["-i", "-w", String(process.pid)], {
+      caffeinateProc = spawn("caffeinate", ["-s", "-i", "-w", String(process.pid)], {
         stdio: "ignore",
         detached: false,
       })
@@ -70,7 +78,7 @@ export const PowerGuardPlugin: Plugin = async (ctx) => {
         caffeinateProc = null
       })
 
-      log("info", `caffeinate started (pid=${caffeinateProc.pid}) -- idle sleep prevented`)
+      log("info", `caffeinate started (pid=${caffeinateProc.pid}) -- system sleep prevented (AC: full, battery: idle only)`)
     } catch (err) {
       log("error", `failed to start caffeinate: ${err}`)
       caffeinateProc = null
@@ -86,7 +94,7 @@ export const PowerGuardPlugin: Plugin = async (ctx) => {
     } catch {}
     const ref = caffeinateProc
     caffeinateProc = null
-    log("info", `caffeinate stopped (pid=${pid}) -- idle sleep allowed`)
+    log("info", `caffeinate stopped (pid=${pid}) -- system sleep allowed`)
   }
 
   function onSessionBusy(sessionID: string): void {
