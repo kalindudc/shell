@@ -2,32 +2,40 @@
 
 require_relative 'store'
 require_relative 'formatter'
+require_relative 'task_renderer'
+require_relative 'arg_parser'
+require_relative 'interactive'
 require_relative 'completions'
 require_relative 'commands/init'
 require_relative 'commands/add'
 require_relative 'commands/list'
-require_relative 'commands/done'
 require_relative 'commands/edit'
 require_relative 'commands/delete'
 require_relative 'commands/search'
 require_relative 'commands/category'
-require_relative 'commands/history'
 require_relative 'commands/show'
+require_relative 'commands/mark'
 
 module Todo
   module CLI
-    COMMANDS = {
-      'add' => { mod: Commands::Add, aliases: %w[a] },
-      'list' => { mod: Commands::List,      aliases: %w[l ls] },
-      'done' => { mod: Commands::Done,      aliases: %w[d] },
-      'edit' => { mod: Commands::Edit,      aliases: %w[e] },
-      'delete' => { mod: Commands::Delete,    aliases: %w[rm] },
-      'search' => { mod: Commands::Search,    aliases: %w[find f] },
-      'category' => { mod: Commands::Category, aliases: %w[cat] },
-      'history' => { mod: Commands::History, aliases: %w[h] },
-      'show' => { mod: Commands::Show,      aliases: %w[s v] },
-      'init' => { mod: Commands::Init,      aliases: [] }
-    }.freeze
+    # All command modules. COMMANDS is derived from each module's DEFINITION.
+    COMMAND_MODULES = [
+      Commands::Add,
+      Commands::List,
+      Commands::Mark,
+      Commands::Edit,
+      Commands::Delete,
+      Commands::Search,
+      Commands::Category,
+      Commands::Show,
+      Commands::Init
+    ].freeze
+
+    # Build COMMANDS hash from DEFINITION constants.
+    COMMANDS = COMMAND_MODULES.each_with_object({}) do |mod, hash|
+      defn = mod::DEFINITION
+      hash[defn[:name]] = { mod: mod, aliases: defn[:aliases] || [] }
+    end.freeze
 
     def self.resolve_command(name)
       return COMMANDS[name] if COMMANDS.key?(name)
@@ -44,20 +52,13 @@ module Todo
       puts 'usage: todo <command> [options]'
       puts
       puts 'Available commands:'
-      cmds = [
-        ['add, a <desc> [opts]',       'Add a new task'],
-        ['list, l, ls [opts]',         'List tasks with optional filters'],
-        ['done, d <id>',               'Mark task as complete'],
-        ['edit, e <id> [opts]',        'Edit task fields'],
-        ['delete, rm <id>',            'Permanently delete a task'],
-        ['search, find, f <term>',     'Search tasks'],
-        ['category, cat <sub>',        'Manage categories (sub: list/add/delete)'],
-        ['history, h [opts]',          'Browse completed tasks'],
-        ['show, s, v <id>',            'View detailed task info'],
-        ['init',                       'Initialize configuration'],
-        ['help, --help, -h',           'Show this help']
-      ]
-      cmds.each { |cmd, desc| printf "  %-30s %s\n", cmd, desc }
+      COMMANDS.each do |name, entry|
+        defn = entry[:mod]::DEFINITION
+        aliases = defn[:aliases] || []
+        label = ([name] + aliases).join(', ')
+        printf "  %-30s %s\n", label, defn[:description]
+      end
+      printf "  %-30s %s\n", 'help, --help, -h', 'Show this help'
       puts
       puts "Run #{fmt.c_bold('todo <command> -h')} to see options for a specific command."
       puts
@@ -110,6 +111,9 @@ module Todo
       args = argv.dup
       argv.clear
       entry[:mod].run(args, store: store, fmt: fmt)
+    rescue Interrupt
+      $stderr.puts
+      exit 130
     end
   end
 end

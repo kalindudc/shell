@@ -263,6 +263,12 @@ install_packages_shell() {
   # Install starship
   install_starship
 
+  # Install gum (go install works on all platforms, go is a runtime dependency)
+  if ! command_exists gum; then
+    log "Installing gum..."
+    go install github.com/charmbracelet/gum@latest
+  fi
+
   # Install zoxide (custom install for Ubuntu)
   if is_ubuntu && ! command_exists zoxide; then
     log "Installing zoxide..."

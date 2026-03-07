@@ -82,11 +82,11 @@ module Todo
          .sort
     end
 
-    def ensure_category(name, description: '', color: '')
+    def ensure_category(name, description: '')
       dir = category_dir(name)
       FileUtils.mkdir_p(dir)
       cat_meta_path = File.join(dir, '.category.json')
-      write_json(cat_meta_path, { 'description' => description, 'color' => color }) unless File.exist?(cat_meta_path)
+      write_json(cat_meta_path, { 'description' => description }) unless File.exist?(cat_meta_path)
       todos_path = File.join(dir, 'todos.json')
       write_json(todos_path, []) unless File.exist?(todos_path)
     end
@@ -158,12 +158,14 @@ module Todo
     end
 
     def save_task(task, category)
+      # Remove redundant 'category' key before persisting (derived from directory)
+      clean = task.except('category')
       tasks = read_canonical_tasks(category)
-      idx = tasks.index { |t| t['id'] == task['id'] }
+      idx = tasks.index { |t| t['id'] == clean['id'] }
       if idx
-        tasks[idx] = task
+        tasks[idx] = clean
       else
-        tasks << task
+        tasks << clean
       end
       write_category_tasks(category, tasks)
     end

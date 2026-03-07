@@ -42,28 +42,46 @@ class TestFormatter < Minitest::Test
 
   # ── Priority color ─────────────────────────────────────────────────
 
-  def test_priority_color_critical
-    assert_equal '1;31', F.priority_color(0)
-    assert_equal '1;31', F.priority_color(9)
+  def test_priority_color_gradient_levels
+    expected = [
+      '38;5;196', # 0 - deep red
+      '38;5;160', # 1 - red
+      '38;5;202', # 2 - orange-red
+      '38;5;208', # 3 - orange
+      '38;5;214', # 4 - dark yellow
+      '38;5;220', # 5 - yellow
+      '38;5;148', # 6 - yellow-green
+      '38;5;108', # 7 - muted green
+      '38;5;250', # 8 - light grey
+      '38;5;245'  # 9 - grey
+    ]
+
+    expected.each_with_index do |color, pri|
+      assert_equal color, F.priority_color(pri), "Priority #{pri} should be #{color}"
+    end
   end
 
-  def test_priority_color_high
-    assert_equal '1;33', F.priority_color(10)
-    assert_equal '1;33', F.priority_color(99)
+  def test_priority_color_each_level_is_distinct
+    colors = (0..9).map { |pri| F.priority_color(pri) }
+
+    assert_equal 10, colors.uniq.length, 'Each priority level should have a distinct color'
   end
 
-  def test_priority_color_normal
-    assert_equal '0;34', F.priority_color(100)
-    assert_equal '0;34', F.priority_color(999)
-  end
-
-  def test_priority_color_low
-    assert_nil F.priority_color(1000)
+  def test_priority_color_above_9_returns_nil
+    assert_nil F.priority_color(10)
+    assert_nil F.priority_color(100)
     assert_nil F.priority_color(9999)
   end
 
   def test_priority_color_nil
     assert_nil F.priority_color(nil)
+  end
+
+  def test_priority_color_accepts_string
+    assert_equal '38;5;196', F.priority_color('0')
+    assert_equal '38;5;220', F.priority_color('5')
+
+    assert_nil F.priority_color('10')
   end
 
   # ── Truncation ─────────────────────────────────────────────────────

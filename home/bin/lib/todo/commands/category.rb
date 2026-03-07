@@ -3,12 +3,17 @@
 module Todo
   module Commands
     module Category
-      COMPLETIONS = {
+      DEFINITION = {
+        name: 'category', aliases: %w[cat],
         description: 'Manage categories',
         subcommands: [
-          { name: 'list', aliases: %w[l], desc: 'List categories' },
-          { name: 'add', aliases: %w[a], desc: 'Add category' },
-          { name: 'delete', aliases: %w[rm], desc: 'Delete category' }
+          { name: 'list', aliases: %w[l], description: 'List categories' },
+          { name: 'add', aliases: %w[a], description: 'Add category',
+            positional: { name: :name, type: :text, required: true },
+            options: [{ long: '--description', short: '-d', arg: :text }] },
+          { name: 'delete', aliases: %w[rm], description: 'Delete category',
+            positional: { name: :name, type: :text, required: true },
+            options: [{ long: '--force', short: '-f' }] }
         ]
       }.freeze
 
@@ -16,7 +21,7 @@ module Todo
         fmt.print_subcmd_help('category', 'todo category <subcommand> [options]', 'Manage task categories')
         puts 'Subcommands:'
         printf "  %-20s %s\n", 'list, l', 'List all categories'
-        printf "  %-20s %s\n", 'add, a <name> [opts]', 'Add a category (--description, --color)'
+        printf "  %-20s %s\n", 'add, a <name> [opts]', 'Add a category (--description)'
         printf "  %-20s %s\n", 'delete, rm <name>', 'Delete a category (--force to delete with tasks)'
         puts
         puts 'Aliases: cat'
@@ -53,16 +58,14 @@ module Todo
           end
           name = args.shift.downcase
           cdesc = ''
-          ccolor = ''
           while (arg = args.shift)
             case arg
             when '-d', '--description' then cdesc = args.shift
-            when '--color' then ccolor = args.shift
             else $stderr.puts "Unknown argument: #{arg}"
                  exit 1
             end
           end
-          store.ensure_category(name, description: cdesc, color: ccolor)
+          store.ensure_category(name, description: cdesc)
           puts "Added category '#{name}'"
         when 'delete', 'rm'
           if args.empty?
@@ -70,7 +73,7 @@ module Todo
             exit 1
           end
           name = args.shift.downcase
-          force = args.include?('--force')
+          force = args.include?('--force') || args.include?('-f')
           dir = store.category_dir(name)
           unless Dir.exist?(dir)
             $stderr.puts "Error: category '#{name}' does not exist"

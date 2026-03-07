@@ -23,14 +23,26 @@ module Todo
     def self.c_cyan(t)     = colorize('0;36', t)
     def self.c_bold_red(t) = colorize('1;31', t)
 
+    # 10-level gradient from deep red (0) to grey (9).
+    # Priorities > 9 return nil (default terminal color).
+    PRIORITY_COLORS = [
+      '38;5;196', # 0 - deep red
+      '38;5;160', # 1 - red
+      '38;5;202', # 2 - orange-red
+      '38;5;208', # 3 - orange
+      '38;5;214', # 4 - dark yellow
+      '38;5;220', # 5 - yellow
+      '38;5;148', # 6 - yellow-green
+      '38;5;108', # 7 - muted green
+      '38;5;250', # 8 - light grey
+      '38;5;245'  # 9 - grey
+    ].freeze
+
     def self.priority_color(priority)
       return nil if priority.nil?
 
       pri = priority.is_a?(String) ? priority.to_i : priority
-      if pri < 10 then '1;31'
-      elsif pri < 100 then '1;33'
-      elsif pri < 1000 then '0;34'
-      end
+      PRIORITY_COLORS[pri]
     end
 
     # ── Text helpers ──────────────────────────────────────────────

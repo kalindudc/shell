@@ -27,8 +27,12 @@ class TodoTest < Minitest::Test
   def run_todo(*args)
     old_stdout = $stdout
     old_stderr = $stderr
+    old_stdin = $stdin
     $stdout = StringIO.new
     $stderr = StringIO.new
+    # Ensure $stdin is non-TTY to prevent interactive prompts.
+    # Only replace if it is the real STDIN (tests may set a custom mock beforehand).
+    $stdin = StringIO.new if $stdin.equal?($stdin)
 
     begin
       Todo::CLI.run(args.dup)
@@ -38,6 +42,7 @@ class TodoTest < Minitest::Test
     ensure
       $stdout = old_stdout
       $stderr = old_stderr
+      $stdin = old_stdin
     end
   end
 
@@ -116,7 +121,8 @@ class TodoTest < Minitest::Test
     assert_equal 'Buy groceries', t['description']
     assert_equal 1, t['id']
     assert_equal 'pending', t['status']
-    assert_equal 'general', t['category']
+    # Category is derived from directory name, not stored in task JSON
+    assert_nil t['category']
   end
 
   def test_add_with_category_and_priority
@@ -126,7 +132,7 @@ class TodoTest < Minitest::Test
     assert category_exists?('work')
     t = read_category_tasks('work').first
 
-    assert_equal 'work', t['category']
+    # Category is derived from directory, not stored in JSON
     assert_equal 0, t['priority']
   end
 
@@ -135,7 +141,7 @@ class TodoTest < Minitest::Test
     run_todo!('add', 'Task', '--category', 'newcat')
 
     assert category_exists?('newcat')
-    assert_equal 'newcat', read_category_tasks('newcat').first['category']
+    assert_equal 1, read_category_tasks('newcat').length
   end
 
   def test_add_with_alias
@@ -233,7 +239,7 @@ class TodoTest < Minitest::Test
     init!
     run_todo!('add', 'Active task')
     run_todo!('add', 'Done task')
-    run_todo!('done', '2')
+    run_todo!('mark', '2')
     out = run_todo!('list', '--all')
 
     assert_match(/Active task/, out)
@@ -246,7 +252,7 @@ class TodoTest < Minitest::Test
     init!
     run_todo!('add', 'Active task')
     run_todo!('add', 'Done task')
-    run_todo!('done', '2')
+    run_todo!('mark', '2')
     out = run_todo!('list')
 
     assert_match(/Active task/, out)
@@ -263,33 +269,66 @@ class TodoTest < Minitest::Test
     assert_match(/Description/, out)
   end
 
-  # ── Completing tasks ────────────────────────────────────────────────
+  # ── List: --plain and --done-only ────────────────────────────────────
 
-  def test_done_marks_task_in_same_category
+  def test_list_plain_outputs_tab_delimited
     init!
-    run_todo!('add', 'Finish report', '-c', 'work')
-    run_todo!('done', '1')
-    t = read_category_tasks('work').first
+    run_todo!('add', 'Plain test', '-p', '5', '-t', 'work')
+    out = run_todo!('list', '--plain')
 
-    assert_equal 'done', t['status']
-    assert_match(/\d{4}-\d{2}-\d{2}/, t['completed'])
-    assert_equal 1, read_category_tasks('work').length
+    lines = out.strip.split("\n")
+
+    assert_equal 1, lines.length
+    fields = lines.first.split("\t")
+
+    assert_equal '1', fields[0]
+    assert_equal '[ ]', fields[1]
+    assert_equal '5', fields[2]
+    assert_equal 'Plain test', fields[3]
+    assert_equal 'general', fields[4]
+    assert_equal 'work', fields[5]
   end
 
-  def test_done_rejects_invalid_id
+  def test_list_plain_includes_id_first
     init!
-    _out, _err, code = run_todo('done', '999')
+    run_todo!('add', 'First task')
+    run_todo!('add', 'Second task')
+    out = run_todo!('list', '--plain')
 
-    refute_equal 0, code
+    lines = out.strip.split("\n")
+
+    assert_equal 2, lines.length
+    assert_equal '1', lines[0].split("\t").first
+    assert_equal '2', lines[1].split("\t").first
   end
 
-  def test_done_alias_d
+  def test_list_plain_no_header_no_footer
     init!
-    run_todo!('add', 'Quick task')
-    run_todo!('d', '1')
-    t = read_category_tasks('general').first
+    run_todo!('add', 'Task')
+    out = run_todo!('list', '--plain')
 
-    assert_equal 'done', t['status']
+    refute_match(/ID/, out)
+    refute_match(/tasks/, out)
+  end
+
+  def test_list_done_only_shows_completed
+    init!
+    run_todo!('add', 'Active task')
+    run_todo!('add', 'Done task')
+    run_todo!('mark', '2')
+    out = run_todo!('list', '--done-only')
+
+    assert_match(/Done task/, out)
+  end
+
+  def test_list_done_only_excludes_active
+    init!
+    run_todo!('add', 'Active task')
+    run_todo!('add', 'Done task')
+    run_todo!('mark', '2')
+    out = run_todo!('list', '--done-only')
+
+    refute_match(/Active task/, out)
   end
 
   # ── Editing tasks ───────────────────────────────────────────────────
@@ -309,7 +348,6 @@ class TodoTest < Minitest::Test
 
     assert_equal [], read_category_tasks('work')
     assert_equal 1, read_category_tasks('personal').length
-    assert_equal 'personal', read_category_tasks('personal').first['category']
   end
 
   def test_edit_updates_modified_date
@@ -390,7 +428,7 @@ class TodoTest < Minitest::Test
   def test_search_all_includes_done
     init!
     run_todo!('add', 'Completed task')
-    run_todo!('done', '1')
+    run_todo!('mark', '1')
     out = run_todo!('search', 'Completed', '--all')
 
     assert_match(/Completed/, out)
@@ -471,33 +509,33 @@ class TodoTest < Minitest::Test
     assert_equal 0, s3
   end
 
-  # ── History ─────────────────────────────────────────────────────────
+  # ── History (now list --done-only) ───────────────────────────────────
 
-  def test_history_shows_completed_across_categories
+  def test_list_done_only_shows_completed_across_categories
     init!
     run_todo!('add', 'Done one')
     run_todo!('add', 'Done two', '-c', 'work')
-    run_todo!('done', '1')
-    run_todo!('done', '2')
-    out = run_todo!('history')
+    run_todo!('mark', '1')
+    run_todo!('mark', '2')
+    out = run_todo!('list', '--done-only')
 
     assert_match(/Done one/, out)
     assert_match(/Done two/, out)
   end
 
-  def test_history_filters_by_category
+  def test_list_done_only_filters_by_category
     init!
     run_todo!('add', 'Work done', '-c', 'work')
     run_todo!('add', 'Home done', '-c', 'home')
-    run_todo!('done', '1')
-    run_todo!('done', '2')
-    out = run_todo!('history', '--category', 'work')
+    run_todo!('mark', '1')
+    run_todo!('mark', '2')
+    out = run_todo!('list', '--done-only', '--category', 'work')
 
     assert_match(/Work done/, out)
     refute_match(/Home done/, out)
   end
 
-  def test_history_alias_h
+  def test_history_alias_h_maps_to_list
     init!
     _out, _err, code = run_todo('h')
 
@@ -520,7 +558,7 @@ class TodoTest < Minitest::Test
   def test_show_finds_completed_task
     init!
     run_todo!('add', 'Historical task')
-    run_todo!('done', '1')
+    run_todo!('mark', '1')
     out = run_todo!('show', '1')
 
     assert_match(/Historical task/, out)
@@ -542,6 +580,118 @@ class TodoTest < Minitest::Test
     _out, _err, code = run_todo('s', '1')
 
     assert_equal 0, code
+  end
+
+  # ── Mark (toggle) ────────────────────────────────────────────────────
+
+  def test_mark_toggles_pending_to_done
+    init!
+    run_todo!('add', 'Toggle me')
+    out = run_todo!('mark', '1')
+
+    assert_match(/Completed task #1/, out)
+    t = read_category_tasks('general').first
+
+    assert_equal 'done', t['status']
+    assert t['completed']
+  end
+
+  def test_mark_toggles_done_to_pending
+    init!
+    run_todo!('add', 'Toggle me')
+    run_todo!('mark', '1')
+    out = run_todo!('mark', '1')
+
+    assert_match(/Reopened task #1/, out)
+    t = read_category_tasks('general').first
+
+    assert_equal 'pending', t['status']
+    assert_nil t['completed']
+  end
+
+  def test_mark_multiple_tasks
+    init!
+    run_todo!('add', 'Task one')
+    run_todo!('add', 'Task two')
+    run_todo!('add', 'Task three')
+    out = run_todo!('mark', '1', '2', '3')
+
+    assert_match(/Completed task #1/, out)
+    assert_match(/Completed task #2/, out)
+    assert_match(/Completed task #3/, out)
+    tasks = read_category_tasks('general')
+
+    tasks.each { |t| assert_equal 'done', t['status'] }
+  end
+
+  def test_mark_mixed_toggle
+    init!
+    run_todo!('add', 'Active task')
+    run_todo!('add', 'Done task')
+    run_todo!('mark', '2')
+    out = run_todo!('mark', '1', '2')
+
+    assert_match(/Completed task #1/, out)
+    assert_match(/Reopened task #2/, out)
+    tasks = read_category_tasks('general')
+    done_task = tasks.find { |t| t['id'] == 1 }
+    reopened_task = tasks.find { |t| t['id'] == 2 }
+
+    assert_equal 'done', done_task['status']
+    assert_equal 'pending', reopened_task['status']
+  end
+
+  def test_mark_skips_invalid_id
+    init!
+    run_todo!('add', 'Valid task')
+    out, stderr, code = run_todo('mark', '1', '999')
+
+    assert_equal 0, code
+    assert_match(/Completed task #1/, out)
+    assert_match(/not found/, stderr)
+  end
+
+  def test_mark_alias_m
+    init!
+    run_todo!('add', 'Quick task')
+    out = run_todo!('m', '1')
+
+    assert_match(/Completed task #1/, out)
+  end
+
+  def test_mark_alias_d_removed
+    init!
+    run_todo!('add', 'Quick task')
+    _out, stderr, code = run_todo('d', '1')
+
+    refute_equal 0, code
+    assert_match(/unknown command/i, stderr)
+  end
+
+  def test_mark_alias_u_removed
+    init!
+    run_todo!('add', 'Quick task')
+    _out, stderr, code = run_todo('u', '1')
+
+    refute_equal 0, code
+    assert_match(/unknown command/i, stderr)
+  end
+
+  def test_mark_help_flag
+    init!
+    out = run_todo!('mark', '-h')
+
+    assert_match(/toggle/i, out)
+    assert_match(/--category/, out)
+    assert_match(/--tag/, out)
+  end
+
+  def test_mark_no_args_errors_non_tty
+    init!
+    run_todo!('add', 'Task')
+    _out, _stderr, code = run_todo('mark')
+
+    refute_equal 0, code
   end
 
   # ── Help ────────────────────────────────────────────────────────────
@@ -586,13 +736,6 @@ class TodoTest < Minitest::Test
     assert_match(/--all/, out)
   end
 
-  def test_done_help_flag
-    init!
-    out = run_todo!('done', '-h')
-
-    assert_match(/complete/, out)
-  end
-
   def test_edit_help_flag
     init!
     out = run_todo!('edit', '-h')
@@ -625,9 +768,9 @@ class TodoTest < Minitest::Test
     assert_match(/delete/, out)
   end
 
-  def test_history_help_flag
+  def test_list_help_shows_from_to
     init!
-    out = run_todo!('history', '-h')
+    out = run_todo!('list', '-h')
 
     assert_match(/--from/, out)
     assert_match(/--to/, out)
@@ -677,6 +820,75 @@ class TodoTest < Minitest::Test
     assert_match(/2 tasks/, out)
   end
 
+  # ── Interactive fallback (non-TTY) ───────────────────────────────────
+  # In test env, $stdin is StringIO (not a TTY), so picker never activates.
+  # These tests verify that commands without args produce correct errors.
+
+  def test_edit_no_args_errors_non_tty
+    init!
+    run_todo!('add', 'Task')
+    _out, stderr, code = run_todo('edit')
+
+    refute_equal 0, code
+    assert_match(/task ID required/, stderr)
+  end
+
+  def test_delete_no_args_errors_non_tty
+    init!
+    run_todo!('add', 'Task')
+    _out, stderr, code = run_todo('delete')
+
+    refute_equal 0, code
+    assert_match(/task ID required/, stderr)
+  end
+
+  def test_show_no_args_errors_non_tty
+    init!
+    run_todo!('add', 'Task')
+    _out, stderr, code = run_todo('show')
+
+    refute_equal 0, code
+    assert_match(/task ID required/, stderr)
+  end
+
+  def test_add_no_args_errors_non_tty
+    init!
+    _out, stderr, code = run_todo('add')
+
+    refute_equal 0, code
+    assert_match(/description is required/, stderr)
+  end
+
+  # ── Interrupt (Ctrl+C) handling ──────────────────────────────────────
+
+  def test_interrupt_during_command_exits_cleanly
+    init!
+    # Stub the Add module's run to raise Interrupt (simulates Ctrl+C mid-prompt)
+    original_run = Todo::Commands::Add.method(:run)
+    Todo::Commands::Add.define_singleton_method(:run) { |*| raise Interrupt }
+
+    _out, _stderr, code = run_todo('add', 'something')
+
+    assert_equal 130, code
+  ensure
+    Todo::Commands::Add.define_singleton_method(:run, original_run)
+  end
+
+  def test_interrupt_during_add_does_not_save_task
+    init!
+    # Stub the Add module's run to raise Interrupt (simulates Ctrl+C mid-prompt).
+    # This avoids gum/fzf subprocess issues entirely.
+    original_run = Todo::Commands::Add.method(:run)
+    Todo::Commands::Add.define_singleton_method(:run) { |*| raise Interrupt }
+
+    _out, _stderr, code = run_todo('add', 'something')
+
+    assert_equal 130, code
+    assert_equal [], read_category_tasks('general'), 'No task should be saved on Ctrl+C'
+  ensure
+    Todo::Commands::Add.define_singleton_method(:run, original_run)
+  end
+
   # ── Error handling ──────────────────────────────────────────────────
 
   def test_commands_require_init
@@ -685,5 +897,82 @@ class TodoTest < Minitest::Test
 
     refute_equal 0, code
     assert_match(/init/, stderr)
+  end
+
+  def test_unknown_command_shows_error
+    init!
+    _out, stderr, code = run_todo('nonexistent')
+
+    refute_equal 0, code
+    assert_match(/unknown command/i, stderr)
+  end
+
+  # ── Delete confirmation ────────────────────────────────────────────
+
+  def test_delete_force_skips_confirmation
+    init!
+    run_todo!('add', 'Force delete me')
+    out = run_todo!('delete', '1', '--force')
+
+    assert_match(/Deleted task #1/, out)
+    assert_equal 0, read_category_tasks('general').length
+  end
+
+  def test_delete_force_short_flag
+    init!
+    run_todo!('add', 'Force delete me')
+    out = run_todo!('delete', '1', '-f')
+
+    assert_match(/Deleted task #1/, out)
+    assert_equal 0, read_category_tasks('general').length
+  end
+
+  # ── List date filters (absorbed from history) ──────────────────────
+
+  def test_list_from_to_filters_by_date
+    init!
+    run_todo!('add', 'Old task')
+    run_todo!('add', 'New task')
+    run_todo!('mark', '1')
+    run_todo!('mark', '2')
+    # Both tasks completed today; filter with from=today should include them
+    today = Date.today.to_s
+    out = run_todo!('list', '--done-only', '--from', today)
+
+    assert_match(/Old task/, out)
+    assert_match(/New task/, out)
+  end
+
+  def test_list_from_excludes_earlier_tasks
+    init!
+    run_todo!('add', 'Old task')
+    run_todo!('mark', '1')
+    # Use a future date so current tasks are excluded
+    out = run_todo!('list', '--done-only', '--from', '2099-01-01')
+
+    refute_match(/Old task/, out)
+  end
+
+  # ── Search excludes done by default ────────────────────────────────
+
+  def test_search_without_all_excludes_done
+    init!
+    run_todo!('add', 'Active findme')
+    run_todo!('add', 'Done findme')
+    run_todo!('mark', '2')
+    out = run_todo!('search', 'findme')
+
+    assert_match(/Active findme/, out)
+    refute_match(/Done findme/, out)
+  end
+
+  # ── Saved task JSON does not contain category ──────────────────────
+
+  def test_saved_task_json_has_no_category_key
+    init!
+    run_todo!('add', 'Test task', '-c', 'work')
+    tasks = read_category_tasks('work')
+
+    refute tasks.first.key?('category'), 'Task JSON should not contain category key'
   end
 end

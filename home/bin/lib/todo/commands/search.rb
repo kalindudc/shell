@@ -1,19 +1,26 @@
 # frozen_string_literal: true
 
+require_relative '../interactive'
+require_relative '../task_renderer'
+
 module Todo
   module Commands
     module Search
-      COMPLETIONS = {
+      DEFINITION = {
+        name: 'search', aliases: %w[find f],
         description: 'Search tasks',
-        positional: :text,
+        positional: { name: :term, type: :text },
         options: [
-          { long: '--all', short: '-a', desc: 'Include completed tasks' }
+          { long: '--all', short: '-a' }
         ]
       }.freeze
 
       def self.help(fmt)
-        fmt.print_subcmd_help('search', 'todo search <term> [options]', 'Search tasks by description, category, or tags',
-                              [['--all, -a', 'Include completed tasks in results']])
+        fmt.print_subcmd_help('search', 'todo search [term] [options]', 'Search tasks by description, category, or tags',
+                              [['--all, -a', 'Include completed tasks in results']],
+                              ['todo search',           'Interactive fuzzy search (fzf)',
+                               'todo search "bug"',     'Search for tasks matching "bug"',
+                               'todo find -a deploy',   'Search all tasks including done'])
         puts 'Aliases: find, f'
         puts
       end
@@ -37,11 +44,25 @@ module Todo
           end
         end
 
+        # Interactive mode: no term + TTY → launch fzf search across all tasks
+        return run_interactive(store: store, fmt: fmt) if (term.nil? || term.empty?) && $stdin.tty?
+
         if term.nil? || term.empty?
           $stderr.puts 'Error: search term required'
           exit 1
         end
 
+        run_text_search(term, search_all: search_all, store: store)
+      end
+
+      def self.run_interactive(store:, fmt:)
+        task_id = Interactive.search(store: store, prompt: 'Search> ')
+        return unless task_id
+
+        Commands::Show.run([task_id.to_s], store: store, fmt: fmt)
+      end
+
+      def self.run_text_search(term, search_all:, store:)
         config = store.load_config
         re = Regexp.new(term, Regexp::IGNORECASE)
 
@@ -54,11 +75,11 @@ module Todo
           return
         end
 
-        fmt.fmt_header('Status', 'Tags', config: config)
-        results.each do |t|
-          fmt.fmt_task_line(t['id'], t['priority'], t['description'], t['status'], t['tags'] || [], status: t['status'], config: config)
-        end
-        fmt.fmt_footer(results.size, 'results')
+        puts TaskRenderer.render_header(config: config)
+        puts "  #{Formatter.c_dim('-' * 60)}"
+        results.each { |t| puts TaskRenderer.render_line(t, config: config) }
+        puts
+        puts TaskRenderer.render_footer(results.size, 'results')
       end
     end
   end

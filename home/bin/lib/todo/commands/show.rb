@@ -1,11 +1,14 @@
 # frozen_string_literal: true
 
+require_relative '../interactive'
+
 module Todo
   module Commands
     module Show
-      COMPLETIONS = {
+      DEFINITION = {
+        name: 'show', aliases: %w[s v],
         description: 'View detailed task info',
-        positional: :task_id
+        positional: { name: :task_id, type: :integer }
       }.freeze
 
       def self.help(fmt)
@@ -17,12 +20,7 @@ module Todo
       def self.run(args, store:, fmt:)
         return help(fmt) if ['-h', '--help'].include?(args.first)
 
-        if args.empty?
-          $stderr.puts 'Error: task ID required'
-          exit 1
-        end
-
-        task_id = args.first.to_i
+        task_id = Interactive.require_task_id(args, store: store, source: :all, prompt: 'Show> ')
         result = store.find_task(task_id)
 
         unless result

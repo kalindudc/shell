@@ -1,15 +1,22 @@
 # frozen_string_literal: true
 
+require_relative '../interactive'
+
 module Todo
   module Commands
     module Delete
-      COMPLETIONS = {
+      DEFINITION = {
+        name: 'delete', aliases: %w[rm],
         description: 'Delete a task permanently',
-        positional: :task_id
+        positional: { name: :task_id, type: :integer },
+        options: [
+          { long: '--force', short: '-f' }
+        ]
       }.freeze
 
       def self.help(fmt)
-        fmt.print_subcmd_help('delete', 'todo delete <id>', 'Permanently delete a task (not moved to history)')
+        fmt.print_subcmd_help('delete', 'todo delete <id> [options]', 'Permanently delete a task',
+                              [['--force, -f', 'Skip confirmation prompt']])
         puts 'Aliases: rm'
         puts
       end
@@ -17,12 +24,22 @@ module Todo
       def self.run(args, store:, fmt:)
         return help(fmt) if ['-h', '--help'].include?(args.first)
 
-        if args.empty?
-          $stderr.puts 'Error: task ID required'
-          exit 1
+        force = args.delete('--force') || args.delete('-f')
+
+        task_id = Interactive.require_task_id(args, store: store, source: :all, prompt: 'Delete> ')
+
+        # Confirmation prompt (only when TTY and not --force)
+        if !force && $stdin.tty?
+          result = store.find_task(task_id)
+          if result
+            task, _cat = result
+            unless Interactive.confirm("Delete task ##{task_id}: #{task['description']}?")
+              puts 'Cancelled.'
+              return
+            end
+          end
         end
 
-        task_id = args.first.to_i
         unless store.remove_task(task_id)
           $stderr.puts "Error: task ##{task_id} not found"
           exit 1
