@@ -1,5 +1,7 @@
 ---
 description: Creates a structured PR description for the current branch
+agent: pr-description-generator
+subtask: true
 ---
 
 Load the `pr-description-generator` skill and follow its instructions to generate a PR description for the current branch.

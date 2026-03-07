@@ -1,6 +1,7 @@
 ---
 description: Rapidly explore and map unfamiliar codebases with structured reports
 mode: subagent
+model: anthropic/claude-haiku-4-5-20251001
 temperature: 0.1
 steps: 25
 permission:

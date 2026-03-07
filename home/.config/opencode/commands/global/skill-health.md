@@ -1,5 +1,7 @@
 ---
 description: Report bloat metrics and health status for all skills
+agent: skill-health
+subtask: true
 ---
 
 Check the health of all skills in `~/.config/opencode/skills/`. For each skill:

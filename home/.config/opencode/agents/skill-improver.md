@@ -1,6 +1,7 @@
 ---
 description: Capture structured observations from skill executions into SKILL_NOTES.md
 mode: subagent
+model: anthropic/claude-haiku-4-5-20251001
 temperature: 0.1
 steps: 10
 permission:
