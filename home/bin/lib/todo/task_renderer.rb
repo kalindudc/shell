@@ -89,6 +89,22 @@ module Todo
       "#{count} #{label}"
     end
 
+    # Clean hash for JSON serialisation. Single source of truth for task shape.
+    def self.task_to_hash(task)
+      h = {
+        'id' => task['id'],
+        'description' => task['description'],
+        'status' => task['status'],
+        'priority' => task['priority'],
+        'category' => task['category'],
+        'tags' => task['tags'] || [],
+        'created' => task['created'],
+        'modified' => task['modified']
+      }
+      h['completed'] = task['completed'] if task['completed']
+      h
+    end
+
     # Consistent sort key: [done?0:1, priority_or_10000, created_date]
     def self.task_sort_key(task)
       done = task['status'] == 'done' ? 1 : 0
@@ -102,12 +118,32 @@ module Todo
       (config['desc_max'] || 32).to_i
     end
 
+    # Compute a desc_max that fits within the fzf list pane.
+    # The preview pane takes preview_pct% of the terminal; the rest is for the list.
+    # Fixed column overhead in render_fzf: indent(2) + checkbox(3) + sp(1) + id(4) +
+    #   sp(1) + badge(6) + sp(1) + gap(2) + category(10) + gap(2) + tags(~12) = ~44
+    FZF_FIXED_COLS = 44
+    FZF_MIN_DESC = 16
+
+    def self.fzf_desc_max(preview_pct: 40)
+      cols = terminal_cols
+      available = (cols * (100 - preview_pct) / 100.0).floor
+      [available - FZF_FIXED_COLS, FZF_MIN_DESC].max
+    end
+
+    def self.terminal_cols
+      require 'io/console'
+      IO.console&.winsize&.last || 120
+    rescue StandardError
+      120
+    end
+
     def self.truncate(str, max)
       return str if str.length <= max
 
       "#{str[0, max - 3]}..."
     end
 
-    private_class_method :desc_max, :truncate
+    private_class_method :desc_max, :truncate, :terminal_cols
   end
 end

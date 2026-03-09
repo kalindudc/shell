@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'json'
+require_relative '../interactive'
 require_relative '../task_renderer'
 
 module Todo
@@ -14,6 +16,7 @@ module Todo
           { long: '--tag', short: '-t', arg: :text },
           { long: '--all', short: '-a' },
           { long: '--plain', short: '-P' },
+          { long: '--json', short: '-J' },
           { long: '--done-only' },
           { long: '--from', arg: :text },
           { long: '--to', arg: :text }
@@ -27,6 +30,7 @@ module Todo
                                ['--tag, -t <tag>',       'Filter by tag'],
                                ['--all, -a',             'Include completed tasks'],
                                ['--plain, -P',           'Machine-readable tab-delimited output'],
+                               ['--json, -J',            'JSON output'],
                                ['--done-only',           'Show only completed tasks'],
                                ['--from <YYYY-MM-DD>',   'Show tasks after date'],
                                ['--to <YYYY-MM-DD>',     'Show tasks before date']])
@@ -38,21 +42,62 @@ module Todo
         opts = parse_args(args, fmt)
         return unless opts
 
-        todos = fetch_tasks(store, opts)
+        return print_json_list(store, opts) if opts[:json]
+        return print_plain_list(store, opts) if opts[:plain]
+        return run_interactive(store, opts, fmt) if $stdin.tty? && Interactive.fzf_available?
+
+        print_formatted_list(store, opts)
+      end
+
+      def self.run_interactive(store, opts, fmt)
+        task_id = Interactive.browse(
+          store: store,
+          filters: query_filters(opts)
+        )
+        return unless task_id
+
+        Commands::Show.run([task_id.to_s], store: store, fmt: fmt)
+      end
+
+      def self.print_json_list(store, opts)
+        todos = store.query_tasks(**query_filters(opts))
+        payload = { 'count' => todos.size, 'tasks' => todos.map { |t| TaskRenderer.task_to_hash(t) } }
+        puts JSON.generate(payload)
+      end
+
+      def self.print_plain_list(store, opts)
+        todos = store.query_tasks(**query_filters(opts))
+        config = store.load_config
+        todos.each { |t| puts TaskRenderer.render_plain(t, config: config) }
+      end
+
+      def self.print_formatted_list(store, opts)
+        todos = store.query_tasks(**query_filters(opts))
 
         if todos.empty?
           label = opts[:done_only] ? 'No completed tasks found.' : 'No tasks found.'
-          puts label unless opts[:plain]
+          puts label
           return
         end
 
         config = store.load_config
-        opts[:plain] ? print_plain(todos, config) : print_formatted(todos, config)
+        puts TaskRenderer.render_header(config: config)
+        puts "  #{Formatter.c_dim('-' * 60)}"
+        todos.each { |t| puts TaskRenderer.render_line(t, config: config) }
+        puts
+        puts TaskRenderer.render_footer(todos.size, 'tasks')
+      end
+
+      # Convert parsed CLI opts to Store.query_tasks keyword args.
+      def self.query_filters(opts)
+        { include_done: opts[:include_all], done_only: opts[:done_only],
+          filter_cat: opts[:filter_cat], filter_pri: opts[:filter_pri],
+          filter_tag: opts[:filter_tag], date_from: opts[:from], date_to: opts[:to] }
       end
 
       def self.parse_args(args, fmt)
         opts = { filter_cat: nil, filter_pri: nil, filter_tag: nil,
-                 include_all: false, plain: false, done_only: false,
+                 include_all: false, plain: false, json: false, done_only: false,
                  from: nil, to: nil }
 
         while (arg = args.shift)
@@ -64,6 +109,7 @@ module Todo
           when '-t', '--tag' then opts[:filter_tag] = args.shift
           when '-a', '--all' then opts[:include_all] = true
           when '-P', '--plain' then opts[:plain] = true
+          when '-J', '--json' then opts[:json] = true
           when '--done-only' then opts[:done_only] = true
           when '--from' then opts[:from] = args.shift
           when '--to' then opts[:to] = args.shift
@@ -73,39 +119,6 @@ module Todo
         end
         opts[:include_all] = true if opts[:done_only]
         opts
-      end
-
-      def self.fetch_tasks(store, opts)
-        todos = store.all_tasks(include_done: opts[:include_all])
-        todos = todos.select { |t| t['status'] == 'done' } if opts[:done_only]
-        todos = todos.select { |t| t['category'] == opts[:filter_cat] } if opts[:filter_cat]
-        todos = todos.select { |t| t['priority'].to_s == opts[:filter_pri] } if opts[:filter_pri]
-        todos = todos.select { |t| t['tags']&.include?(opts[:filter_tag]) } if opts[:filter_tag]
-        todos = filter_by_date(todos, opts[:from], opts[:to])
-        todos.sort_by { |t| TaskRenderer.task_sort_key(t) }
-      end
-
-      def self.filter_by_date(todos, date_from, date_to)
-        return todos unless date_from || date_to
-
-        todos.select do |t|
-          date = t['status'] == 'done' ? t['completed'] : t['created']
-          next false if date.nil?
-
-          (!date_from || date >= date_from) && (!date_to || date <= date_to)
-        end
-      end
-
-      def self.print_plain(todos, config)
-        todos.each { |t| puts TaskRenderer.render_plain(t, config: config) }
-      end
-
-      def self.print_formatted(todos, config)
-        puts TaskRenderer.render_header(config: config)
-        puts "  #{Formatter.c_dim('-' * 60)}"
-        todos.each { |t| puts TaskRenderer.render_line(t, config: config) }
-        puts
-        puts TaskRenderer.render_footer(todos.size, 'tasks')
       end
     end
   end

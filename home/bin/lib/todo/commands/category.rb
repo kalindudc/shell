@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'json'
+
 module Todo
   module Commands
     module Category
@@ -7,7 +9,8 @@ module Todo
         name: 'category', aliases: %w[cat],
         description: 'Manage categories',
         subcommands: [
-          { name: 'list', aliases: %w[l], description: 'List categories' },
+          { name: 'list', aliases: %w[l], description: 'List categories',
+            options: [{ long: '--json', short: '-J' }] },
           { name: 'add', aliases: %w[a], description: 'Add category',
             positional: { name: :name, type: :text, required: true },
             options: [{ long: '--description', short: '-d', arg: :text }] },
@@ -20,7 +23,7 @@ module Todo
       def self.help(fmt)
         fmt.print_subcmd_help('category', 'todo category <subcommand> [options]', 'Manage task categories')
         puts 'Subcommands:'
-        printf "  %-20s %s\n", 'list, l', 'List all categories'
+        printf "  %-20s %s\n", 'list, l [--json]', 'List all categories'
         printf "  %-20s %s\n", 'add, a <name> [opts]', 'Add a category (--description)'
         printf "  %-20s %s\n", 'delete, rm <name>', 'Delete a category (--force to delete with tasks)'
         puts
@@ -39,18 +42,7 @@ module Todo
         subcmd = args.shift
 
         case subcmd
-        when 'list', 'l'
-          cats = store.all_categories
-          if cats.empty?
-            puts 'No categories defined.'
-            return
-          end
-          cats.each do |name|
-            meta = store.category_meta(name)
-            desc = meta['description'] || ''
-            puts "  #{fmt.c_bold(name)}  #{fmt.c_dim(desc)}"
-          end
-          puts
+        when 'list', 'l' then list_categories(args, store: store, fmt: fmt)
         when 'add', 'a'
           if args.empty?
             $stderr.puts 'Error: category name required'
@@ -90,6 +82,29 @@ module Todo
           $stderr.puts "Unknown subcommand: #{subcmd}"
           exit 1
         end
+      end
+
+      def self.list_categories(args, store:, fmt:)
+        json = args.include?('--json') || args.include?('-J')
+        cats = store.all_categories
+
+        if json
+          payload = { 'categories' => cats.map { |n| { 'name' => n, 'description' => store.category_meta(n)['description'] || '' } } }
+          puts JSON.generate(payload)
+          return
+        end
+
+        if cats.empty?
+          puts 'No categories defined.'
+          return
+        end
+
+        cats.each do |name|
+          meta = store.category_meta(name)
+          desc = meta['description'] || ''
+          puts "  #{fmt.c_bold(name)}  #{fmt.c_dim(desc)}"
+        end
+        puts
       end
     end
   end

@@ -3,6 +3,7 @@
 require 'json'
 require 'date'
 require 'fileutils'
+require_relative 'task_renderer'
 
 module Todo
   class Store
@@ -148,6 +149,18 @@ module Todo
       tasks
     end
 
+    # Unified query: fetch, filter, sort. Single source of truth for task pipelines.
+    def query_tasks(include_done: false, done_only: false, filter_cat: nil,
+                    filter_pri: nil, filter_tag: nil, date_from: nil, date_to: nil)
+      tasks = all_tasks(include_done: include_done || done_only)
+      tasks = tasks.select { |t| t['status'] == 'done' } if done_only
+      tasks = tasks.select { |t| t['category'] == filter_cat } if filter_cat
+      tasks = tasks.select { |t| t['priority'].to_s == filter_pri } if filter_pri
+      tasks = tasks.select { |t| t['tags']&.include?(filter_tag) } if filter_tag
+      tasks = date_filter(tasks, date_from, date_to)
+      tasks.sort_by { |t| TaskRenderer.task_sort_key(t) }
+    end
+
     def find_task(id)
       all_categories.each do |cat|
         read_category_tasks(cat).each do |t|
@@ -181,6 +194,19 @@ module Todo
         end
       end
       false
+    end
+
+    private
+
+    def date_filter(tasks, date_from, date_to)
+      return tasks unless date_from || date_to
+
+      tasks.select do |t|
+        date = t['status'] == 'done' ? t['completed'] : t['created']
+        next false if date.nil?
+
+        (!date_from || date >= date_from) && (!date_to || date <= date_to)
+      end
     end
   end
 end

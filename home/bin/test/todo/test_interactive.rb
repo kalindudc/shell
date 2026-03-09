@@ -188,23 +188,23 @@ class TestInteractive < Minitest::Test
     assert_includes result, '[ ]'
   end
 
-  # ── task_list_string ───────────────────────────────────────────────
+  # ── fzf_task_lines ──────────────────────────────────────────────────
 
-  def test_task_list_string_generates_plain_lines
+  def test_fzf_task_lines_generates_lines
     @store.save_task({
                        'id' => 1, 'description' => 'Test task', 'category' => 'general',
                        'priority' => 5, 'status' => 'pending', 'created' => '2026-01-01',
                        'modified' => '2026-01-01', 'tags' => []
                      }, 'general')
 
-    result = I.task_list_string(@store, source: :active)
+    result = I.fzf_task_lines(@store)
 
     assert_includes result, '1'
     assert_includes result, 'Test task'
     assert_includes result, '[ ]'
   end
 
-  def test_task_list_string_filters_by_category
+  def test_fzf_task_lines_filters_by_category
     @store.ensure_category('work')
     @store.save_task({
                        'id' => 1, 'description' => 'General task', 'category' => 'general',
@@ -217,13 +217,13 @@ class TestInteractive < Minitest::Test
                        'modified' => '2026-01-01', 'tags' => []
                      }, 'work')
 
-    result = I.task_list_string(@store, source: :active, filter_cat: 'work')
+    result = I.fzf_task_lines(@store, filter_cat: 'work')
 
     refute_includes result, 'General task'
     assert_includes result, 'Work task'
   end
 
-  def test_task_list_string_sorted_by_task_sort_key
+  def test_fzf_task_lines_sorted_by_task_sort_key
     @store.save_task({
                        'id' => 1, 'description' => 'Low pri', 'category' => 'general',
                        'priority' => 9, 'status' => 'pending', 'created' => '2026-01-01',
@@ -235,7 +235,7 @@ class TestInteractive < Minitest::Test
                        'modified' => '2026-01-01', 'tags' => []
                      }, 'general')
 
-    result = I.task_list_string(@store, source: :active)
+    result = I.fzf_task_lines(@store)
     lines = result.strip.split("\n")
 
     # High priority (0) should come before low priority (9)
@@ -280,7 +280,7 @@ class TestInteractive < Minitest::Test
                        'modified' => '2026-01-01', 'tags' => []
                      }, 'general')
 
-    input = I.task_list_string(@store, source: :active)
+    input = I.fzf_task_lines(@store)
 
     # Use the same fzf flags as Interactive.search (minus --height/--layout/--preview)
     # This validates that our fzf data format + flags allow searching full descriptions
@@ -303,7 +303,7 @@ class TestInteractive < Minitest::Test
                        'modified' => '2026-01-01', 'tags' => %w[deploy]
                      }, 'general')
 
-    input = I.task_list_string(@store, source: :active)
+    input = I.fzf_task_lines(@store)
 
     selected, status = Open3.capture2(
       *I.fzf_base_args,
@@ -325,7 +325,7 @@ class TestInteractive < Minitest::Test
                        'modified' => '2026-01-01', 'tags' => []
                      }, 'work')
 
-    input = I.task_list_string(@store, source: :active)
+    input = I.fzf_task_lines(@store)
 
     selected, status = Open3.capture2(
       *I.fzf_base_args,
@@ -351,7 +351,7 @@ class TestInteractive < Minitest::Test
                        'modified' => '2026-01-01', 'tags' => %w[tag1]
                      }, 'general')
 
-    input = I.task_list_string(@store, source: :all)
+    input = I.fzf_task_lines(@store, include_done: true)
     lines = input.split("\n")
 
     assert_equal 2, lines.length
@@ -366,14 +366,214 @@ class TestInteractive < Minitest::Test
                  "Description columns should be aligned: #{desc_positions}"
   end
 
+  # ── browse (TTY guard) ──────────────────────────────────────────────
+
+  def test_browse_returns_nil_when_not_tty
+    old_stdin = $stdin
+    $stdin = StringIO.new
+
+    assert_nil I.browse(store: @store)
+  ensure
+    $stdin = old_stdin
+  end
+
+  def test_fzf_task_lines_filters_by_priority
+    @store.save_task({
+                       'id' => 1, 'description' => 'High pri', 'category' => 'general',
+                       'priority' => 0, 'status' => 'pending', 'created' => '2026-01-01',
+                       'modified' => '2026-01-01', 'tags' => []
+                     }, 'general')
+    @store.save_task({
+                       'id' => 2, 'description' => 'Low pri', 'category' => 'general',
+                       'priority' => 500, 'status' => 'pending', 'created' => '2026-01-01',
+                       'modified' => '2026-01-01', 'tags' => []
+                     }, 'general')
+
+    result = I.fzf_task_lines(@store, filter_pri: '0')
+
+    assert_includes result, 'High pri'
+    refute_includes result, 'Low pri'
+  end
+
+  def test_fzf_task_lines_filters_by_tag
+    @store.save_task({
+                       'id' => 1, 'description' => 'Tagged task', 'category' => 'general',
+                       'priority' => nil, 'status' => 'pending', 'created' => '2026-01-01',
+                       'modified' => '2026-01-01', 'tags' => %w[urgent]
+                     }, 'general')
+    @store.save_task({
+                       'id' => 2, 'description' => 'Untagged task', 'category' => 'general',
+                       'priority' => nil, 'status' => 'pending', 'created' => '2026-01-01',
+                       'modified' => '2026-01-01', 'tags' => []
+                     }, 'general')
+
+    result = I.fzf_task_lines(@store, filter_tag: 'urgent')
+
+    assert_includes result, 'Tagged task'
+    refute_includes result, 'Untagged task'
+  end
+
+  def test_fzf_task_lines_excludes_done_by_default
+    @store.save_task({
+                       'id' => 1, 'description' => 'Active task', 'category' => 'general',
+                       'priority' => nil, 'status' => 'pending', 'created' => '2026-01-01',
+                       'modified' => '2026-01-01', 'tags' => []
+                     }, 'general')
+    @store.save_task({
+                       'id' => 2, 'description' => 'Done task', 'category' => 'general',
+                       'priority' => nil, 'status' => 'done', 'created' => '2026-01-01',
+                       'modified' => '2026-01-01', 'completed' => '2026-01-02', 'tags' => []
+                     }, 'general')
+
+    result = I.fzf_task_lines(@store)
+
+    assert_includes result, 'Active task'
+    refute_includes result, 'Done task'
+  end
+
+  def test_fzf_task_lines_includes_done_when_requested
+    @store.save_task({
+                       'id' => 1, 'description' => 'Active task', 'category' => 'general',
+                       'priority' => nil, 'status' => 'pending', 'created' => '2026-01-01',
+                       'modified' => '2026-01-01', 'tags' => []
+                     }, 'general')
+    @store.save_task({
+                       'id' => 2, 'description' => 'Done task', 'category' => 'general',
+                       'priority' => nil, 'status' => 'done', 'created' => '2026-01-01',
+                       'modified' => '2026-01-01', 'completed' => '2026-01-02', 'tags' => []
+                     }, 'general')
+
+    result = I.fzf_task_lines(@store, include_done: true)
+
+    assert_includes result, 'Active task'
+    assert_includes result, 'Done task'
+  end
+
+  def test_fzf_task_lines_done_only
+    @store.save_task({
+                       'id' => 1, 'description' => 'Active task', 'category' => 'general',
+                       'priority' => nil, 'status' => 'pending', 'created' => '2026-01-01',
+                       'modified' => '2026-01-01', 'tags' => []
+                     }, 'general')
+    @store.save_task({
+                       'id' => 2, 'description' => 'Done task', 'category' => 'general',
+                       'priority' => nil, 'status' => 'done', 'created' => '2026-01-01',
+                       'modified' => '2026-01-01', 'completed' => '2026-01-02', 'tags' => []
+                     }, 'general')
+
+    result = I.fzf_task_lines(@store, done_only: true)
+
+    refute_includes result, 'Active task'
+    assert_includes result, 'Done task'
+  end
+
+  def test_fzf_task_lines_date_filter
+    @store.save_task({
+                       'id' => 1, 'description' => 'Old task', 'category' => 'general',
+                       'priority' => nil, 'status' => 'pending', 'created' => '2025-01-01',
+                       'modified' => '2025-01-01', 'tags' => []
+                     }, 'general')
+    @store.save_task({
+                       'id' => 2, 'description' => 'New task', 'category' => 'general',
+                       'priority' => nil, 'status' => 'pending', 'created' => '2026-06-01',
+                       'modified' => '2026-06-01', 'tags' => []
+                     }, 'general')
+
+    result = I.fzf_task_lines(@store, date_from: '2026-01-01')
+
+    refute_includes result, 'Old task'
+    assert_includes result, 'New task'
+  end
+
+  def test_fzf_task_lines_empty_when_no_tasks
+    result = I.fzf_task_lines(@store)
+
+    assert_empty result
+  end
+
+  # ── fzf integration for browse (requires fzf installed) ────────────
+
+  def test_fzf_browse_lines_searchable_by_description
+    skip 'fzf not available' unless system('command -v fzf > /dev/null 2>&1')
+
+    long_desc = 'This is a very long description that gets truncated in browse view'
+    @store.save_task({
+                       'id' => 1, 'description' => long_desc, 'category' => 'general',
+                       'priority' => 5, 'status' => 'pending', 'created' => '2026-01-01',
+                       'modified' => '2026-01-01', 'tags' => []
+                     }, 'general')
+    @store.save_task({
+                       'id' => 2, 'description' => 'Short task', 'category' => 'general',
+                       'priority' => 3, 'status' => 'pending', 'created' => '2026-01-01',
+                       'modified' => '2026-01-01', 'tags' => []
+                     }, 'general')
+
+    input = I.fzf_task_lines(@store)
+
+    selected, status = Open3.capture2(
+      *I.fzf_base_args,
+      '--filter=truncated in browse',
+      stdin_data: input
+    )
+
+    assert_predicate status, :success?, 'fzf should find match in full description via browse lines'
+    assert_equal 1, I.extract_task_id(selected)
+  end
+
+  def test_fzf_browse_lines_searchable_by_tag
+    skip 'fzf not available' unless system('command -v fzf > /dev/null 2>&1')
+
+    @store.save_task({
+                       'id' => 1, 'description' => 'Deploy app', 'category' => 'general',
+                       'priority' => nil, 'status' => 'pending', 'created' => '2026-01-01',
+                       'modified' => '2026-01-01', 'tags' => %w[production]
+                     }, 'general')
+
+    input = I.fzf_task_lines(@store)
+
+    selected, status = Open3.capture2(
+      *I.fzf_base_args,
+      '--filter=production',
+      stdin_data: input
+    )
+
+    assert_predicate status, :success?, 'fzf should find match by tag in browse lines'
+    assert_equal 1, I.extract_task_id(selected)
+  end
+
+  # ── browse toggle: include_done changes task list ───────────────────
+
+  def test_fzf_task_lines_toggle_includes_done_tasks
+    @store.save_task({
+                       'id' => 1, 'description' => 'Active task', 'category' => 'general',
+                       'priority' => nil, 'status' => 'pending', 'created' => '2026-01-01',
+                       'modified' => '2026-01-01', 'tags' => []
+                     }, 'general')
+    @store.save_task({
+                       'id' => 2, 'description' => 'Completed task', 'category' => 'general',
+                       'priority' => nil, 'status' => 'done', 'created' => '2026-01-01',
+                       'modified' => '2026-01-01', 'completed' => '2026-01-02', 'tags' => []
+                     }, 'general')
+
+    # Default: only active
+    active_lines = I.fzf_task_lines(@store, include_done: false)
+
+    assert_includes active_lines, 'Active task'
+    refute_includes active_lines, 'Completed task'
+
+    # After toggle: includes done
+    all_lines = I.fzf_task_lines(@store, include_done: true)
+
+    assert_includes all_lines, 'Active task'
+    assert_includes all_lines, 'Completed task'
+  end
+
   # ── Cache reset ────────────────────────────────────────────────────
 
   def test_reset_cache
     I.instance_variable_set(:@fzf_available, true)
-    I.instance_variable_set(:@gum_available, true)
     I.reset_cache!
 
     assert_nil I.instance_variable_get(:@fzf_available)
-    assert_nil I.instance_variable_get(:@gum_available)
   end
 end

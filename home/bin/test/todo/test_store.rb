@@ -52,7 +52,7 @@ class TestStore < Minitest::Test
   def test_load_config_returns_defaults_before_init
     config = @store.load_config
 
-    assert_equal 32, config['desc_max']
+    assert_equal 64, config['desc_max']
   end
 
   def test_load_config_reads_custom_values

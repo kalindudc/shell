@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
+require 'json'
 require_relative '../interactive'
+require_relative '../task_renderer'
 
 module Todo
   module Commands
@@ -8,11 +10,15 @@ module Todo
       DEFINITION = {
         name: 'show', aliases: %w[s v],
         description: 'View detailed task info',
-        positional: { name: :task_id, type: :integer }
+        positional: { name: :task_id, type: :integer },
+        options: [
+          { long: '--json', short: '-J' }
+        ]
       }.freeze
 
       def self.help(fmt)
-        fmt.print_subcmd_help('show', 'todo show <id>', 'View detailed information for a task (active or completed)')
+        fmt.print_subcmd_help('show', 'todo show <id> [options]', 'View detailed information for a task (active or completed)',
+                              [['--json, -J', 'JSON output']])
         puts 'Aliases: s, v'
         puts
       end
@@ -20,7 +26,10 @@ module Todo
       def self.run(args, store:, fmt:)
         return help(fmt) if ['-h', '--help'].include?(args.first)
 
-        task_id = Interactive.require_task_id(args, store: store, source: :all, prompt: 'Show> ')
+        json = false
+        clean_args = args.reject { |a| json = true if ['-J', '--json'].include?(a) }
+
+        task_id = Interactive.require_task_id(clean_args, store: store, source: :all, prompt: 'Show> ')
         result = store.find_task(task_id)
 
         unless result
@@ -30,6 +39,15 @@ module Todo
 
         task, _cat = result
 
+        if json
+          puts JSON.generate(TaskRenderer.task_to_hash(task))
+          return
+        end
+
+        print_detail(task, task_id, fmt)
+      end
+
+      def self.print_detail(task, task_id, fmt)
         status_str = task['status'] == 'done' ? fmt.c_green(task['status']) : fmt.c_yellow(task['status'])
         raw_pri = task['priority']
         pri_display = raw_pri.to_s

@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require 'minitest/autorun'
+require 'json'
 require 'stringio'
 require_relative '../../lib/todo/task_renderer'
 
@@ -256,6 +257,104 @@ class TestTaskRenderer < Minitest::Test
     later = TR.task_sort_key(make_task('created' => '2026-06-01'))
 
     assert_equal(-1, earlier <=> later)
+  end
+
+  # ── task_to_hash ────────────────────────────────────────────────────
+
+  def test_task_to_hash_includes_all_fields
+    h = TR.task_to_hash(make_task)
+
+    assert_equal 1, h['id']
+    assert_equal 'Buy groceries', h['description']
+    assert_equal 'pending', h['status']
+    assert_equal 5, h['priority']
+    assert_equal 'general', h['category']
+    assert_equal %w[food shopping], h['tags']
+    assert_equal '2026-01-15', h['created']
+    assert_equal '2026-01-15', h['modified']
+    refute h.key?('completed')
+  end
+
+  def test_task_to_hash_includes_completed_when_done
+    h = TR.task_to_hash(make_task('status' => 'done', 'completed' => '2026-02-01'))
+
+    assert_equal 'done', h['status']
+    assert_equal '2026-02-01', h['completed']
+  end
+
+  def test_task_to_hash_nil_priority_preserved
+    h = TR.task_to_hash(make_task('priority' => nil))
+
+    assert_nil h['priority']
+  end
+
+  def test_task_to_hash_empty_tags_default
+    h = TR.task_to_hash(make_task('tags' => nil))
+
+    assert_equal [], h['tags']
+  end
+
+  def test_task_to_hash_produces_valid_json
+    h = TR.task_to_hash(make_task)
+    json_str = JSON.generate(h)
+    parsed = JSON.parse(json_str)
+
+    assert_equal h, parsed
+  end
+
+  # ── fzf_desc_max ────────────────────────────────────────────────────
+
+  def test_fzf_desc_max_computes_from_terminal_width
+    # Stub terminal_cols to a known value
+    TR.define_singleton_method(:terminal_cols) { 120 }
+    # 120 * 60% = 72 available, minus 44 fixed = 28
+    assert_equal 28, TR.fzf_desc_max
+  ensure
+    # Restore original
+    TR.singleton_class.remove_method(:terminal_cols) if TR.singleton_class.method_defined?(:terminal_cols)
+  end
+
+  def test_fzf_desc_max_enforces_minimum
+    TR.define_singleton_method(:terminal_cols) { 40 }
+    # 40 * 60% = 24 available, minus 44 fixed = -20, clamped to 16
+    assert_equal TR::FZF_MIN_DESC, TR.fzf_desc_max
+  ensure
+    TR.singleton_class.remove_method(:terminal_cols) if TR.singleton_class.method_defined?(:terminal_cols)
+  end
+
+  def test_fzf_desc_max_wide_terminal
+    TR.define_singleton_method(:terminal_cols) { 200 }
+    # 200 * 60% = 120 available, minus 44 fixed = 76
+    assert_equal 76, TR.fzf_desc_max
+  ensure
+    TR.singleton_class.remove_method(:terminal_cols) if TR.singleton_class.method_defined?(:terminal_cols)
+  end
+
+  def test_fzf_desc_max_custom_preview_pct
+    TR.define_singleton_method(:terminal_cols) { 120 }
+    # 120 * 70% = 84 available, minus 44 fixed = 40
+    assert_equal 40, TR.fzf_desc_max(preview_pct: 30)
+  ensure
+    TR.singleton_class.remove_method(:terminal_cols) if TR.singleton_class.method_defined?(:terminal_cols)
+  end
+
+  def test_render_fzf_respects_fzf_desc_max
+    # With a narrow fzf desc_max, the visible part should be truncated
+    TR.define_singleton_method(:terminal_cols) { 120 }
+    fzf_dmax = TR.fzf_desc_max # 28
+    long_desc = 'A' * 50
+    config = { 'desc_max' => fzf_dmax }
+    line = TR.render_fzf(make_task('description' => long_desc), config: config)
+    visible = line.split("\t").first
+
+    # Description should be truncated to fzf_dmax chars (25 chars + "...")
+    assert_includes visible, '...'
+    refute_includes visible, 'A' * 50
+
+    # But full description is still searchable after the tab
+    assert_equal long_desc, line.split("\t").last
+  ensure
+    TR.singleton_class.remove_method(:terminal_cols) if TR.singleton_class.method_defined?(:terminal_cols)
   end
 
   # ── NO_COLOR ───────────────────────────────────────────────────────

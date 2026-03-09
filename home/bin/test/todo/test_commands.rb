@@ -98,7 +98,7 @@ class TodoTest < Minitest::Test
     run_todo!('init')
     config = JSON.parse(File.read(File.join(@conf_dir, 'config.json')))
 
-    assert_equal 32, config['desc_max']
+    assert_equal 64, config['desc_max']
   end
 
   def test_init_is_idempotent
@@ -329,6 +329,345 @@ class TodoTest < Minitest::Test
     out = run_todo!('list', '--done-only')
 
     refute_match(/Active task/, out)
+  end
+
+  # ── JSON output ─────────────────────────────────────────────────────
+
+  def parse_json(out)
+    JSON.parse(out.strip)
+  end
+
+  # -- list --json --
+
+  def test_list_json_outputs_valid_json
+    init!
+    run_todo!('add', 'Task one')
+    run_todo!('add', 'Task two', '-p', '0', '-t', 'urgent')
+    out = run_todo!('list', '--json')
+    data = parse_json(out)
+
+    assert_equal 2, data['count']
+    assert_equal 2, data['tasks'].length
+  end
+
+  def test_list_json_task_shape
+    init!
+    run_todo!('add', 'JSON task', '-p', '5', '-t', 'work', '-c', 'dev')
+    out = run_todo!('list', '--json')
+    task = parse_json(out)['tasks'].first
+
+    assert_equal 1, task['id']
+    assert_equal 'JSON task', task['description']
+    assert_equal 'pending', task['status']
+    assert_equal 5, task['priority']
+    assert_equal 'dev', task['category']
+    assert_equal ['work'], task['tags']
+    assert task.key?('created')
+    assert task.key?('modified')
+    refute task.key?('completed')
+  end
+
+  def test_list_json_includes_completed_field_for_done
+    init!
+    run_todo!('add', 'Done task')
+    run_todo!('mark', '1')
+    out = run_todo!('list', '--json', '--all')
+    done = parse_json(out)['tasks'].find { |t| t['status'] == 'done' }
+
+    assert done.key?('completed')
+  end
+
+  def test_list_json_respects_filters
+    init!
+    run_todo!('add', 'Work task', '-c', 'work')
+    run_todo!('add', 'Home task', '-c', 'home')
+    out = run_todo!('list', '--json', '-c', 'work')
+    data = parse_json(out)
+
+    assert_equal 1, data['count']
+    assert_equal 'Work task', data['tasks'].first['description']
+  end
+
+  def test_list_json_empty
+    init!
+    out = run_todo!('list', '--json')
+    data = parse_json(out)
+
+    assert_equal 0, data['count']
+    assert_equal [], data['tasks']
+  end
+
+  def test_list_json_no_ansi
+    init!
+    run_todo!('add', 'Clean output')
+    out = run_todo!('list', '--json')
+
+    refute_includes out, "\033["
+  end
+
+  def test_list_json_short_flag
+    init!
+    run_todo!('add', 'Short flag')
+    out = run_todo!('list', '-J')
+    data = parse_json(out)
+
+    assert_equal 1, data['count']
+  end
+
+  # -- show --json --
+
+  def test_show_json_outputs_valid_json
+    init!
+    run_todo!('add', 'Show me', '-p', '3', '-t', 'demo', '-c', 'work')
+    out = run_todo!('show', '1', '--json')
+    task = parse_json(out)
+
+    assert_equal 1, task['id']
+    assert_equal 'Show me', task['description']
+    assert_equal 'pending', task['status']
+    assert_equal 3, task['priority']
+    assert_equal 'work', task['category']
+    assert_equal ['demo'], task['tags']
+  end
+
+  def test_show_json_includes_completed
+    init!
+    run_todo!('add', 'Done task')
+    run_todo!('mark', '1')
+    out = run_todo!('show', '1', '--json')
+    task = parse_json(out)
+
+    assert_equal 'done', task['status']
+    assert task.key?('completed')
+  end
+
+  def test_show_json_no_ansi
+    init!
+    run_todo!('add', 'Clean')
+    out = run_todo!('show', '1', '--json')
+
+    refute_includes out, "\033["
+  end
+
+  def test_show_json_short_flag
+    init!
+    run_todo!('add', 'Short flag')
+    out = run_todo!('show', '1', '-J')
+    task = parse_json(out)
+
+    assert_equal 1, task['id']
+  end
+
+  # -- search --json --
+
+  def test_search_json_outputs_valid_json
+    init!
+    run_todo!('add', 'Buy milk')
+    run_todo!('add', 'Buy bread', '-c', 'work')
+    run_todo!('add', 'Fix car')
+    out = run_todo!('search', 'Buy', '--json')
+    data = parse_json(out)
+
+    assert_equal 'Buy', data['term']
+    assert_equal 2, data['count']
+    assert_equal 2, data['tasks'].length
+  end
+
+  def test_search_json_no_results
+    init!
+    run_todo!('add', 'Something')
+    out = run_todo!('search', 'nonexistent', '--json')
+    data = parse_json(out)
+
+    assert_equal 0, data['count']
+    assert_equal [], data['tasks']
+  end
+
+  def test_search_json_respects_all_flag
+    init!
+    run_todo!('add', 'Active findme')
+    run_todo!('add', 'Done findme')
+    run_todo!('mark', '2')
+
+    out_without = run_todo!('search', 'findme', '--json')
+    out_with = run_todo!('search', 'findme', '--json', '-a')
+
+    assert_equal 1, parse_json(out_without)['count']
+    assert_equal 2, parse_json(out_with)['count']
+  end
+
+  def test_search_json_no_ansi
+    init!
+    run_todo!('add', 'Clean output')
+    out = run_todo!('search', 'Clean', '--json')
+
+    refute_includes out, "\033["
+  end
+
+  def test_search_json_short_flag
+    init!
+    run_todo!('add', 'Short flag test')
+    out = run_todo!('search', 'Short', '-J')
+    data = parse_json(out)
+
+    assert_equal 1, data['count']
+  end
+
+  # -- category list --json --
+
+  def test_category_list_json_outputs_valid_json
+    init!
+    run_todo!('category', 'add', 'work', '--description', 'Work tasks')
+    out = run_todo!('category', 'list', '--json')
+    data = parse_json(out)
+
+    assert data.key?('categories')
+    names = data['categories'].map { |c| c['name'] }
+
+    assert_includes names, 'general'
+    assert_includes names, 'work'
+  end
+
+  def test_category_list_json_includes_description
+    init!
+    run_todo!('category', 'add', 'dev', '--description', 'Development')
+    out = run_todo!('category', 'list', '--json')
+    dev = parse_json(out)['categories'].find { |c| c['name'] == 'dev' }
+
+    assert_equal 'Development', dev['description']
+  end
+
+  def test_category_list_json_empty
+    init!
+    # general is always created by init, so we test for at least that
+    out = run_todo!('category', 'list', '--json')
+    data = parse_json(out)
+
+    assert_operator data['categories'].length, :>=, 1
+  end
+
+  def test_category_list_json_no_ansi
+    init!
+    out = run_todo!('category', 'list', '--json')
+
+    refute_includes out, "\033["
+  end
+
+  def test_category_list_json_short_flag
+    init!
+    out = run_todo!('category', 'list', '-J')
+    data = parse_json(out)
+
+    assert data.key?('categories')
+  end
+
+  # ── List: interactive dispatch ────────────────────────────────────────
+  # These tests call Todo::CLI.run directly with a TTY-like stdin to exercise
+  # the interactive browse path (run_todo always sets non-TTY stdin).
+
+  def run_todo_tty(*args)
+    old_stdout = $stdout
+    old_stderr = $stderr
+    old_stdin = $stdin
+    $stdout = StringIO.new
+    $stderr = StringIO.new
+    tty_stdin = StringIO.new
+    tty_stdin.define_singleton_method(:tty?) { true }
+    $stdin = tty_stdin
+
+    begin
+      Todo::CLI.run(args.dup)
+      [$stdout.string, $stderr.string, 0]
+    rescue SystemExit => e
+      [$stdout.string, $stderr.string, e.status]
+    ensure
+      $stdout = old_stdout
+      $stderr = old_stderr
+      $stdin = old_stdin
+    end
+  end
+
+  def with_browse_stub(return_value: nil, &block)
+    browse_called_with = nil
+    original_browse = Todo::Interactive.method(:browse)
+    Todo::Interactive.define_singleton_method(:browse) do |**kwargs|
+      browse_called_with = kwargs
+      return_value
+    end
+
+    original_fzf = Todo::Interactive.method(:fzf_available?)
+    Todo::Interactive.define_singleton_method(:fzf_available?) { true }
+
+    block.call(-> { browse_called_with })
+  ensure
+    Todo::Interactive.define_singleton_method(:browse, original_browse)
+    Todo::Interactive.define_singleton_method(:fzf_available?, original_fzf)
+  end
+
+  def test_list_calls_browse_when_tty_and_fzf
+    init!
+    run_todo!('add', 'Interactive task')
+
+    with_browse_stub(return_value: nil) do |get_call|
+      out, _err, code = run_todo_tty('list')
+
+      assert_equal 0, code
+      refute_nil get_call.call, 'Interactive.browse should have been called'
+      # No formatted output since browse handled display
+      refute_match(/ID/, out)
+    end
+  end
+
+  def test_list_browse_shows_task_on_enter
+    init!
+    run_todo!('add', 'Show me this task')
+
+    with_browse_stub(return_value: 1) do |_get_call|
+      out, _err, code = run_todo_tty('list')
+
+      assert_equal 0, code
+      # Should have delegated to Show, which outputs the task detail
+      assert_match(/Show me this task/, out)
+    end
+  end
+
+  def test_list_falls_back_to_formatted_when_no_fzf
+    init!
+    run_todo!('add', 'Fallback task')
+
+    original_fzf = Todo::Interactive.method(:fzf_available?)
+    Todo::Interactive.define_singleton_method(:fzf_available?) { false }
+
+    out, _err, code = run_todo_tty('list')
+
+    assert_equal 0, code
+    assert_match(/ID/, out)
+    assert_match(/Fallback task/, out)
+    assert_match(/1 task/, out)
+  ensure
+    Todo::Interactive.define_singleton_method(:fzf_available?, original_fzf)
+  end
+
+  def test_list_passes_filters_to_browse
+    init!
+    run_todo!('add', 'Work task', '-c', 'work')
+
+    with_browse_stub(return_value: nil) do |get_call|
+      run_todo_tty('list', '-c', 'work', '-p', '5', '-t', 'urgent', '--all',
+                   '--from', '2026-01-01', '--to', '2026-12-31')
+
+      browse_called_with = get_call.call
+
+      refute_nil browse_called_with
+      filters = browse_called_with[:filters]
+
+      assert_equal 'work', filters[:filter_cat]
+      assert_equal '5', filters[:filter_pri]
+      assert_equal 'urgent', filters[:filter_tag]
+      assert filters[:include_done]
+      assert_equal '2026-01-01', filters[:date_from]
+      assert_equal '2026-12-31', filters[:date_to]
+    end
   end
 
   # ── Editing tasks ───────────────────────────────────────────────────
