@@ -6,7 +6,7 @@ require 'fileutils'
 
 module Todo
   class Store
-    DEFAULT_CONFIG = { 'desc_max' => 32 }.freeze
+    DEFAULT_CONFIG = { 'desc_max' => 64 }.freeze
     DEFAULT_CATEGORY = 'general'
 
     attr_reader :conf_dir
