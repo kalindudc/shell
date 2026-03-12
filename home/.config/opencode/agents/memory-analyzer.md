@@ -1,7 +1,6 @@
 ---
 description: Analyze past session data for usage patterns, costs, and history
 mode: subagent
-model: anthropic/claude-haiku-4-5-20251001
 temperature: 0.1
 steps: 25
 permission:

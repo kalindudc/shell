@@ -1,7 +1,6 @@
 ---
 description: Report bloat metrics and health status for all skills in ~/.config/opencode/skills/
 mode: subagent
-model: anthropic/claude-haiku-4-5-20251001
 temperature: 0.1
 steps: 15
 permission:

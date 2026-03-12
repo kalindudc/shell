@@ -9,6 +9,8 @@ mode: subagent
 temperature: 0.1
 steps: 40
 permission:
+  external_directory:
+    "~/.config/opencode/**": allow
   edit:
     "*": deny
     "./tmp/**": allow

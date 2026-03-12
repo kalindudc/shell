@@ -1,10 +1,11 @@
 ---
 description: Generate structured PR descriptions from git diffs using the pr-description-generator skill
 mode: subagent
-model: anthropic/claude-haiku-4-5-20251001
 temperature: 0.1
 steps: 20
 permission:
+  external_directory:
+    "~/.config/opencode/**": allow
   edit:
     "*": deny
     "./tmp/**": allow

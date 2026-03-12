@@ -84,9 +84,8 @@ end
 
 ### Interactive tool dependencies
 
-- **fzf** (optional) - Used for task selection, multi-toggle, and fuzzy search
-- **gum** (optional) - Used for text input and filterable lists
-- Both degrade gracefully to bare stdin prompts when unavailable
+- **fzf** >= 0.59 (optional) - Used for task selection, multi-toggle, and fuzzy search. The interactive nav/search mode toggle relies on `--no-input`, `hide-input`/`show-input` actions, and `$FZF_INPUT_STATE`, all introduced in fzf 0.59.0. Older versions will fail with `unknown option: --no-input`.
+- Both degrade gracefully to bare stdin prompts when fzf is unavailable
 
 ### Storage layout
 
