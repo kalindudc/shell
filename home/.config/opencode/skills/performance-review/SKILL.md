@@ -77,7 +77,7 @@ Use their answers to shape the narrative. If they skip this, synthesize from dat
 
 ### 7. Synthesize the self-reflection
 
-Writing principles (from Shopify community guidance):
+Writing principles:
 - Write in first person. This is the user's voice, not a report about them.
 - Every bullet must answer "so what?" -- describe what changed, not just what was done.
 - 3 sentences or fewer per impact point. Link to evidence instead of explaining context.

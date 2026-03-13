@@ -102,40 +102,29 @@ Each finding gets:
 
 ### 5. Multi-model critic consensus on Blockers and Concerns
 
-For each finding with severity Blocker or Concern:
+For each finding with severity Blocker or Concern, invoke the consensus orchestrator:
 
-1. Spawn THREE critic subagents IN PARALLEL via the Task tool:
-   - Task(subagent_type="critic/claude", prompt=<finding + plan context + criteria below>)
-   - Task(subagent_type="critic/gpt", prompt=<finding + plan context + criteria below>)
-   - Task(subagent_type="critic/gemini", prompt=<finding + plan context + criteria below>)
+  Task(subagent_type="consensus", prompt=<findings + plan file path + codebase path + criteria below>)
 
-2. Each critic receives:
-   - The finding: severity, dimension, description, evidence
-   - The plan file path (critics read it directly)
-   - The codebase path for verification
+Each critic receives: the finding (severity, dimension, description, evidence),
+the plan file path, and the codebase path for verification.
 
-3. Include the following criteria in each Task prompt:
+  ## Evaluation Criteria
 
-   ## Evaluation Criteria
+  REJECT if any of these apply:
+  - Finding is a subjective preference without factual evidence
+  - Finding's evidence contradicts actual file/API/code state (critic verified)
+  - Severity is inflated (claimed Blocker but actual impact is Suggestion-level)
+  - Finding is about a dimension that doesn't apply to this plan type
+  - Finding is speculative ("this might fail if...") without concrete proof
+  - Finding contradicts the plan's stated scope or constraints
 
-   REJECT if any of these apply:
-   - Finding is a subjective preference without factual evidence
-   - Finding's evidence contradicts actual file/API/code state (critic verified)
-   - Severity is inflated (claimed Blocker but actual impact is Suggestion-level)
-   - Finding is about a dimension that doesn't apply to this plan type
-   - Finding is speculative ("this might fail if...") without concrete proof
-   - Finding contradicts the plan's stated scope or constraints
-
-   KEEP only if ALL true:
-   - Finding identifies a REAL issue (incorrect assumption, missing task, broken API)
-   - Evidence is VERIFIED against actual source (files, APIs, docs)
-   - Severity matches actual impact
-
-4. Consensus: >=2 KEEP votes = finding survives. Record vote breakdown.
+  KEEP only if ALL true:
+  - Finding identifies a REAL issue (incorrect assumption, missing task, broken API)
+  - Evidence is VERIFIED against actual source (files, APIs, docs)
+  - Severity matches actual impact
 
 Suggestions, Nits, and Praise skip the critic stage.
-
-Batching: <=5 findings individually (3 calls each); >5 batched per critic (3 calls total).
 
 ### 6. Determine verdict
 

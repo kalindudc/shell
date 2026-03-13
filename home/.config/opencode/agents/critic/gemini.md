@@ -1,7 +1,7 @@
 ---
 description: Multi-domain critic. Evaluates findings against caller-provided criteria. Votes KEEP or REJECT.
 mode: subagent
-model: shopify-google/gemini-3.1-pro-preview
+model: shopify-google/gemini-3-flash-preview
 temperature: 0.1
 steps: 25
 permission:

@@ -75,47 +75,36 @@ Self-review: If the reviewer is also the PR author, note the conflict in the Sum
 
 ### Stage 3: Multi-model critic consensus
 
-For each finding from Stage 2, spawn THREE critic subagents IN PARALLEL via the Task tool:
-- `Task(subagent_type="critic/claude", prompt=<finding + diff context + criteria below>)`
-- `Task(subagent_type="critic/gpt", prompt=<finding + diff context + criteria below>)`
-- `Task(subagent_type="critic/gemini", prompt=<finding + diff context + criteria below>)`
+Invoke the consensus orchestrator with the findings and the following criteria:
 
-Each critic receives:
-- The finding: severity, file:line, title, description, suggestion
-- The PR diff (or relevant excerpts for large diffs)
-- The worktree path for code exploration
-- The evaluation criteria below
+  Task(subagent_type="consensus", prompt=<findings + PR diff + worktree path + criteria below>)
 
-Include the following criteria in each Task prompt:
+Each critic receives: the finding (severity, file:line, title, description, suggestion),
+the PR diff (or relevant excerpts for large diffs), and the worktree path for code exploration.
 
-  ## Evaluation Criteria
+#### Evaluation Criteria
 
-  REJECT if any of these apply:
-  - Style, formatting, linting, or naming issue
-  - Testing suggestion (unless a test doesn't test what it claims)
-  - Best practice or maintainability concern without behavior change
-  - Theoretical optimization or speculative concern without evidence
-  - Scope creep (redesign beyond the PR)
-  - Hallucinated standard or API behavior
-  - Pre-existing issue not introduced by this PR
-  - Missing nil/null check with no reachable failure path
-  - Intentional design decision (the PR clearly intends the change)
-  - Encapsulation re-litigation (called method already handles it)
-  - Production standard applied to scripts, CLI tools, or test fixtures
+REJECT if any of these apply:
+- Style, formatting, linting, or naming issue
+- Testing suggestion (unless a test doesn't test what it claims)
+- Best practice or maintainability concern without behavior change
+- Theoretical optimization or speculative concern without evidence
+- Scope creep (redesign beyond the PR)
+- Hallucinated standard or API behavior
+- Pre-existing issue not introduced by this PR
+- Missing nil/null check with no reachable failure path
+- Intentional design decision (the PR clearly intends the change)
+- Encapsulation re-litigation (called method already handles it)
+- Production standard applied to scripts, CLI tools, or test fixtures
 
-  KEEP only if ALL true:
-  - REAL bug, security vuln, or logic contradiction
-  - INTRODUCED by this PR (in added/modified lines)
-  - CONCRETE, PROVABLE, IMMEDIATE impact
-  - Verified by reading the actual code
+KEEP only if ALL true:
+- REAL bug, security vuln, or logic contradiction
+- INTRODUCED by this PR (in added/modified lines)
+- CONCRETE, PROVABLE, IMMEDIATE impact
+- Verified by reading the actual code
 
-Each critic returns: Verdict (KEEP/REJECT), reasoning, and evidence.
-
-Consensus: >=2 KEEP votes = finding survives. If a critic fails or times out, treat as abstain (majority of actual responses decides). Record vote breakdown per finding.
-
-Batching: <=5 findings: evaluate individually (3 Task calls each). >5 findings: batch all into one prompt per critic (3 Task calls total). Include finding boundaries clearly in batched prompts.
-
-Note in the output summary how many critic sessions were spawned and total findings evaluated for cost transparency.
+Note in the output summary how many critic sessions were spawned and total findings
+evaluated for cost transparency.
 
 ### Stage 4: Deduplication
 

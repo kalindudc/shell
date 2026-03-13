@@ -169,6 +169,7 @@ Always use the command to invoke the skill. If unavailable (e.g., running as a s
 | PR Review | `/global/pr-review` | pr-reviewer | Never post comments without user approval |
 | PR Description | `/global/pr-desc` | pr-description-generator | -- |
 | Memory Analysis | `/global/memory` | memory-analyzer | Read-only; never modifies session files |
+| Concerns Analysis | `/global/critique` | critique | Read-only; outputs to `./tmp/critics/` |
 | Skill Notes | `@skill-improver` | skill-improver | Fast loop only; slow loop (`/global/improve-skill`) is human-gated |
 | Performance Review | `/global/performance-review` | performance-review | Collects GitHub + vault contributions for a period |
 | Interview Analysis | `/global/interview-analysis` | interview-analysis | Local only; never transmits transcript data externally |

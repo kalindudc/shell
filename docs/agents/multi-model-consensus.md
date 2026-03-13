@@ -11,9 +11,10 @@ A single model reviewing code or plans produces false positives -- hallucinated 
 Three independent critic agents (Claude, GPT, Gemini) evaluate each finding in parallel. A finding survives only with >=2/3 KEEP votes. The critics are domain-agnostic; each calling skill passes domain-specific KEEP/REJECT criteria via the Task prompt.
 
 ```
-Skill (pr-reviewer, plan-reviewer, plan-generator)
+Skill (pr-reviewer, plan-reviewer, plan-generator, critique)
   -> Researcher (investigates claims, returns evidence + confidence)
-  -> 3x Critics in parallel (vote KEEP/REJECT against caller-provided criteria)
+  -> Consensus orchestrator (spawns critics, batches, tallies)
+    -> 3x Critics in parallel (vote KEEP/REJECT against caller-provided criteria)
   -> Consensus filter (>=2 KEEP = survives)
 ```
 
@@ -22,8 +23,9 @@ Skill (pr-reviewer, plan-reviewer, plan-generator)
 | Component | Role | Location |
 |-----------|------|----------|
 | Researcher | Deep investigation, returns evidence with confidence levels | `agents/researcher.md` |
+| Consensus orchestrator | Spawns critics, batches items, tallies votes | `agents/consensus.md` |
 | Critic (x3) | Votes KEEP/REJECT against provided criteria | `agents/critic/{claude,gpt,gemini}.md` |
-| Calling skill | Provides domain-specific criteria in Task prompt | `skills/{pr-reviewer,plan-reviewer,plan-generator}/SKILL.md` |
+| Calling skill | Provides domain-specific criteria in Task prompt | `skills/{pr-reviewer,plan-reviewer,plan-generator,critique}/SKILL.md` |
 
 ### Separation of concerns
 
@@ -40,6 +42,7 @@ Before critics vote, the researcher agent investigates claims against actual sou
 | pr-reviewer | Each potential bug/vuln finding | All findings from Stage 2 | PR-specific (real bug, introduced by PR, provable impact) |
 | plan-reviewer | Factual claims in Correctness dimension | Blocker and Concern findings only | Plan-specific (real issue, verified evidence, correct severity) |
 | plan-generator | Codebase patterns during research | Verifiable claims before output | Claim correctness (file exists, API matches, code valid) |
+| critique | User-provided concerns about code/architecture/design | All concerns after researcher investigation | General-purpose (real issue, evidenced, concrete impact) |
 
 ## Batching
 

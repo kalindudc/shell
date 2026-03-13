@@ -121,42 +121,32 @@ Claims to extract:
 - Quantitative claims: line counts, element counts, test counts
 - Negative claims: "X does not support Y", "there is no Z"
 
-For each batch of claims (5-10 per batch):
+Invoke the consensus orchestrator with the claims and the following criteria:
 
-1. Spawn THREE critic subagents IN PARALLEL:
-   - Task(subagent_type="critic/claude", prompt=<claims + plan context + criteria below>)
-   - Task(subagent_type="critic/gpt", prompt=<claims + plan context + criteria below>)
-   - Task(subagent_type="critic/gemini", prompt=<claims + plan context + criteria below>)
+  Task(subagent_type="consensus", prompt=<claims + plan file path + codebase path + criteria below>)
 
-2. Each critic receives:
-   - The claims to verify (batch of 5-10)
-   - The plan file path
-   - The codebase path
+  ## Evaluation Criteria
 
-3. Include the following criteria in each Task prompt:
+  For each claim, verify it against the actual source:
 
-   ## Evaluation Criteria
+  REJECT (flag as incorrect) if:
+  - File does not exist at the stated path
+  - API/function does not exist or has different signature than described
+  - Code snippet has syntax errors or uses wrong language semantics
+  - Quantitative claim (count, line number) doesn't match actual
+  - Negative claim is false (the thing claimed to not exist does exist)
+  - Library behavior differs from what the plan assumes
 
-   For each claim, verify it against the actual source:
+  KEEP (claim is correct) if:
+  - Verified against actual source material
 
-   REJECT (flag as incorrect) if:
-   - File does not exist at the stated path
-   - API/function does not exist or has different signature than described
-   - Code snippet has syntax errors or uses wrong language semantics
-   - Quantitative claim (count, line number) doesn't match actual
-   - Negative claim is false (the thing claimed to not exist does exist)
-   - Library behavior differs from what the plan assumes
+  For each claim respond:
+  **Claim:** <the claim>
+  **Verdict:** CORRECT or INCORRECT
+  **Evidence:** <what you checked, 1-2 sentences>
 
-   KEEP (claim is correct) if:
-   - Verified against actual source material
-
-   For each claim respond:
-   **Claim:** <the claim>
-   **Verdict:** CORRECT or INCORRECT
-   **Evidence:** <what you checked, 1-2 sentences>
-
-4. Any claim flagged INCORRECT by >=2 critics: revise the plan before output.
-   Log the revision in the "Verification Notes" section at the end of the plan.
+Any claim flagged INCORRECT by >=2 critics (FILTERED by orchestrator): revise the plan
+before output. Log the revision in the "Verification Notes" section at the end of the plan.
 
 ## Plan Size Guidance
 
