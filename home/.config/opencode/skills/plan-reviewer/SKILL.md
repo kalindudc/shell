@@ -50,6 +50,15 @@ Completeness ("ensure requirements are complete and flowdown is adequate"):
 - Are task dependencies identified?
 
 Correctness ("compare output against requirements"):
+
+Invoke the researcher agent for factual claim verification:
+  Task(subagent_type="researcher", prompt=<claims to verify + plan path + codebase path>)
+
+The researcher verifies: file existence, API signatures, code snippet validity,
+quantitative claims, and negative claims. Its findings (with confidence levels and
+verbatim evidence) feed into the Correctness evaluation.
+
+If the researcher fails or times out, fall back to inline verification:
 - Do referenced files, functions, classes exist? (Use Read, ast_query, Glob). Always read the actual pattern files being referenced and at least one real data file -- plans frequently describe idealized schemas rather than actual data shapes.
 - Do referenced libraries/APIs exist and support described usage? Check installed source/type definitions as ground truth (docs omit signature details). For claims depending on external platform documentation (cloud provider behavior, runtime limitations), always webfetch the cited URLs -- these are load-bearing and unverifiable from codebase alone.
 - Are code snippets syntactically valid?
@@ -91,7 +100,44 @@ Each finding gets:
 - Dimension: Which review dimension the finding belongs to
 - Brief explanation of why (not just what), with evidence from verification
 
-### 5. Determine verdict
+### 5. Multi-model critic consensus on Blockers and Concerns
+
+For each finding with severity Blocker or Concern:
+
+1. Spawn THREE critic subagents IN PARALLEL via the Task tool:
+   - Task(subagent_type="critic/claude", prompt=<finding + plan context + criteria below>)
+   - Task(subagent_type="critic/gpt", prompt=<finding + plan context + criteria below>)
+   - Task(subagent_type="critic/gemini", prompt=<finding + plan context + criteria below>)
+
+2. Each critic receives:
+   - The finding: severity, dimension, description, evidence
+   - The plan file path (critics read it directly)
+   - The codebase path for verification
+
+3. Include the following criteria in each Task prompt:
+
+   ## Evaluation Criteria
+
+   REJECT if any of these apply:
+   - Finding is a subjective preference without factual evidence
+   - Finding's evidence contradicts actual file/API/code state (critic verified)
+   - Severity is inflated (claimed Blocker but actual impact is Suggestion-level)
+   - Finding is about a dimension that doesn't apply to this plan type
+   - Finding is speculative ("this might fail if...") without concrete proof
+   - Finding contradicts the plan's stated scope or constraints
+
+   KEEP only if ALL true:
+   - Finding identifies a REAL issue (incorrect assumption, missing task, broken API)
+   - Evidence is VERIFIED against actual source (files, APIs, docs)
+   - Severity matches actual impact
+
+4. Consensus: >=2 KEEP votes = finding survives. Record vote breakdown.
+
+Suggestions, Nits, and Praise skip the critic stage.
+
+Batching: <=5 findings individually (3 calls each); >5 batched per critic (3 calls total).
+
+### 6. Determine verdict
 
 - Approve: No blockers, concerns are minor. Plan is ready for `/global/implement`.
 - Request Changes: Blockers or significant concerns. Plan needs revision.
@@ -106,17 +152,24 @@ Write structured review to `./tmp/plan-review/<plan-name>-review.md`:
 **Source:** <path> | **Verdict:** Approve / Request Changes / Reject | **Date:** <date>
 
 ## Summary
-[1-3 sentences: what the plan proposes, overall assessment]
+[1-3 sentences: what the plan proposes, overall assessment, critic consensus stats]
+e.g., "2 blockers survived critic review (3 of 5 initial Blocker/Concern findings filtered)."
 
 ## Findings
 ### Blockers
 - [Blocker] [Dimension] -- description (evidence: ...)
+  Critic consensus: N/3 KEEP
 ### Concerns
 - [Concern] [Dimension] -- description (evidence: ...)
+  Critic consensus: N/3 KEEP
 ### Suggestions
 - [Suggestion] [Dimension] -- description
 ### Praise
 - [Praise] [Dimension] -- description
+
+### Filtered (for reference)
+<N> findings filtered by critic consensus:
+- [Blocker/Concern] [Dimension] -- <title> (votes: 1/3 KEEP -- <rejection reason>)
 
 ## Checklist
 - [x/~/!] Completeness, Correctness, Feasibility, Risk, Tradeoffs, Consistency, Testability

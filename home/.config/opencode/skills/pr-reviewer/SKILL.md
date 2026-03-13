@@ -40,7 +40,16 @@ Do NOT report: formatting, naming, style, linter-level issues, theoretical optim
 
 If no real issues are found, produce a PASS verdict with empty findings sections. Do NOT invent concerns to populate the template.
 
-Before reporting any finding:
+For each potential finding, invoke the researcher agent for deep investigation:
+  Task(subagent_type="researcher", prompt=<potential finding + diff path + worktree path>)
+
+The researcher investigates (call-stack tracing, test coverage checks, language
+verification, line number verification) and returns findings with confidence levels
+and verbatim evidence.
+
+Only findings returned with CERTAIN or LIKELY confidence proceed to Stage 3.
+
+If the researcher fails or times out, fall back to inline verification:
 1. VERIFY the language -- confirm syntax, stdlib, and library behavior
 2. TRACE the call stack -- check if upstream callers prevent or downstream handles it
 3. CHECK test coverage -- search for existing tests covering this scenario
@@ -67,14 +76,38 @@ Self-review: If the reviewer is also the PR author, note the conflict in the Sum
 ### Stage 3: Multi-model critic consensus
 
 For each finding from Stage 2, spawn THREE critic subagents IN PARALLEL via the Task tool:
-- `Task(subagent_type="critic/claude", prompt=<finding + diff context>)`
-- `Task(subagent_type="critic/gpt", prompt=<finding + diff context>)`
-- `Task(subagent_type="critic/gemini", prompt=<finding + diff context>)`
+- `Task(subagent_type="critic/claude", prompt=<finding + diff context + criteria below>)`
+- `Task(subagent_type="critic/gpt", prompt=<finding + diff context + criteria below>)`
+- `Task(subagent_type="critic/gemini", prompt=<finding + diff context + criteria below>)`
 
 Each critic receives:
 - The finding: severity, file:line, title, description, suggestion
 - The PR diff (or relevant excerpts for large diffs)
 - The worktree path for code exploration
+- The evaluation criteria below
+
+Include the following criteria in each Task prompt:
+
+  ## Evaluation Criteria
+
+  REJECT if any of these apply:
+  - Style, formatting, linting, or naming issue
+  - Testing suggestion (unless a test doesn't test what it claims)
+  - Best practice or maintainability concern without behavior change
+  - Theoretical optimization or speculative concern without evidence
+  - Scope creep (redesign beyond the PR)
+  - Hallucinated standard or API behavior
+  - Pre-existing issue not introduced by this PR
+  - Missing nil/null check with no reachable failure path
+  - Intentional design decision (the PR clearly intends the change)
+  - Encapsulation re-litigation (called method already handles it)
+  - Production standard applied to scripts, CLI tools, or test fixtures
+
+  KEEP only if ALL true:
+  - REAL bug, security vuln, or logic contradiction
+  - INTRODUCED by this PR (in added/modified lines)
+  - CONCRETE, PROVABLE, IMMEDIATE impact
+  - Verified by reading the actual code
 
 Each critic returns: Verdict (KEEP/REJECT), reasoning, and evidence.
 
