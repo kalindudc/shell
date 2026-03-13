@@ -28,13 +28,13 @@ review submissions -- written in the user's voice, focused on "so what?", not a 
 
 ### 3. Collect GitHub contributions
 
-Run these in parallel where possible. Use range syntax for date filters (`START..END`) -- double flags like `--created=">X" --created="<Y"` are BROKEN (second silently overwrites first).
+Run sequentially with 10-15s delays between calls to avoid secondary rate limits. After any 403, wait at least 5 minutes. Use `--limit=100` for reviewed-by/commenter searches. Use range syntax for date filters (`START..END`) -- double flags are BROKEN (second silently overwrites first).
 Prompt for `--owner=<org>` to scope to a GitHub org if the user works in an enterprise environment.
 
-- `gh api graphql` with `contributionsCollection(from, to)` -- aggregate totals
+- `gh api graphql` with `contributionsCollection(from, to)` -- sanity check for commit counts only; never use for PR/review counts (returns 0 for repos without push access)
 - `gh search prs --author=<user> --created="START..END" --limit=500 --json title,repository,url,state,createdAt,body,labels`
-- `gh search prs --reviewed-by=<user> --created="START..END" --limit=500 --json title,repository,url,labels`
-- `gh search prs --commenter=<user> --created="START..END" --limit=500 --json title,repository,url,labels`
+- `gh search prs --reviewed-by=<user> --created="START..END" --limit=100 --json title,repository,url,labels`
+- `gh search prs --commenter=<user> --created="START..END" --limit=100 --json title,repository,url,labels`
 - `gh search issues --author=<user> --created="START..END" --limit=500 --json title,repository,url,state,createdAt,labels`
 - `gh search commits --author=<user> --author-date="START..END" --limit=500 --json sha,repository,commit`
 - Extract `#gsd:<number>` from labels to map GitHub activity to vault GSD projects
@@ -43,7 +43,7 @@ Prompt for `--owner=<org>` to scope to a GitHub org if the user works in an ente
 
 Check availability by calling `vault_get_current_user`. If it fails, skip vault and note it in output.
 
-**Collection sequence** (see Implementation Notes for full tool reference):
+Collection sequence (see Implementation Notes for full tool reference):
 1. `vault_get_current_user` -- profile, team, active projects, recent post IDs
 2. `vault_get_projects(contributor=<gh_handle>)` for active + `status="concluded", concluded_year=YYYY` per year
 3. `vault_get_projects(champion=<gh_handle>)` -- leadership signal
@@ -53,9 +53,9 @@ Check availability by calling `vault_get_current_user`. If it fails, skip vault 
 
 ### 5. Analyze through impact, not activity
 
-Cross-reference GitHub data with vault context. Use `#gsd:<number>` labels as the primary bridge.
+Cross-reference GitHub data with vault context. Use `#gsd:<number>` labels as the primary bridge. When vault-mcp is available, treat project activity feeds as the *primary* source for impact narrative; GitHub data provides quantification, vault provides "why it mattered."
 
-**The impact formula** -- apply to every contribution before writing:
+The impact formula -- apply to every contribution before writing:
 ```
 [What I did] → [Why it mattered] → [What changed / measurable result]
 ```
@@ -69,15 +69,15 @@ Cross-reference GitHub data with vault context. Use `#gsd:<number>` labels as th
 ### 6. Prompt the user for reflection
 
 Before synthesizing, ask the user three questions (present the raw data summary first):
-1. **What are you genuinely proud of?** -- Not just what shipped, but what was hard.
-2. **What would you do differently with a time machine?** -- This becomes the Growth Areas section.
-3. **What did you learn?** -- New skills, new confidence, new ways of working.
+1. What are you genuinely proud of? -- Not just what shipped, but what was hard.
+2. What would you do differently with a time machine? -- This becomes the Growth Areas section.
+3. What did you learn? -- New skills, new confidence, new ways of working.
 
 Use their answers to shape the narrative. If they skip this, synthesize from data alone but note that the reflection sections will be less personal.
 
 ### 7. Synthesize the self-reflection
 
-**Writing principles** (from Shopify community guidance):
+Writing principles (from Shopify community guidance):
 - Write in first person. This is the user's voice, not a report about them.
 - Every bullet must answer "so what?" -- describe what changed, not just what was done.
 - 3 sentences or fewer per impact point. Link to evidence instead of explaining context.

@@ -33,6 +33,9 @@ readonly PACKAGES_SHELL=(
   "direnv"
 )
 
+# Minimum fzf version required for interactive features (--no-input, hide-input, $FZF_INPUT_STATE).
+readonly FZF_MIN_VERSION="0.59.0"
+
 readonly PACKAGES_DEV=(
   "neovim"
   "gh"
@@ -76,6 +79,7 @@ map_package_name() {
         fd) mapped_name="fd-find" ;;
         ripgrep) mapped_name="ripgrep" ;;
         gpg) mapped_name="gnupg" ;;
+        fzf) mapped_name="" ;;  # apt version is too old; custom install from GitHub releases
         go-task) mapped_name="" ;;  # Installed via snap
         git-delta) mapped_name="" ;;  # Custom install
         nerd-fonts) mapped_name="" ;;  # Not in apt
@@ -255,10 +259,89 @@ install_packages_core() {
   success "Core packages installed"
 }
 
+# Compare two semver strings. Returns 0 if $1 >= $2, 1 otherwise.
+version_gte() {
+  local have="$1" need="$2"
+  # printf ensures consistent zero-padded comparison
+  printf '%s\n%s\n' "${need}" "${have}" | sort -V | head -n1 | grep -qx "${need}"
+}
+
+# Ensure fzf is installed and meets the minimum version requirement.
+# On Ubuntu the apt package is typically too old, so we install from GitHub releases.
+# On other platforms the package manager version is usually sufficient.
+install_fzf() {
+  if command_exists fzf; then
+    local current_version
+    current_version="$(fzf --version 2>/dev/null | awk '{print $1}')"
+    if version_gte "${current_version}" "${FZF_MIN_VERSION}"; then
+      log "fzf ${current_version} is already installed (>= ${FZF_MIN_VERSION})"
+      return 0
+    fi
+    warn "fzf ${current_version} is installed but < ${FZF_MIN_VERSION}; upgrading..."
+  fi
+
+  log "Installing fzf >= ${FZF_MIN_VERSION}..."
+
+  case "${OS_DISTRO}" in
+    macos)
+      brew install fzf
+      ;;
+    arch)
+      maybe_sudo pacman -S --needed --noconfirm fzf
+      ;;
+    ubuntu)
+      # apt fzf is too old on most Ubuntu releases; install from GitHub.
+      local arch_suffix
+      case "$(uname -m)" in
+        x86_64)  arch_suffix="linux_amd64" ;;
+        aarch64) arch_suffix="linux_arm64" ;;
+        armv7l)  arch_suffix="linux_armv7" ;;
+        *)       abort "Unsupported architecture: $(uname -m)" ;;
+      esac
+
+      local fzf_url
+      fzf_url="$(curl -s https://api.github.com/repos/junegunn/fzf/releases/latest \
+        | grep "browser_download_url.*${arch_suffix}.tar.gz" \
+        | cut -d'"' -f4)"
+
+      if [[ -z "${fzf_url}" ]]; then
+        abort "Could not determine fzf download URL"
+      fi
+
+      local tmp_dir
+      tmp_dir="$(mktemp -d)"
+      curl -fsSL "${fzf_url}" | tar xz -C "${tmp_dir}"
+      maybe_sudo install -m 755 "${tmp_dir}/fzf" /usr/local/bin/fzf
+      rm -rf "${tmp_dir}"
+      ;;
+    *)
+      abort "Unsupported OS for fzf installation: ${OS_DISTRO}"
+      ;;
+  esac
+
+  # Verify
+  if command_exists fzf; then
+    local installed_version
+    installed_version="$(fzf --version 2>/dev/null | awk '{print $1}')"
+    if version_gte "${installed_version}" "${FZF_MIN_VERSION}"; then
+      success "fzf ${installed_version} installed"
+    else
+      error "fzf ${installed_version} installed but still < ${FZF_MIN_VERSION}"
+      return 1
+    fi
+  else
+    error "fzf installation failed"
+    return 1
+  fi
+}
+
 # Install shell packages
 install_packages_shell() {
   log "Installing shell packages..."
   install_package_list "${PACKAGES_SHELL[@]}"
+
+  # fzf: ensure version >= FZF_MIN_VERSION (apt version on Ubuntu is too old)
+  install_fzf
 
   # Install starship
   install_starship
@@ -585,6 +668,7 @@ export -f install_packages_core install_packages_shell
 export -f install_packages_dev install_packages_runtimes
 export -f install_packages_devops install_packages_fonts
 export -f install_packages_optional
+export -f version_gte install_fzf
 export -f install_starship install_nvm install_pyenv
 export -f install_ohmyzsh install_pipx_packages
 export -f install_docker

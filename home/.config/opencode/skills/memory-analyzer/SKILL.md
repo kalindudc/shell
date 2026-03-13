@@ -16,26 +16,26 @@ Three data tiers, ordered by cost:
 
 ## Approach
 
-**Start cheap, escalate as needed:**
+Start cheap, escalate as needed:
 1. Read `index.json` for aggregate queries (model usage, session counts, skill/command frequency)
 2. Scan individual `.json` files for detailed analysis (token sums, duration totals, per-project breakdowns)
 3. Grep `.md` logs only when conversation content is needed (topic search, specific tool output)
 
-**Memory directory:** `~/.config/opencode/memory/`
+Memory directory: `~/.config/opencode/memory/`
 
-**Data field notes:**
+Data field notes:
 - `project` may be a hash (older sessions) or readable name (newer sessions) -- use `directory` field for consistent project display
 - Extract last path component from `directory` for short project name (e.g., `"shell"`)
 - `token_usage` may be all zeros in older sessions -- check per-session before computing costs
 - `index.json` `input_tokens` only counts non-cached input (dramatically undercounts) -- always scan `.json` files for cost queries
 
-**Query strategies:**
-- **Usage stats**: read `index.json` -> `models`, `skills`, `commands` sections
-- **Cost estimates**: ALWAYS scan individual `.json` files (index.json undercounts) -> skip sessions with all-zero tokens -> sum `token_usage` fields (`input` + `cache_read` + `cache_write` + `output`) -> apply pricing
-- **Session history**: scan `.json` files -> filter by date/project/outcome -> use `directory` field for display
-- **Conversation search**: grep `.md` files for keywords
+Query strategies:
+- Usage stats: read `index.json` -> `models`, `skills`, `commands` sections
+- Cost estimates: ALWAYS scan individual `.json` files (index.json undercounts) -> skip sessions with all-zero tokens -> sum `token_usage` fields (`input` + `cache_read` + `cache_write` + `output`) -> apply pricing
+- Session history: scan `.json` files -> filter by date/project/outcome -> use `directory` field for display
+- Conversation search: grep `.md` files for keywords
 
-**Cost estimation reference** (approximate, label as estimates):
+Cost estimation reference (approximate, label as estimates):
 
 | Model | Base Input | Cache Write | Cache Read | Output |
 |-------|-----------|-------------|------------|--------|
@@ -44,7 +44,7 @@ Three data tiers, ordered by cost:
 
 Cache reads are 0.1x base input price. Cache writes are 1.25x base input price.
 
-**Tool usage:**
+Tool usage:
 - `read` -- for `index.json` and individual session files
 - `bash` -- for `find`/`jq`/`grep` over multiple session files
 - `todowrite` -- track analysis progress

@@ -3,6 +3,11 @@
 
 # TODO: - CLI task tracker
 
+# Opt out of Bundler auto-activation. todo uses only Ruby stdlib and must not
+# be affected by a Gemfile that happens to exist in the working directory.
+# This only affects this process; the parent shell is unmodified.
+ENV.delete('BUNDLE_GEMFILE')
+
 require_relative 'lib/todo/cli'
 
 Todo::CLI.run(ARGV)

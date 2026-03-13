@@ -13,30 +13,30 @@ Workflow: `/global/plan` → `/global/implement` → `/global/pr-desc`
 
 ## Plan Ingestion
 
-A plan file **must** be explicitly provided by the user. Do NOT auto-discover or assume a plan.
+A plan file MUST be explicitly provided by the user. Do NOT auto-discover or assume a plan.
 
-1. If `$ARGUMENTS` contains a file path, use that. Otherwise, **ask the user**.
+1. If `$ARGUMENTS` contains a file path, use that. Otherwise, ask the user.
 2. Read the plan file completely.
-3. Extract tasks from "Low-Level Tasks" if present, otherwise infer actionable items. If ambiguous, ask the user.
+3. Extract tasks from "Low-Level Tasks" if present; for non-standard formats (analysis reports, recommendation docs), explicitly list inferred tasks and re-order by structural dependency when targeting the same file. If ambiguous, ask the user.
 4. For each task, identify: target files, functions, implementation details, verification commands.
-5. Classify status: **Completed** (`[COMPLETED]`, `✅`), **In progress** (`[IN PROGRESS]`), or **Pending** (no marker).
-6. Use the **TodoWrite tool** to create a todo for each task with the correct status.
+5. Classify status: Completed (`[COMPLETED]`, `✅`), In progress (`[IN PROGRESS]`), or Pending (no marker).
+6. Use the TodoWrite tool to create a todo for each task with the correct status.
 7. Read all files in the "Beginning context" section (or infer from task descriptions).
 
 ### Resuming Partially Completed Plans
 
-If any tasks are marked completed or in progress, this is a **resume**:
+If any tasks are marked completed or in progress, this is a resume:
 
-- **Verify completed tasks** -- read target files and confirm changes exist. Re-mark as `pending` if missing.
-- **Resume in-progress tasks** -- continue from where they left off, don't restart.
-- **Run a baseline check** -- build and test to confirm a working state. Report failures before continuing.
-- **Report resume status** to the user: tasks verified, tasks to resume, tasks remaining.
+- Verify completed tasks -- read target files and confirm changes exist. Re-mark as `pending` if missing.
+- Resume in-progress tasks -- continue from where they left off, don't restart.
+- Run a baseline check -- build and test to confirm a working state. Report failures before continuing.
+- Report resume status to the user: tasks verified, tasks to resume, tasks remaining.
 
 ## Pre-Implementation Setup
 
-1. **Branch check**: Verify you are NOT on `main`. If on `main`, propose a branch name and create it with `gt create` (if available) or `git checkout -b`.
-2. **Baseline check**: Run the project's build/test command. If NOT green, STOP and inform the user.
-3. **Context loading**: Read all files in "Beginning context". Verify each exists (or note as expected-missing for CREATE tasks).
+1. Branch check: Verify you are NOT on `main`. If on `main`, propose a branch name and create it with `gt create` (if available) or `git checkout -b`.
+2. Baseline check: Run the project's build/test command. If NOT green, STOP and inform the user.
+3. Context loading: Read all files in "Beginning context". Verify each exists (or note as expected-missing for CREATE tasks).
 
 ## Execution Loop
 
@@ -60,11 +60,12 @@ For each Low-Level Task, in order:
 Make the code changes described in the task. Follow the DOING/EXPECT pattern from the Agent Protocol.
 
 Guidelines:
-- Prefer the **Edit tool** over Write for existing files
+- Prefer the Edit tool over Write for existing files
 - Prefer editing existing files over creating new ones
 - Follow the project's coding standards (from the plan's Implementation Notes)
 - Follow the plan's specific instructions for each task
 - When multiple tasks target the same file, treat the plan as a specification and batch implementation -- the plan's value is in completeness, not edit granularity
+- Pre-check linter configs for strict rules before writing code to avoid create-then-rewrite cycles. When consolidating modules, expect length-limit violations. When changing data formats, update test helpers that bypass the app layer.
 - Do NOT deviate from the plan without user approval -- surface simpler alternatives before committing
 - When a plan conflicts with tooling/environment conventions, research the convention before overriding it
 
@@ -72,12 +73,14 @@ Guidelines:
 
 Run the verification command appropriate for the change type:
 
-**Scope**: Run only the relevant test file(s) per task for fast feedback. Save the full suite for the Completion Protocol.
+Scope: Run only the relevant test file(s) per task for fast feedback. Save the full suite for the Completion Protocol.
 
-- **Code changes**: Build command (confirm compilation)
-- **New tests**: Test command (confirm tests pass)
-- **Style changes**: Lint command (confirm style compliance)
-- **Structural changes**: Verify files exist/don't exist as expected
+- Code changes: Build command (confirm compilation)
+- New tests: Test command (confirm tests pass)
+- Style changes: Lint command (confirm style compliance)
+- Structural changes: Verify files exist/don't exist as expected
+- Config/doc-only plans (no build/test/lint cycle): Verification is re-reading files and checking structural consistency. Baseline check reduces to `git status` showing a clean working tree.
+- Compilation-dependency chains (A references B, B removes C): Defer verification to the last task in the chain rather than attempting intermediate builds that cannot succeed.
 
 When running tests, prefer the `test_run_parsed` tool over raw bash for structured results. It returns pass/fail per test with parsed failure locations instead of raw terminal output.
 
@@ -86,8 +89,8 @@ When test failures produce stack traces, use `stack_trace_resolve` to resolve co
 Use `ast_query` to find patterns to follow when implementing (e.g., "find all classes extending BaseModel" to match existing conventions). Prefer over grep for structural code queries.
 
 Compare RESULT vs EXPECT:
-- If verification **passes**: proceed to Step 5
-- If verification **fails**: enter the Retry Protocol (see below)
+- If verification passes: proceed to Step 5
+- If verification fails: enter the Retry Protocol (see below)
 
 ### Step 5: Record
 
@@ -113,13 +116,13 @@ When verification fails at Step 4:
 Up to 3 retries. Each attempt: read the error, state the exact failure, state your root-cause theory, adjust the implementation, re-run verification.
 
 If all 3 attempts fail:
-- **STOP** — do not continue to the next task
+- STOP -- do not continue to the next task
 - Report to user:
   1. What failed (exact error)
   2. What was attempted (all 3 approaches)
   3. Theory of root cause
   4. Proposed next step
-- **Wait for user confirmation** before continuing
+- Wait for user confirmation before continuing
 
 Critical: NEVER silently retry -- state what changed and why. NEVER modify tests blindly -- verify they're correct first. NEVER modify the plan to fit broken code.
 

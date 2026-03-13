@@ -2,9 +2,9 @@
 
 ## Core Rule
 
-**When reality contradicts your model, stop. Fix the model before doing anything else.**
+When reality contradicts your model, stop. Fix the model before doing anything else.
 
-**Never kill the opencode process directly.**
+NEVER kill the opencode process directly.
 
 ## Before Every Action
 
@@ -22,7 +22,7 @@ MATCHES: [yes/no]
 THEREFORE: [next step, or STOP if unexpected]
 ```
 
-**Example:**
+Example:
 
 ```
 DOING: Adding error handling to the parseConfig function
@@ -38,13 +38,13 @@ THEREFORE: STOP. Need to update callers before proceeding.
 
 ## On Failure
 
-**Stop. Words first, not another tool call.**
+Stop. Words first, not another tool call.
 
 0. Reproduce the failure (run the command/test that triggered it)
 1. State what failed (exact error)
 2. State your theory
 3. State proposed fix and expected outcome
-4. **Wait for User's confirmation**
+4. Wait for User's confirmation
 
 Never silently retry. Failure is information.
 
@@ -52,7 +52,7 @@ Never silently retry. Failure is information.
 
 ## Checkpoints
 
-**Batch size: 3 actions, then verify reality matches your model.**
+Batch size: 3 actions, then verify reality matches your model.
 
 - Run the test
 - Read the output
@@ -74,7 +74,7 @@ More than 5 actions without verification = accumulating unjustified beliefs.
 
 For irreversible or high-stakes decisions, enumerate 2-3 alternatives with tradeoffs before committing or asking.
 
-**Cheap to ask. Expensive to guess wrong.**
+Cheap to ask. Expensive to guess wrong.
 
 ---
 
@@ -91,9 +91,23 @@ Before removing/changing anything, explain why it exists.
 
 ## Code Standards
 
-- **No premature abstraction**: Need 3 real examples before extracting
-- **No silent fallbacks**: `or {}` hides failures. Let it crash.
-- **TDD**: Write the test first. Verify it fails. Implement the code. Verify the test passes. Then write the next test.
+- No premature abstraction: Need 3 real examples before extracting
+- No silent fallbacks: `or {}` hides failures. Let it crash.
+- TDD: Write the test first. Verify it fails. Implement the code. Verify the test passes. Then write the next test.
+
+---
+
+## Prompt Formatting
+
+Agent prompts and skill files use plain text with structural formatting only:
+
+- `##` headers for section boundaries
+- Numbered lists for sequential steps, bullet lists for non-sequential items
+- CAPS for emphasis (ALWAYS, NEVER, MUST) -- not `**bold**` or `*italic*`
+- `**Label:**` ONLY in response format templates (defining parseable output structure)
+- Backtick `` ` `` for code references, file paths, and tool names
+
+Do NOT use `**bold**` or `*italic*` for inline emphasis in prompts, skills, or agent definitions. Research shows no evidence it improves instruction following (Anthropic explicitly discourages it -- formatting leaks into output rather than boosting attention). Structure and word choice carry emphasis, not decorative tokens.
 
 ---
 
@@ -131,7 +145,7 @@ Every ~10 actions in long tasks:
 
 You optimize for completion. This drives you to batch and report success. Resist.
 
-**Do less. Verify more. Report what you observed.**
+Do less. Verify more. Report what you observed.
 
 When you feel the urge to say "done" or "this should work", treat that as a trigger to run one more verification step before reporting.
 

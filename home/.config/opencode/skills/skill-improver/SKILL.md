@@ -15,11 +15,11 @@ You are the slow feedback loop. Agents append notes during use (fast loop). You 
 
 When invoked to append an observation (not review/improve), follow this protocol:
 
-1. **Pre-check**: Read the target skill's SKILL.md. If the observation restates an existing instruction, do not append.
-2. **Deduplicate**: Read SKILL_NOTES.md. If a promoted entry already captures this insight, do not append.
-3. **Batch per session**: If multiple observations come from the same task, write ONE entry with multiple bullets under Observation/Takeaway — not separate entries.
-4. **Tag honestly**: Use `needs-more-data` only for genuinely novel observations with <2 data points. If 2+ entries already exist for the same pattern, tag `ready-to-promote`.
-5. **Self-observation**: When observing the skill-improver itself, append directly to `skill-improver/SKILL_NOTES.md` — do not invoke `@skill-improver` recursively.
+1. Pre-check: Read the target skill's SKILL.md. If the observation restates an existing instruction, do not append.
+2. Deduplicate: Read SKILL_NOTES.md. If a promoted entry already captures this insight, do not append.
+3. Batch per session: If multiple observations come from the same task, write ONE entry with multiple bullets under Observation/Takeaway -- not separate entries.
+4. Tag honestly: Use `needs-more-data` only for genuinely novel observations with <2 data points. If 2+ entries already exist for the same pattern, tag `ready-to-promote`.
+5. Self-observation: When observing the skill-improver itself, append directly to `skill-improver/SKILL_NOTES.md` -- do not invoke `@skill-improver` recursively.
 
 ## Slow Loop (Reviewing Notes)
 
@@ -30,10 +30,10 @@ When invoked to append an observation (not review/improve), follow this protocol
    - Open questions -> may need user input before becoming instructions
    - Project-specific or single-codebase observations -> remove (they can never generalize into skill instructions)
 3. Propose an improvement. Prefer operations that keep the skill lean:
-   - **Generalize**: Multiple edge cases → one principle. Best option.
-   - **Replace**: New principle supersedes an old one. Remove the old.
-   - **Compress**: Same meaning, fewer words. Tighten existing prose.
-   - **Append**: New principle not covered by existing instructions. Last resort.
+   - Generalize: Multiple edge cases -> one principle. Best option.
+   - Replace: New principle supersedes an old one. Remove the old.
+   - Compress: Same meaning, fewer words. Tighten existing prose.
+   - Append: New principle not covered by existing instructions. Last resort.
    Before appending, apply the signal-to-noise check: could existing lines be removed or tightened instead? Improve what's there before adding more.
    One improvement per skill per invocation. In batch mode (no specific skill), collect all proposals before presenting. Preserve structural invariants.
 4. Present the proposed diff to the user with rationale
@@ -49,12 +49,15 @@ These must be preserved in every edit:
 - `## Purpose` must be the first section after the H1 title
 - `## Rules` must be the last section
 - Skill name in frontmatter must match the directory name
-- No skill should exceed 150 lines -- research shows instruction-following
-  degrades past ~200 lines, and 150 gives margin. But size alone doesn't
-  determine health. Apply the signal-to-noise check: "If I removed this
-  line, would the agent behave differently?" If no, the line is noise
-  regardless of total size. A 140-line skill with zero noise is healthier
-  than a 60-line skill with half noise.
+- Skill size guidance (line counts include frontmatter and blank lines):
+  - No hard line limit. Brevity is still a virtue -- just not at the
+    expense of precision.
+  - Over 300 lines: Should be decomposed (e.g., split review criteria
+    into subagent prompts) unless the complexity genuinely requires it.
+- Regardless of tier, apply the signal-to-noise check: "If I removed this
+  line, would the agent behave differently?" If no, the line is noise.
+  A 140-line skill with zero noise is healthier than a 60-line skill
+  with half noise.
 
 ## Self-Improvement
 

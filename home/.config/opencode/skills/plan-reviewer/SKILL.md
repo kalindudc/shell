@@ -22,7 +22,7 @@ Before beginning review, verify the plan meets minimum structural requirements (
 - Plan has Low-Level Tasks section with at least one task
 - Plan has a Context section (Beginning and/or Ending context)
 
-If entry criteria fail, STOP and report which criteria failed. Do not review an incomplete plan.
+If entry criteria fail but the document contains plan-like intent (objectives, recommendations, tasks), proceed with adapted dimensions rather than rejecting outright. Otherwise, STOP and report which criteria failed.
 
 ## Process
 
@@ -44,37 +44,37 @@ Understanding is the #1 review activity.
 
 Evaluate each dimension. Each produces findings with severity labels. Skip dimensions that don't apply.
 
-**Completeness** ("ensure requirements are complete and flowdown is adequate"):
+Completeness ("ensure requirements are complete and flowdown is adequate"):
 - Are all objectives traced to Low-Level Tasks? Any gaps or orphan tasks?
 - Do Beginning context files actually exist? (Use Read tool to verify)
 - Are task dependencies identified?
 
-**Correctness** ("compare output against requirements"):
-- Do referenced files, functions, classes exist? (Use Read, ast_query, Glob)
-- Do referenced libraries/APIs exist and support described usage? Check installed source/type definitions as ground truth (docs omit signature details). Use webfetch for external APIs.
+Correctness ("compare output against requirements"):
+- Do referenced files, functions, classes exist? (Use Read, ast_query, Glob). Always read the actual pattern files being referenced and at least one real data file -- plans frequently describe idealized schemas rather than actual data shapes.
+- Do referenced libraries/APIs exist and support described usage? Check installed source/type definitions as ground truth (docs omit signature details). For claims depending on external platform documentation (cloud provider behavior, runtime limitations), always webfetch the cited URLs -- these are load-bearing and unverifiable from codebase alone.
 - Are code snippets syntactically valid?
-- If the plan cites research, verify claims match sources (use webfetch)
+- For quantitative claims (element counts, line counts, test counts), verify directly against the source rather than trusting listed enumerations.
 
-**Feasibility** ("show proposed design meets requirements"):
+Feasibility ("show proposed design meets requirements"):
 - Can the approach achieve the stated objectives?
 - Are there unaddressed technical blockers?
 - Are task estimates reasonable for a single implementation session?
 
-**Risk** ("identify sensitivity points and risks"):
+Risk ("identify sensitivity points and risks"):
 - Are risks explicitly identified? What are unacknowledged risks?
 - Where would a small error cascade? Single points of failure?
 - Is there a fallback if a key assumption proves wrong?
 
-**Tradeoffs** ("document tradeoffs and their rationale"):
+Tradeoffs ("document tradeoffs and their rationale"):
 - Were alternatives considered? Is the rationale for the chosen approach sound?
 - Does the plan over-engineer (KISS violation) or under-engineer (missing edge cases)?
 
-**Consistency** ("identify discrepancies"):
+Consistency ("identify discrepancies"):
 - Do Low-Level Tasks align with Implementation Notes?
-- Are there contradictions between sections? Is terminology consistent?
+- Are there contradictions between sections? Is terminology consistent? When a plan has both free-form design descriptions and structured specification (tables, task code), explicitly cross-reference them -- this is a high-yield inconsistency pattern.
 - Do Ending context files match what tasks would produce?
 
-**Testability** ("ensure verification methods are described"):
+Testability ("ensure verification methods are described"):
 - Are Validation Gates present and deterministic?
 - Can each gate actually be executed?
 - Would passing gates demonstrate objectives are met?
@@ -82,20 +82,20 @@ Evaluate each dimension. Each produces findings with severity labels. Skip dimen
 ### 4. Categorize and label findings
 
 Each finding gets:
-- **Severity**: Blocker | Concern | Suggestion | Nit | Praise
+- Severity: Blocker | Concern | Suggestion | Nit | Praise
   - Blocker: Plan cannot proceed (incorrect assumptions, missing tasks, non-existent APIs)
   - Concern: Should be addressed, significant impact on success
   - Suggestion: Would improve the plan but not blocking
   - Nit: Minor wording, formatting, or style issue
   - Praise: Something done well (thorough research, good risk assessment)
-- **Dimension**: Which review dimension the finding belongs to
-- **Brief explanation** of why (not just what), with evidence from verification
+- Dimension: Which review dimension the finding belongs to
+- Brief explanation of why (not just what), with evidence from verification
 
 ### 5. Determine verdict
 
-- **Approve**: No blockers, concerns are minor. Plan is ready for `/global/implement`.
-- **Request Changes**: Blockers or significant concerns. Plan needs revision.
-- **Reject**: Fundamental issues -- incorrect assumptions, wrong approach, flawed problem statement. Needs re-planning.
+- Approve: No blockers, concerns are minor. Plan is ready for `/global/implement`.
+- Request Changes: Blockers or significant concerns. Plan needs revision.
+- Reject: Fundamental issues -- incorrect assumptions, wrong approach, flawed problem statement. Needs re-planning.
 
 ## Output
 

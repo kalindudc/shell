@@ -11,7 +11,7 @@ Generate PR descriptions that maximize reviewability and merge probability throu
 
 ## Brevity Constraint
 
-**The entire PR description MUST be readable in under 5 minutes. A description nobody reads helps nobody.**
+The entire PR description MUST be readable in under 5 minutes. A description nobody reads helps nobody.
 
 - Prefer bullet points over paragraphs
 - One sentence where one sentence suffices — never two
@@ -27,17 +27,17 @@ Generate PR descriptions that maximize reviewability and merge probability throu
 - If available, run `gt log` to determine the parent branch from the stack
 - If not available, determine if the user specified a parent branch in the arguments
 - If unclear, prompt the user for more information on the parent branch
-- **Ensure the parent branch is in its latest state from remote** before diffing
+- Ensure the parent branch is in its latest state from remote before diffing
 
 ### 2. Gather the related GitHub issue
 
 - Check if a GitHub issue URL or number was provided in `$ARGUMENTS`
-- If not provided, **prompt the user** for a relevant GitHub issue (URL or number)
-- Use the issue to extract context for the **Why** and **Related** sections of the PR description
+- If not provided and the change is self-explanatory from the diff alone (small config/CI changes, docs-only), skip the prompt. Otherwise, prompt the user for a relevant GitHub issue (URL or number).
+- Use the issue to extract context for the Why and Related sections of the PR description
 
 ### 3. Get the git diff
 
-- Run `git diff <parent_branch>...HEAD` to get all changes
+- Run `git diff <parent_branch>...HEAD` to get all changes. For stacked branches (Graphite, ghstack), this can over-report if the local parent ref is stale. Verify with `git diff-tree` on the branch's specific commits, or fetch the parent before diffing.
 - Use the `git_diff_summary` tool for a structured overview of changes with file categorization (source/test/config/docs/migration) and insertion/deletion counts. This replaces the need to chain `git diff --stat` and `git diff --numstat` manually.
 - Run `git log --oneline <parent_branch>...HEAD` to understand the commit narrative. Use commit messages to inform the Summary and Technical Details.
 
@@ -47,7 +47,7 @@ Generate PR descriptions that maximize reviewability and merge probability throu
 - Spawn subagents if needed for complex analysis
 - If a plan file exists in `./tmp/plan/`, read it to understand the intent behind the changes. The plan's High-Level Objective is often the best source for the Summary's "Why" section, if many plans are found and you are unsure which to use, prompt the user for clarification rather than guessing or ignore the plan entirely.
 - If the branch has been pushed, check CI status. Note pass/fail in Technical Details if relevant.
-- **Verify description-code alignment** -- ensure every claim matches actual code changes
+- Verify description-code alignment -- ensure every claim matches actual code changes
 - If a prior draft exists in `./tmp/pr/`, delete it and generate from scratch -- stale drafts anchor on outdated claims
 
 ### 5. Generate the PR description using the template below
@@ -113,15 +113,15 @@ foo/bar/
 
 - Output the final PR description to `./tmp/pr/<branch_name>-pr.md`
 - Copy to clipboard if available (`pbcopy` on macOS, `xclip -selection clipboard` on Linux). Skip if neither is present.
-- **Max 5 minute read time — this is non-negotiable**
+- Max 5 minute read time -- this is non-negotiable
 
 ## Template Usage Guidelines
 
-**Always include:** Summary (with Why and What), Review guidance, Changed files tree, Technical details (non-obvious only).
+Always include: Summary (with Why and What), Review guidance, Changed files tree, Technical details (non-obvious only).
 
-**Include when applicable:** Deploy/migration, Related issues/PRs, Screenshots (UI changes only).
+Include when applicable: Deploy/migration, Related issues/PRs, Screenshots (UI changes only).
 
-**Anti-patterns:** Empty descriptions, description-code misalignment, generic descriptions ("Fix bug"), missing rationale (WHAT without WHY), over-verbose walls of text.
+Anti-patterns: Empty descriptions, description-code misalignment, generic descriptions ("Fix bug"), missing rationale (WHAT without WHY), over-verbose walls of text.
 
 ## Self-Improvement
 
@@ -133,6 +133,6 @@ After execution, use `@skill-improver` to capture observations about this skill'
 - Always format in markdown
 - FOLLOW KISS -- if it can be shorter, make it shorter
 - NEVER over reference related issues or PRs, if you are unsure if a an issue/PR is relevant, omit it or prompt the user for clarification rather than guessing
-- **Every claim must match actual code changes** -- verify alignment before output
+- Every claim must match actual code changes -- verify alignment before output
 - Omit optional sections entirely rather than filling them with placeholder content
-- **Brevity is a feature, not a compromise** -- say more with less
+- Brevity is a feature, not a compromise -- say more with less

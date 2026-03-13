@@ -11,9 +11,9 @@ A plan is a structured prompt that supplies an AI coding agent with everything i
 
 A plan differs from a generic project plan by adding three AI-critical layers:
 
-- **Context** -- Precise file paths, library versions, code snippets. Plans are always standalone -- all relevant context is embedded directly.
-- **Implementation Strategy** -- Specific libraries, code standards, repo patterns, architectural decisions.
-- **Validation Gates** -- Deterministic checks (build, test, lint) with TDD for quality control.
+- Context -- Precise file paths, library versions, code snippets. Plans are always standalone -- all relevant context is embedded directly.
+- Implementation Strategy -- Specific libraries, code standards, repo patterns, architectural decisions.
+- Validation Gates -- Deterministic checks (build, test, lint) with TDD for quality control.
 
 ## Research Process
 
@@ -33,6 +33,7 @@ Begin with thorough research to gather all necessary context:
 ### 4. Codebase Exploration
 - Identify relevant files, directories, and patterns to follow
 - Read full content of ALL pattern files (not just the closest analog) -- consistency comes from breadth
+- Verify both what patterns exist AND what infrastructure is absent -- missing frameworks/conventions are as important as existing ones
 - Use the `codebase-explorer` skill for systematic research if the repo is unfamiliar
 
 ### Available Custom Tools
@@ -43,6 +44,7 @@ Use these tools during the research process to gather context efficiently:
 - `git_diff_summary` -- structured diff summary with file categorization and counts. Use to understand recent changes to relevant modules.
 - `test_run_parsed` -- run tests with structured pass/fail results. Use to verify the baseline test suite passes before planning.
 - `stack_trace_resolve` -- resolve stack traces to actual source file:line references.
+- `gh` CLI / GitHub API -- use `gh api` and `gh search` for repo configuration state (branch protection, secrets, app installations). Verify commands work before including them in plans.
 
 
 ## Plan Template
@@ -102,12 +104,12 @@ CREATE or UPDATE: [file path]
 
 A plan should be implementable in a single session. If it can't be, split it into a plan stack -- multiple independent plans in a directory, each self-contained.
 
-Keep plans concise:
+Keep plans concise but precise:
 - Implementation Notes: focus on what the agent can't infer from the code
-- Low-Level Tasks: enough detail to implement unambiguously, not more
+- Low-Level Tasks: enough detail to implement unambiguously, not more. Plans with exact FROM/TO diffs and verified API signatures reduce the implementer to mechanical execution -- the highest-efficiency mode.
 - Context sections: file paths and brief descriptions, not full file contents
 
-**CRITICAL:** Plan stacks are a last resort. Always prefer a single plan, if a stack is a needed, STOP, and confirm with the user before proceeding.
+CRITICAL: Plan stacks are a last resort. Always prefer a single plan, if a stack is needed, STOP, and confirm with the user before proceeding.
 
 ## Output Format
 
@@ -118,9 +120,9 @@ Keep plans concise:
 
 After completing initial research, present a summary: scope, patterns to follow, approach, and validation criteria.
 
-**If research is unambiguous**: state what you found and proceed directly to plan creation.
+If research is unambiguous: state what you found and proceed directly to plan creation.
 
-**If scope is abstract or ambiguous**: present a concrete architectural strawman early to force clarification -- don't wait until the full plan is drafted. STOP and wait for user confirmation before proceeding.
+If scope is abstract or ambiguous: present a concrete architectural strawman early to force clarification -- don't wait until the full plan is drafted. STOP and wait for user confirmation before proceeding.
 
 Plans always produce working software. Research informs Implementation Notes; Low-Level Tasks describe code to write (CREATE/UPDATE files), never report sections.
 

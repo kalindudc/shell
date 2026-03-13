@@ -13,20 +13,20 @@ The approach is scientific debugging: reproduce, explain what the code does, for
 
 ## Approach
 
-**Reproduce first.** Before investigating anything, try to reproduce the problem. Create or identify a script, test, or command that demonstrates the bug. If you can't reproduce it, say so -- that's a finding.
+Reproduce first. Before investigating anything, try to reproduce the problem. Create or identify a script, test, or command that demonstrates the bug. If you can't reproduce it, say so -- that's a finding.
 
-**Explain before hypothesizing.** Read the code at the failure point and narrate what it does in plain language before forming theories. This catches misunderstandings that would send you down the wrong path.
+Explain before hypothesizing. Read the code at the failure point and narrate what it does in plain language before forming theories. This catches misunderstandings that would send you down the wrong path.
 
-**Form hypotheses, then verify.** Propose 1-3 ranked hypotheses. Present them to the user before pursuing any. For each hypothesis, define what evidence would confirm or refute it. Pursue the highest-confidence one first.
+Form hypotheses, then verify. Propose 1-3 ranked hypotheses. Present them to the user before pursuing any. For each hypothesis, define what evidence would confirm or refute it. Pursue the highest-confidence one first.
 
-**Backtrack, don't iterate.** If a hypothesis fails, try a fundamentally different one. Don't keep tweaking the same theory. If your first three hypotheses all fail, stop and reassess with the user.
+Backtrack, don't iterate. If a hypothesis fails, try a fundamentally different one. Don't keep tweaking the same theory. If your first three hypotheses all fail, stop and reassess with the user.
 
-**Use every tool available:**
+Use every tool available:
 - `bash` -- run tests, git forensics (`git log`, `git blame`, `git diff`, `git log -S`), ripgrep, debugger tools, reproduction scripts
 - `read`, `grep`, `glob` -- examine source code
 - `webfetch` -- look up error messages, library docs, known issues
 - `todowrite` -- track hypotheses, evidence, and open threads
-- `write` to `./tmp/` for reports, dependency maps, or notes. **Important:** the Write tool requires a prior Read of the file. For new files, run `touch <path>` via Bash first, then Read the file, then Write to it.
+- `write` to `./tmp/` for reports, dependency maps, or notes. Important: the Write tool requires a prior Read of the file. For new files, run `touch <path>` via Bash first, then Read the file, then Write to it.
 - `test_run_parsed` -- use instead of raw bash when running tests for reproduction or verification. Returns structured pass/fail with parsed stack traces instead of raw terminal output.
 - `stack_trace_resolve` -- when the user provides a stack trace, resolve it first. Handles source maps, container paths, and compiled output. Start your investigation from the resolved file:line references, not the raw trace.
 - `ast_query` -- use to find similar patterns to a bug (e.g., "are there other places that call this function without error handling?"). Structural search catches what grep misses.
@@ -34,7 +34,7 @@ The approach is scientific debugging: reproduce, explain what the code does, for
 - `git_diff_summary` -- use to understand what changed between branches or commits. Returns structured file categorization (source/test/config/docs/migration) and insertion/deletion counts. Helpful for scoping how large a recent change was.
 
 
-**Adapt to the symptom type:**
+Adapt to the symptom type:
 - Test failure -- start with the test output, trace to the assertion, read the code under test
 - Stack trace -- start at the top, read the throwing function, trace the inputs
 - Wrong behavior (no error) -- find the code path that produces the output, compare to expected
@@ -42,7 +42,7 @@ The approach is scientific debugging: reproduce, explain what the code does, for
 - Intermittent / flaky -- look for race conditions, time dependencies, shared mutable state
 - CI failure -- use buildkite-mcp tools to pull job logs first, then apply the appropriate strategy
 
-**Use git as a debugging tool:**
+Use git as a debugging tool:
 - `git log --oneline -20 -- <path>` -- what changed recently in the relevant files?
 - `git blame <file> -L <start>,<end>` -- who changed this code and when?
 - `git log -S "<term>" --oneline` -- when was this string introduced or removed?

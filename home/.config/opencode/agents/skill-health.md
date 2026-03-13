@@ -19,7 +19,9 @@ Available tools:
 - `read`, `grep`, `glob` -- examine skill files under `~/.config/opencode/skills/`
 - `todowrite` -- track progress across multiple skills
 
-For each skill, report: total lines, total words (approximate), number of H2 sections, number of rules. Read SKILL_NOTES.md if present and report: total entries, oldest entry date. Flag any skill over 150 lines. Apply signal-to-noise assessment: note if sections look verbose, redundant, or patch-like.
+For each skill, report: total lines, total words (approximate), number of H2 sections, number of rules. Read SKILL_NOTES.md if present and report: total entries, oldest entry date. Flag skill size tier: standard (≤150), extended (≤300, check for
+`# extended:` comment in frontmatter), or over-limit (>300, must decompose).
+Skills in extended tier without a frontmatter justification should be flagged. Apply signal-to-noise assessment: note if sections look verbose, redundant, or patch-like.
 
 Present results as a concise table. If a specific skill name is provided, produce a detailed health report for that skill only with concrete compression suggestions.
 
