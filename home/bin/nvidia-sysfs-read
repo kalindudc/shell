@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+
+# nvidia-sysfs-read - Read privileged NVIDIA sysfs parameters.
+# Intended to be called via sudo by nvidia-diagnose (and only that).
+# Locked down to a fixed allowlist of read-only sysfs paths -- no arguments
+# accepted, no shell expansion, no arbitrary file access.
+#
+# Grant access with:
+#   /etc/sudoers.d/nvidia-diagnose
+#   kalindu ALL=(root) NOPASSWD: /usr/local/bin/nvidia-sysfs-read
+
+set -euo pipefail
+
+# Allowlisted paths only -- no user input accepted
+declare -A PARAMS=(
+  [nvidia_drm.modeset]="/sys/module/nvidia_drm/parameters/modeset"
+  [nvidia_drm.fbdev]="/sys/module/nvidia_drm/parameters/fbdev"
+  [nvidia.NVreg_EnableGpuFirmware]="/sys/module/nvidia/parameters/NVreg_EnableGpuFirmware"
+  [nvidia.NVreg_PreserveVideoMemoryAllocations]="/sys/module/nvidia/parameters/NVreg_PreserveVideoMemoryAllocations"
+)
+
+for key in "${!PARAMS[@]}"; do
+  path="${PARAMS[${key}]}"
+  if [[ -f "${path}" ]]; then
+    val="$(cat "${path}" 2>/dev/null || printf 'unreadable')"
+    printf '%s=%s\n' "${key}" "${val}"
+  else
+    printf '%s=absent\n' "${key}"
+  fi
+done

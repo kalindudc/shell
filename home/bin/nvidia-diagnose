@@ -1,0 +1,489 @@
+#!/usr/bin/env bash
+
+# nvidia-diagnose - Diagnose NVIDIA driver health on Ubuntu/Debian systems.
+# Checks kernel module load state, version alignment, Secure Boot,
+# DKMS status, and meta-package presence. Prints a pass/fail summary
+# with actionable fix commands for any failures found.
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/cli_common.sh
+source "${SCRIPT_DIR}/lib/cli_common.sh"
+
+# ---------------------------------------------------------------------------
+# State
+# ---------------------------------------------------------------------------
+
+QUIET=0
+PASS_COUNT=0
+FAIL_COUNT=0
+WARN_COUNT=0
+
+# ---------------------------------------------------------------------------
+# Argument parsing
+# ---------------------------------------------------------------------------
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --quiet|-q)
+      QUIET=1
+      shift
+      ;;
+    --help|-h)
+      cli_print_help "nvidia-diagnose" "Diagnose NVIDIA driver health" \
+        "--quiet,      -q|Only print failures and summary" \
+        "--sudo-setup    |Print commands to grant limited sudo access" \
+        "--help,       -h|Show this help message"
+      printf 'Checks performed:\n'
+      printf '  %-30s %s\n' "Kernel modules" "nvidia, nvidia_modeset, nvidia_uvm, nvidia_drm"
+      printf '  %-30s %s\n' "Driver communication" "nvidia-smi response"
+      printf '  %-30s %s\n' "Kernel alignment" "Module package installed for running kernel"
+      printf '  %-30s %s\n' "Meta-package" "Auto-update guard against future breakage"
+      printf '  %-30s %s\n' "Secure Boot" "Module signing key enrollment"
+      printf '  %-30s %s\n' "DKMS" "Build status for current kernel"
+      printf '  %-30s %s\n' "nouveau" "Conflict detection and blacklist"
+      printf '  %-30s %s\n' "DRM modeset" "Required for Wayland"
+      printf '\n'
+      exit 0
+      ;;
+    --sudo-setup)
+      printf '%s\n\n' "$(cli_color bold "Limited sudo setup for nvidia-diagnose")"
+      printf 'This grants passwordless sudo for %s only,\n' "$(cli_color cyan "nvidia-sysfs-read")"
+      printf 'a script that reads a fixed allowlist of NVIDIA sysfs parameters.\n'
+      printf 'No shell access, no arbitrary file reads, no other commands.\n\n'
+      printf '%s\n' "$(cli_color bold "1. Install the wrapper into a root-owned path:")"
+      printf '   %s\n\n' "$(cli_color dim "sudo install -m 0755 -o root -g root $(command -v nvidia-sysfs-read) /usr/local/bin/nvidia-sysfs-read")"
+      printf '%s\n' "$(cli_color bold "2. Create the sudoers drop-in (NOPASSWD for that script only):")"
+      printf '   %s\n' "$(cli_color dim "sudo tee /etc/sudoers.d/nvidia-diagnose <<'EOF'")"
+      printf '   %s\n' "$(cli_color dim "# Allow kalindu to read privileged NVIDIA sysfs params without a password")"
+      printf '   %s\n' "$(cli_color dim "kalindu ALL=(root) NOPASSWD: /usr/local/bin/nvidia-sysfs-read")"
+      printf '   %s\n\n' "$(cli_color dim "EOF")"
+      printf '%s\n' "$(cli_color bold "3. Lock down permissions on the drop-in (required by sudo):")"
+      printf '   %s\n\n' "$(cli_color dim "sudo chmod 0440 /etc/sudoers.d/nvidia-diagnose")"
+      printf '%s\n' "$(cli_color bold "4. Verify:")"
+      printf '   %s\n\n' "$(cli_color dim "sudo -n nvidia-sysfs-read")"
+      printf 'What the wrapper can read:\n'
+      printf '  %s\n' "$(cli_color dim "/sys/module/nvidia_drm/parameters/modeset")"
+      printf '  %s\n' "$(cli_color dim "/sys/module/nvidia_drm/parameters/fbdev")"
+      printf '  %s\n' "$(cli_color dim "/sys/module/nvidia/parameters/NVreg_EnableGpuFirmware")"
+      printf '  %s\n\n' "$(cli_color dim "/sys/module/nvidia/parameters/NVreg_PreserveVideoMemoryAllocations")"
+      exit 0
+      ;;
+    *)
+      printf 'Unknown option: %s\n' "$1" >&2
+      printf "Run 'nvidia-diagnose --help' for usage.\n" >&2
+      exit 1
+      ;;
+  esac
+done
+
+# ---------------------------------------------------------------------------
+# Output helpers
+# ---------------------------------------------------------------------------
+
+print_header() {
+  printf '\n%s\n' "$(cli_color bold "=== NVIDIA Driver Diagnostics ===")"
+  printf '%s\n\n' "$(cli_color dim "Kernel: $(uname -r) | Host: $(hostname) | $(date '+%Y-%m-%d %H:%M:%S')")"
+}
+
+print_section() {
+  printf '%s\n' "$(cli_color bold "── $1")"
+}
+
+pass() {
+  PASS_COUNT=$((PASS_COUNT + 1))
+  if [[ "${QUIET}" -eq 0 ]]; then
+    printf '  %s %s\n' "$(cli_color green "✓")" "$1"
+  fi
+}
+
+fail() {
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+  printf '  %s %s\n' "$(cli_color red "✗")" "$1"
+  if [[ -n "${2:-}" ]]; then
+    printf '    %s\n' "$(cli_color dim "Fix: $2")"
+  fi
+}
+
+warn_check() {
+  WARN_COUNT=$((WARN_COUNT + 1))
+  printf '  %s %s\n' "$(cli_color yellow "!")" "$1"
+  if [[ -n "${2:-}" ]]; then
+    printf '    %s\n' "$(cli_color dim "Note: $2")"
+  fi
+}
+
+detail() {
+  if [[ "${QUIET}" -eq 0 ]]; then
+    printf '    %s\n' "$(cli_color dim "$1")"
+  fi
+}
+
+print_summary() {
+  printf '\n%s\n' "$(cli_color bold "── Summary")"
+  if [[ "${FAIL_COUNT}" -eq 0 && "${WARN_COUNT}" -eq 0 ]]; then
+    printf '  %s\n' "$(cli_color green "All checks passed") (${PASS_COUNT} passed)"
+  elif [[ "${FAIL_COUNT}" -eq 0 ]]; then
+    printf '  %s\n' "$(cli_color yellow "Passed with warnings") (${PASS_COUNT} passed, ${WARN_COUNT} warnings)"
+  else
+    local summary
+    summary="${FAIL_COUNT} check(s) failed (${PASS_COUNT} passed"
+    [[ "${WARN_COUNT}" -gt 0 ]] && summary="${summary}, ${WARN_COUNT} warnings"
+    summary="${summary})"
+    printf '  %s\n' "$(cli_color red "${summary}")"
+  fi
+  printf '\n'
+}
+
+# ---------------------------------------------------------------------------
+# Check: kernel modules loaded
+# ---------------------------------------------------------------------------
+
+check_modules() {
+  print_section "Kernel Modules"
+
+  # Snapshot lsmod once to avoid SIGPIPE from grep -q exiting early under pipefail
+  local lsmod_out
+  lsmod_out="$(lsmod 2>/dev/null)"
+
+  local loaded_count
+  loaded_count="$(grep -c '^nvidia' <<< "${lsmod_out}" || true)"
+
+  if [[ "${loaded_count}" -eq 0 ]]; then
+    fail "No NVIDIA kernel modules loaded" \
+      "sudo apt install linux-modules-nvidia-<branch>-open-$(uname -r) && sudo modprobe nvidia"
+    return
+  fi
+
+  local -a modules=("nvidia" "nvidia_modeset" "nvidia_uvm" "nvidia_drm")
+  local -a missing=()
+
+  for mod in "${modules[@]}"; do
+    if grep -q "^${mod}[[:space:]]" <<< "${lsmod_out}"; then
+      pass "${mod} loaded"
+    else
+      missing+=("${mod}")
+      fail "${mod} not loaded"
+    fi
+  done
+
+  if [[ "${#missing[@]}" -gt 0 ]]; then
+    printf '    %s\n' "$(cli_color dim "Fix: sudo modprobe ${missing[*]}")"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Check: nvidia-smi driver communication
+# ---------------------------------------------------------------------------
+
+check_smi() {
+  print_section "Driver Communication"
+
+  if ! command -v nvidia-smi >/dev/null 2>&1; then
+    fail "nvidia-smi not found" "sudo ubuntu-drivers install"
+    return
+  fi
+
+  local smi_out
+  if smi_out="$(nvidia-smi 2>&1)"; then
+    pass "nvidia-smi communicating with driver"
+    local driver_ver gpu_name
+    driver_ver="$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -1 || true)"
+    gpu_name="$(nvidia-smi --query-gpu=gpu_name --format=csv,noheader 2>/dev/null | head -1 || true)"
+    [[ -n "${driver_ver}" ]] && detail "Driver version: ${driver_ver}"
+    [[ -n "${gpu_name}"   ]] && detail "GPU: ${gpu_name}"
+  else
+    fail "nvidia-smi cannot communicate with driver" \
+      "Check kernel alignment below, then reboot"
+    detail "${smi_out}"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Check: module package installed for the running kernel
+# ---------------------------------------------------------------------------
+
+check_kernel_alignment() {
+  print_section "Kernel / Module Alignment"
+
+  local running_kernel
+  running_kernel="$(uname -r)"
+  detail "Running kernel: ${running_kernel}"
+
+  local driver_branch
+  driver_branch="$(dpkg -l 2>/dev/null \
+    | grep -oP 'nvidia-driver-\K[0-9]+(?=-open|-server|$)' \
+    | sort -rn | head -1 || true)"
+
+  if [[ -z "${driver_branch}" ]]; then
+    driver_branch="$(dpkg -l 2>/dev/null \
+      | grep -oP 'nvidia-driver-\K[0-9]+' \
+      | sort -rn | head -1 || true)"
+  fi
+
+  if [[ -z "${driver_branch}" ]]; then
+    fail "Could not detect installed NVIDIA driver branch" \
+      "sudo ubuntu-drivers install"
+    return
+  fi
+
+  detail "Detected driver branch: ${driver_branch}"
+
+  local open_pkg="linux-modules-nvidia-${driver_branch}-open-${running_kernel}"
+  local prop_pkg="linux-modules-nvidia-${driver_branch}-${running_kernel}"
+  local module_pkg_found=0
+
+  if dpkg -l "${open_pkg}" 2>/dev/null | grep -q '^ii'; then
+    pass "Versioned module package installed: ${open_pkg}"
+    module_pkg_found=1
+  elif dpkg -l "${prop_pkg}" 2>/dev/null | grep -q '^ii'; then
+    pass "Versioned module package installed: ${prop_pkg}"
+    module_pkg_found=1
+  fi
+
+  if [[ "${module_pkg_found}" -eq 0 ]]; then
+    fail "Module package for running kernel not installed" \
+      "sudo apt install ${open_pkg}"
+    detail "This is the most common cause of drivers breaking after a kernel update"
+  fi
+
+  # Verify .ko files exist on disk regardless of package state
+  local ko_found=0
+  if find "/lib/modules/${running_kernel}" -name "nvidia.ko*" 2>/dev/null | grep -q .; then
+    ko_found=1
+  fi
+
+  if [[ "${ko_found}" -eq 1 ]]; then
+    pass "NVIDIA .ko module files present for kernel ${running_kernel}"
+  else
+    fail "No NVIDIA .ko files found under /lib/modules/${running_kernel}" \
+      "sudo apt install ${open_pkg} && sudo depmod -a"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Check: meta-package prevents future breakage on kernel updates
+# ---------------------------------------------------------------------------
+
+check_meta_package() {
+  print_section "Meta-Package (Auto-Update Guard)"
+
+  local driver_branch
+  driver_branch="$(dpkg -l 2>/dev/null \
+    | grep -oP 'nvidia-driver-\K[0-9]+(?=-open|-server|$)' \
+    | sort -rn | head -1 || true)"
+
+  [[ -z "${driver_branch}" ]] && return
+
+  local -a candidates=(
+    "linux-modules-nvidia-${driver_branch}-open-generic-hwe-24.04"
+    "linux-modules-nvidia-${driver_branch}-open-generic"
+    "linux-modules-nvidia-${driver_branch}-generic-hwe-24.04"
+    "linux-modules-nvidia-${driver_branch}-generic"
+  )
+
+  local found=0
+  for pkg in "${candidates[@]}"; do
+    if dpkg -l "${pkg}" 2>/dev/null | grep -q '^ii'; then
+      pass "Meta-package installed: ${pkg}"
+      detail "Kernel updates will automatically pull matching NVIDIA modules"
+      found=1
+      break
+    fi
+  done
+
+  if [[ "${found}" -eq 0 ]]; then
+    fail "No NVIDIA module meta-package installed" \
+      "sudo apt install linux-modules-nvidia-${driver_branch}-open-generic-hwe-24.04"
+    detail "Without this, every kernel update breaks the driver until manually fixed"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Check: Secure Boot and module signing
+# ---------------------------------------------------------------------------
+
+check_secure_boot() {
+  print_section "Secure Boot"
+
+  local sb_enabled=0
+
+  if command -v mokutil >/dev/null 2>&1 \
+      && mokutil --sb-state 2>/dev/null | grep -qi "SecureBoot enabled"; then
+    sb_enabled=1
+  elif journalctl -b 0 -k --no-pager 2>/dev/null \
+      | grep -q "secureboot: Secure boot enabled"; then
+    sb_enabled=1
+  fi
+
+  if [[ "${sb_enabled}" -eq 0 ]]; then
+    pass "Secure Boot disabled (no signing requirement)"
+    return
+  fi
+
+  pass "Secure Boot enabled"
+
+  if journalctl -b 0 -k --no-pager 2>/dev/null \
+      | grep -q "Canonical Ltd. Kernel Module Signing"; then
+    pass "Canonical signing key enrolled in MOK"
+    detail "Pre-built Ubuntu packages are signed with this key"
+  else
+    warn_check "Canonical signing key not detected in boot log" \
+      "If using DKMS modules: sudo mokutil --import /var/lib/shim-signed/mok/MOK.der"
+  fi
+
+  local sig_failures
+  sig_failures="$(dmesg 2>/dev/null \
+    | grep -c 'module verification failed\|Required key not available' || true)"
+
+  if [[ "${sig_failures}" -gt 0 ]]; then
+    fail "Module signature verification failures in dmesg (${sig_failures} occurrence(s))" \
+      "sudo dkms autoinstall && sudo update-secureboot-policy --enroll-key"
+  else
+    pass "No module signature failures in dmesg"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Check: DKMS build status
+# ---------------------------------------------------------------------------
+
+check_dkms() {
+  print_section "DKMS"
+
+  if ! command -v dkms >/dev/null 2>&1; then
+    detail "DKMS not installed (using pre-built packages only)"
+    return
+  fi
+
+  local dkms_out
+  dkms_out="$(dkms status 2>/dev/null || true)"
+
+  if [[ -z "${dkms_out}" ]]; then
+    detail "No DKMS modules registered"
+    return
+  fi
+
+  local running_kernel
+  running_kernel="$(uname -r)"
+
+  while IFS= read -r line; do
+    [[ "${line}" =~ [Nn]vidia ]] || continue
+    if [[ "${line}" =~ [Ii]nstalled ]]; then
+      if [[ "${line}" == *"${running_kernel}"* ]]; then
+        pass "DKMS: ${line}"
+      else
+        warn_check "DKMS NVIDIA module not built for running kernel: ${line}" \
+          "sudo dkms autoinstall -k ${running_kernel}"
+      fi
+    elif [[ "${line}" =~ [Aa]dded ]]; then
+      warn_check "DKMS NVIDIA module added but not built: ${line}" \
+        "sudo dkms autoinstall"
+    else
+      fail "DKMS NVIDIA module in unexpected state: ${line}" \
+        "sudo dkms autoinstall"
+    fi
+  done <<< "${dkms_out}"
+}
+
+# ---------------------------------------------------------------------------
+# Check: nouveau conflict
+# ---------------------------------------------------------------------------
+
+check_nouveau() {
+  print_section "Nouveau Conflict"
+
+  if lsmod 2>/dev/null | grep -q "^nouveau[[:space:]]"; then
+    fail "nouveau module is loaded (conflicts with NVIDIA driver)" \
+      "echo 'blacklist nouveau' | sudo tee /etc/modprobe.d/disable-nouveau.conf && sudo update-initramfs -u && reboot"
+    return
+  fi
+
+  pass "nouveau not loaded"
+
+  if grep -rq "blacklist nouveau" /etc/modprobe.d/ 2>/dev/null \
+      || grep -rq "blacklist nouveau" /lib/modprobe.d/ 2>/dev/null; then
+    pass "nouveau blacklisted in modprobe.d"
+  else
+    warn_check "nouveau not explicitly blacklisted" \
+      "echo 'blacklist nouveau' | sudo tee /etc/modprobe.d/disable-nouveau.conf"
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Check: DRM modeset (required for Wayland)
+# ---------------------------------------------------------------------------
+
+check_drm_modeset() {
+  print_section "DRM Kernel Mode Setting"
+
+  if [[ ! -f /sys/module/nvidia_drm/parameters/modeset ]]; then
+    warn_check "nvidia_drm not loaded, cannot check modeset" \
+      "Load the driver first, then recheck"
+    return
+  fi
+
+  # /sys/module/nvidia_drm/parameters/modeset is root-readable only (mode 0400).
+  # Strategy: prefer nvidia-sysfs-read via sudo (exact live value), fall back to
+  # /proc/cmdline (what the kernel booted with -- reliable but misses runtime
+  # changes via modprobe).
+  local modeset_val=""
+
+  if sudo -n nvidia-sysfs-read 2>/dev/null | rg -q 'nvidia_drm\.modeset='; then
+    modeset_val="$(sudo -n nvidia-sysfs-read 2>/dev/null \
+      | rg 'nvidia_drm\.modeset=' | cut -d= -f2 || true)"
+    detail "Source: sudo nvidia-sysfs-read (live sysfs)"
+  else
+    # Fallback: /proc/cmdline is world-readable and reflects the kernel boot param
+    local cmdline
+    cmdline="$(cat /proc/cmdline 2>/dev/null || true)"
+    if rg -q 'nvidia-drm\.modeset=1' <<< "${cmdline}"; then
+      modeset_val="Y"
+    else
+      modeset_val="N"
+    fi
+    detail "Source: /proc/cmdline (sudo nvidia-sysfs-read not available)"
+  fi
+
+  case "${modeset_val}" in
+    Y|1)
+      pass "nvidia_drm modeset enabled"
+      ;;
+    N|0)
+      warn_check "nvidia_drm modeset disabled" \
+        "Add 'nvidia-drm.modeset=1' to GRUB_CMDLINE_LINUX_DEFAULT in /etc/default/grub, then: sudo update-grub"
+      ;;
+    absent)
+      warn_check "nvidia_drm modeset parameter file absent" \
+        "Module may not support this parameter on your driver version"
+      ;;
+    *)
+      warn_check "nvidia_drm modeset value unreadable (no sudo access)" \
+        "Run: sudo nvidia-sysfs-read  -- or see setup instructions: nvidia-diagnose --sudo-setup"
+      ;;
+  esac
+}
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+main() {
+  print_header
+
+  check_modules
+  check_smi
+  check_kernel_alignment
+  check_meta_package
+  check_secure_boot
+  check_dkms
+  check_nouveau
+  check_drm_modeset
+
+  print_summary
+
+  [[ "${FAIL_COUNT}" -eq 0 ]]
+}
+
+main
