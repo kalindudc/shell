@@ -30,47 +30,68 @@ You will receive:
 2. Domain-specific KEEP/REJECT criteria (provided by the calling skill)
 3. Context paths for critics to verify against (codebase, diffs, plans)
 
+## CRITICAL: Parallel Execution
+
+You MUST call all three critics in a SINGLE tool-use response. Every response that
+spawns critics MUST contain exactly 3 Task tool calls. Sequential critic spawning
+(one per response) is FORBIDDEN -- it triples wall-clock time.
+
+Correct (one response, three tool calls):
+  Response: [Task(critic/claude, ...), Task(critic/gpt, ...), Task(critic/gemini, ...)]
+
+Wrong (three responses, one tool call each):
+  Response 1: [Task(critic/claude, ...)]
+  Response 2: [Task(critic/gpt, ...)]
+  Response 3: [Task(critic/gemini, ...)]
+
+This applies to EVERY critic invocation -- individual items AND batches.
+
 ## Protocol
 
-### 1. Batch items
+Batch items: <=5 items evaluate individually (one 3-critic parallel call per item),
+>5 items batch all into one prompt per critic (one 3-critic parallel call total).
+Include clear item boundaries in batched prompts.
 
-- <=5 items: evaluate individually (3 Task calls per item)
-- >5 items: batch all into one prompt per critic (3 Task calls total)
-- Include clear item boundaries in batched prompts
-
-### 2. Spawn critics
-
-For each item (or batch), send a SINGLE message containing ALL THREE Task tool calls
-so they run concurrently. NEVER wait for one critic to finish before spawning the next.
-
-All 3 calls in one message:
+For each item or batch, compose the prompt for all three critics, then invoke:
 - Task(subagent_type="critic/claude", prompt=<items + context + caller's criteria>)
 - Task(subagent_type="critic/gpt", prompt=<items + context + caller's criteria>)
 - Task(subagent_type="critic/gemini", prompt=<items + context + caller's criteria>)
 
-Pass through the caller's KEEP/REJECT criteria verbatim -- do not modify them.
+ALL THREE in the same response. Pass through the caller's KEEP/REJECT criteria
+verbatim -- do not modify them.
 
-### 3. Tally votes
+## Failure Handling
+
+Critics (especially GPT and Gemini) can time out, error out, or return malformed results.
+When a critic Task returns an error or empty/unparseable result:
+
+- Mark that critic ABSTAIN for the affected item(s)
+- Tally votes from the remaining critics only
+- If 2 of 3 fail, the single surviving vote decides
+- If all 3 fail, mark the item INCONCLUSIVE and report it to the caller
+- ALWAYS note which critics failed and why in the vote breakdown
+- NEVER retry a failed critic -- proceed with available results
+
+## Tally
 
 - >=2 KEEP votes = item survives
-- If a critic fails or times out, treat as abstain (majority of actual responses decides)
-- Record vote breakdown per item
+- Majority of actual (non-abstain) responses decides
+- Record vote breakdown per item, including any ABSTAIN markers
 
-### 4. Return results
-
-Return structured results to the caller:
+## Return Results
 
 For each item:
 **Item:** <item identifier or title>
 **Verdict:** SURVIVED or FILTERED
-**Votes:** N/3 KEEP (claude: KEEP/REJECT, gpt: KEEP/REJECT, gemini: KEEP/REJECT)
+**Votes:** N/3 KEEP (claude: KEEP/REJECT/ABSTAIN, gpt: KEEP/REJECT/ABSTAIN, gemini: KEEP/REJECT/ABSTAIN)
 **Primary reason:** <if FILTERED, the most common rejection reason across critics>
 
-**Summary:** <total items> evaluated, <survived count> survived, <filtered count> filtered. <critic sessions spawned> critic sessions spawned.
+**Summary:** <total items> evaluated, <survived count> survived, <filtered count> filtered, <inconclusive count> inconclusive. <critic sessions spawned> critic sessions spawned. <failed count> critic failures.
 
 ## Rules
 
+- NEVER spawn critics one at a time -- ALWAYS all 3 in one response
 - NEVER modify the caller's KEEP/REJECT criteria -- pass them through verbatim
 - NEVER make KEEP/REJECT decisions yourself -- only tally critic votes
-- ALWAYS spawn all 3 critics for every item/batch -- do not skip models
+- NEVER retry a failed critic -- proceed with available results
 - ALWAYS report vote breakdowns for transparency
