@@ -1,11 +1,32 @@
 version: '3'
 
+vars:
+  # Resolved once per run. Points at the user gem bin so bundle/rubocop are
+  # always found without root and without needing rbenv initialised.
+  GEM_BIN:
+    sh: ruby -e 'puts Gem.user_dir + "/bin"'
+
 tasks:
   # Development setup
   up:
     desc: "Install development dependencies"
     cmds:
-      - bundle install
+      - |
+        REQUIRED_BUNDLER="4.0.3"
+        BUNDLE_BIN="{{.GEM_BIN}}/bundle"
+
+        # Install the required bundler version to the user gem dir if missing
+        if ! "${BUNDLE_BIN}" --version 2>/dev/null | grep -q "${REQUIRED_BUNDLER}"; then
+          echo "Installing bundler ${REQUIRED_BUNDLER}..."
+          gem install bundler -v "${REQUIRED_BUNDLER}" --user-install
+        fi
+
+        # Set global bundle config so all projects install gems to the user gem dir
+        # and never require root. This persists in ~/.bundle/config.
+        "${BUNDLE_BIN}" config set --global path "$(ruby -e 'puts Gem.user_dir')"
+        "${BUNDLE_BIN}" config set --global bin "{{.GEM_BIN}}"
+
+        "${BUNDLE_BIN}" install
       - echo "✓ Development dependencies installed"
 
   # Installation
@@ -161,10 +182,11 @@ tasks:
 
   # Generate configs
   generate:
-    desc: "Generate .zshrc and .gitconfig"
+    desc: "Generate .zshrc, .gitconfig, and opencode.json"
     deps:
       - generate:zsh
       - generate:gitconfig
+      - generate:opencode
 
   generate:zsh:
     desc: "Re-generate .zshrc and completions"
@@ -185,3 +207,14 @@ tasks:
           export GIT_SIGNING_KEY=$(git config --global user.signingkey 2>/dev/null || echo "")
         fi
       - $HOME/src/github.com/kalindudc/shell/src/generate_tempate.rb -i $HOME/src/github.com/kalindudc/shell/src/templates/.gitconfig.erb -o $HOME/src/github.com/kalindudc/shell/home/.gitconfig
+
+  generate:opencode:
+    desc: "Merge opencode.json template into ~/.config/opencode/opencode.json (preserves user customizations)"
+    cmds:
+      - |
+        # OPENCODE_PROFILE defaults to "personal" in the script.
+        # Set it in your shell env or .env to "work" for the work machine profile.
+        # GROQ_API_KEY is optional; when set, enables Groq critic models (personal only).
+        # OLLAMA_MODELS is optional; space-separated list, e.g. "qwen3:8b llama4:scout".
+        # Set OLLAMA_MODELS="" to omit the ollama provider block.
+        $HOME/src/github.com/kalindudc/shell/src/generate_opencode_config.rb

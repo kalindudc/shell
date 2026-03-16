@@ -1,0 +1,96 @@
+<%
+  # Profile: "work"
+  #          "personal" (Anthropic account, cost-optimised, Groq for critics)
+  # Default to "personal" so the generated config is safe out of the box.
+  profile     = ENV.fetch("OPENCODE_PROFILE", "personal")
+  groq_key    = ENV.fetch("GROQ_API_KEY", "")
+  ollama_host = ENV.fetch("OLLAMA_HOST", "http://127.0.0.1:11434")
+
+  personal = (profile == "personal")
+  work     = (profile == "work")
+
+  # Ollama models: space-separated list, e.g. "qwen3:8b llama4:scout"
+  ollama_models_raw = ENV.fetch("OLLAMA_MODELS", "qwen3:8b llama4:scout")
+  ollama_models     = ollama_models_raw.split.map(&:strip).reject(&:empty?)
+
+  has_groq   = personal && !groq_key.empty?
+  has_ollama = !ollama_models.empty?
+%>
+{
+  "$schema": "https://opencode.ai/config.json",
+  "autoupdate": true,
+  "compaction": {
+    "auto": true,
+    "prune": true,
+    "reserved": 10000
+  },
+  "default_agent": "build",
+  "permission": {
+    "external_directory": {
+      "~/.config/opencode/**": "allow"
+    }
+  },
+  "share": "manual",
+  "watcher": {
+    "ignore": [
+      "node_modules/**",
+      "dist/**",
+      "build/**",
+      ".git/**",
+      "*.log"
+    ]
+  },
+  "server": {
+    "hostname": "127.0.0.1",
+    "mdnsDomain": "opencode.local"
+  },
+  <%- if personal -%>
+  "agent": {
+    "skill-health":             { "model": "anthropic/claude-haiku-4-5" },
+    "pr-description-generator": { "model": "anthropic/claude-haiku-4-5" },
+    "skill-improver":           { "model": "anthropic/claude-haiku-4-5" },
+    "codebase-explorer":        { "model": "anthropic/claude-haiku-4-5" },
+    "memory-analyzer":          { "model": "anthropic/claude-haiku-4-5" },
+    "critic/gpt":   { "model": "<%= has_groq ? "groq/llama-3.3-70b-versatile" : "anthropic/claude-haiku-4-5" %>" },
+    "critic/gemini": { "model": "<%= has_groq ? "groq/llama-3.1-8b-instant" : "anthropic/claude-haiku-4-5" %>" },
+    "consensus":  { "steps": 20 },
+    "researcher": { "steps": 15 }
+  },
+  <%- end -%>
+  "provider": {
+<%- if personal && has_groq -%>
+    "groq": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Groq",
+      "options": {
+        "baseURL": "https://api.groq.com/openai/v1",
+        "apiKey": "{env:GROQ_API_KEY}"
+      },
+      "models": {
+        "llama-3.3-70b-versatile": {
+          "name": "Llama 3.3 70B",
+          "limit": { "context": 131072, "output": 32768 }
+        },
+        "llama-3.1-8b-instant": {
+          "name": "Llama 3.1 8B Instant",
+          "limit": { "context": 131072, "output": 131072 }
+        }
+      }
+    }<%= has_ollama ? "," : "" %>
+<%- end -%>
+<%- if personal && has_ollama -%>
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama (local)",
+      "options": {
+        "baseURL": "<%= ollama_host %>/v1"
+      },
+      "models": {
+<%- ollama_models.each_with_index do |model, idx| -%>
+        "<%= model %>": { "name": "<%= model %>" }<%= idx < ollama_models.size - 1 ? "," : "" %>
+<%- end -%>
+      }
+    }
+<%- end -%>
+  }
+}

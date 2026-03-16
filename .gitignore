@@ -16,6 +16,7 @@ data
 home/.gitconfig
 home/.config/zsh/completions/
 vendor/
+.bundle/
 .tmp/
 tmp/
 test-manual.sh

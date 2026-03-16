@@ -135,6 +135,13 @@ if command -v rbenv &>/dev/null; then
   }
 fi
 
+# Ruby user gem bin - ensures `bundle`, `rubocop`, etc. are available without root
+# and without needing rbenv to be fully initialised (e.g. inside task/make).
+if command -v ruby &>/dev/null; then
+  export GEM_HOME="$(ruby -e 'puts Gem.user_dir')"
+  export PATH="$GEM_HOME/bin:$PATH"
+fi
+
 ### TEMPLATES ###
 
 # bases template

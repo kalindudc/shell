@@ -137,6 +137,19 @@ def generate_completions
   else
     @logger.warn("todo binary not found at #{todo_bin}, skipping completions")
   end
+
+  task_bin = `command -v task 2>/dev/null`.strip
+  if !task_bin.empty? && File.executable?(task_bin)
+    output = `#{task_bin} --completion zsh 2>/dev/null`
+    if $?.success? && !output.empty? # rubocop:disable Style/SpecialGlobalVars
+      File.write(File.join(completions_dir, '_task'), output)
+      @logger.info("Generated zsh completions at #{completions_dir}/_task")
+    else
+      @logger.warn('Failed to generate task completions')
+    end
+  else
+    @logger.warn('task binary not found, skipping task completions')
+  end
 end
 
 def render_template(file_path)
