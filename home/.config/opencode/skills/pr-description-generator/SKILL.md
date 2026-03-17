@@ -44,6 +44,7 @@ The entire PR description MUST be readable in under 5 minutes. A description nob
 ### 4. Analyze the changes
 
 - Review the diff and identify key changes, features, bug fixes, refactoring, etc.
+- For PRs dominated by mechanical or auto-generated changes (repetitive renames, derived output from config/template changes), foreground the root-cause change in the Summary and note in Review Guidance that the bulk of the diff is mechanical/derived
 - Spawn subagents if needed for complex analysis
 - If a plan file exists in `./tmp/plan/`, read it to understand the intent behind the changes. The plan's High-Level Objective is often the best source for the Summary's "Why" section, if many plans are found and you are unsure which to use, prompt the user for clarification rather than guessing or ignore the plan entirely.
 - If the branch has been pushed, check CI status. Note pass/fail in Technical Details if relevant.
@@ -111,7 +112,7 @@ foo/bar/
 
 ## Output Format
 
-- Output the final PR description to `./tmp/pr/<branch_name>-pr.md`
+- Output the final PR description to `./tmp/pr/<branch_name>-pr.md` (truncate `<branch_name>` to 60 characters for the filename)
 - Copy to clipboard if available (`pbcopy` on macOS, `xclip -selection clipboard` on Linux). Skip if neither is present.
 - Max 5 minute read time -- this is non-negotiable
 

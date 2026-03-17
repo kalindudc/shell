@@ -30,6 +30,7 @@ Data field notes:
 - `index.json` `input_tokens` only counts non-cached input (dramatically undercounts) -- always scan `.json` files for cost queries
 
 Query strategies:
+- Date filtering: sessions are stored with UTC timestamps. Check local timezone first (`date +%Z`) and convert to UTC range before filtering session filenames.
 - Usage stats: read `index.json` -> `models`, `skills`, `commands` sections
 - Cost estimates: ALWAYS scan individual `.json` files (index.json undercounts) -> skip sessions with all-zero tokens -> sum `token_usage` fields (`input` + `cache_read` + `cache_write` + `output`) -> apply pricing
 - Session history: scan `.json` files -> filter by date/project/outcome -> use `directory` field for display

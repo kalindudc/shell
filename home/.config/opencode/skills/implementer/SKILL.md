@@ -65,6 +65,7 @@ Guidelines:
 - Follow the project's coding standards (from the plan's Implementation Notes)
 - Follow the plan's specific instructions for each task
 - When multiple tasks target the same file, treat the plan as a specification and batch implementation -- the plan's value is in completeness, not edit granularity
+- For rename-across-callsites tasks, use the Edit tool's `replaceAll` parameter to handle all sites in a single call per file
 - Pre-check linter configs for strict rules before writing code to avoid create-then-rewrite cycles. When consolidating modules, expect length-limit violations. When changing data formats, update test helpers that bypass the app layer.
 - Do NOT deviate from the plan without user approval -- surface simpler alternatives before committing
 - When a plan conflicts with tooling/environment conventions, research the convention before overriding it
@@ -82,7 +83,7 @@ Scope: Run only the relevant test file(s) per task for fast feedback. Save the f
 - Config/doc-only plans (no build/test/lint cycle): Verification is re-reading files and checking structural consistency. Baseline check reduces to `git status` showing a clean working tree.
 - Compilation-dependency chains (A references B, B removes C): Defer verification to the last task in the chain rather than attempting intermediate builds that cannot succeed.
 
-When running tests, prefer the `test_run_parsed` tool over raw bash for structured results. It returns pass/fail per test with parsed failure locations instead of raw terminal output.
+When running tests, prefer the `test_run_parsed` tool over raw bash for structured results. It returns pass/fail per test with parsed failure locations instead of raw terminal output. Note: `test_run_parsed` cannot parse Minitest output -- fall back to reading raw test output for Ruby/Minitest projects.
 
 When test failures produce stack traces, use `stack_trace_resolve` to resolve compiled/container paths to actual source file:line references in the workspace.
 

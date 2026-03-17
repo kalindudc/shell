@@ -34,6 +34,7 @@ Begin with thorough research to gather all necessary context:
 - Identify relevant files, directories, and patterns to follow
 - Read full content of ALL pattern files (not just the closest analog) -- consistency comes from breadth
 - Verify both what patterns exist AND what infrastructure is absent -- missing frameworks/conventions are as important as existing ones
+- Before proposing edits to config or deployed files, check if they are produced by a build/template system (Makefile, Taskfile, ERB, Jinja, code generation). Search for generator scripts, `src/templates/`, and build task definitions -- editing generated files directly will be overwritten
 - Use the `codebase-explorer` skill for systematic research if the repo is unfamiliar
 - For complex verification (patterns, dependencies, infrastructure), invoke the researcher agent:
   Task(subagent_type="researcher", prompt=<questions about patterns, dependencies, infra>)
@@ -156,6 +157,7 @@ Keep plans concise but precise:
 - Implementation Notes: focus on what the agent can't infer from the code
 - Low-Level Tasks: enough detail to implement unambiguously, not more. Plans with exact FROM/TO diffs and verified API signatures reduce the implementer to mechanical execution -- the highest-efficiency mode.
 - Context sections: file paths and brief descriptions, not full file contents
+- When deduplicating shared mechanics across 3+ skills (60+ lines of near-identical code), extract to a hidden orchestrator agent (agent = execution, skill = methodology). Quantify the overlap first to validate the extraction.
 
 CRITICAL: Plan stacks are a last resort. Always prefer a single plan, if a stack is needed, STOP, and confirm with the user before proceeding.
 
