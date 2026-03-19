@@ -1,21 +1,95 @@
 <%
-  # Profile: "work"
-  #          "personal" (Anthropic account, cost-optimised, Groq for critics)
-  # Default to "personal" so the generated config is safe out of the box.
+  # Environment & profile
   profile     = ENV.fetch("OPENCODE_PROFILE", "personal")
+  personal    = (profile == "personal")
+  work        = (profile == "work")
+
   groq_key    = ENV.fetch("GROQ_API_KEY", "")
   ollama_host = ENV.fetch("OLLAMA_HOST", "http://127.0.0.1:11434")
 
-  personal = (profile == "personal")
-  work     = (profile == "work")
-
-  # Ollama models: space-separated list, e.g. "qwen3:8b llama4:scout"
   ollama_models_raw = ENV.fetch("OLLAMA_MODELS", "qwen3:8b llama4:scout")
   ollama_models     = ollama_models_raw.split.map(&:strip).reject(&:empty?)
 
   has_groq   = personal && !groq_key.empty?
   has_ollama = !ollama_models.empty?
-%>
+
+  # Agent overrides -- personal profile downgrades utility agents to haiku
+  personal_agent_overrides = {
+    "skill-health"             => "anthropic/claude-haiku-4-5",
+    "pr-description-generator" => "anthropic/claude-haiku-4-5",
+    "skill-improver"           => "anthropic/claude-haiku-4-5",
+    "codebase-explorer"        => "anthropic/claude-haiku-4-5",
+    "memory-analyzer"          => "anthropic/claude-haiku-4-5"
+  }
+
+  # Critic agents -- work profile only (personal skips multi-model consensus)
+  # Each critic uses a different provider's strongest reasoning model for
+  # maximum quality and diversity in consensus voting.
+  critic_models = {
+    "critic/claude" => "shopify-anthropic/claude-sonnet-4-6",
+    "critic/gemini" => "shopify-google/gemini-3.1-pro-preview",
+    "critic/gpt"    => "shopify-openai/gpt-5.4-pro",
+    "critic/grok"   => "shopify-xai/grok-4.20-beta-0309-reasoning"
+  }
+
+  critic_shared = {
+    "description"  => "Multi-domain critic. Evaluates findings against caller-provided criteria. Votes KEEP or REJECT.",
+    "mode"         => "subagent",
+    "temperature"  => 0.1,
+    "steps"        => 25,
+    "prompt"       => "{file:./prompts/critic.md}",
+    "permission"   => {
+      "external_directory" => { "~/.config/opencode/**" => "allow" },
+      "edit"               => { "*" => "deny" },
+      "bash"               => {
+        "git diff*" => "allow",
+        "git log*"  => "allow",
+        "git show*" => "allow",
+        "grep *"    => "allow",
+        "rg *"      => "allow"
+      },
+      "webfetch" => "allow",
+      "task"     => { "researcher" => "allow" }
+    },
+    "color" => "warning"
+  }
+
+  # Providers -- personal profile only (work uses Shopify-proxied models)
+  providers = {}
+
+  if has_groq
+    providers["groq"] = {
+      "npm"     => "@ai-sdk/openai-compatible",
+      "name"    => "Groq",
+      "options" => {
+        "baseURL" => "https://api.groq.com/openai/v1",
+        "apiKey"  => "{env:GROQ_API_KEY}"
+      },
+      "models" => {
+        "llama-3.3-70b-versatile" => {
+          "name"  => "Llama 3.3 70B",
+          "limit" => { "context" => 131072, "output" => 32768 }
+        },
+        "llama-3.1-8b-instant" => {
+          "name"  => "Llama 3.1 8B Instant",
+          "limit" => { "context" => 131072, "output" => 131072 }
+        }
+      }
+    }
+  end
+
+  if personal && has_ollama
+    ollama_model_hash = {}
+    ollama_models.each { |m| ollama_model_hash[m] = { "name" => m } }
+
+    providers["ollama"] = {
+      "npm"     => "@ai-sdk/openai-compatible",
+      "name"    => "Ollama (local)",
+      "options" => { "baseURL" => "#{ollama_host}/v1" },
+      "models"  => ollama_model_hash
+    }
+  end
+-%>
 {
   "$schema": "https://opencode.ai/config.json",
   "autoupdate": true,
@@ -44,53 +118,19 @@
     "hostname": "127.0.0.1",
     "mdnsDomain": "opencode.local"
   },
-  <%- if personal -%>
   "agent": {
-    "skill-health":             { "model": "anthropic/claude-haiku-4-5" },
-    "pr-description-generator": { "model": "anthropic/claude-haiku-4-5" },
-    "skill-improver":           { "model": "anthropic/claude-haiku-4-5" },
-    "codebase-explorer":        { "model": "anthropic/claude-haiku-4-5" },
-    "memory-analyzer":          { "model": "anthropic/claude-haiku-4-5" },
-    "critic/gpt":   { "model": "<%= has_groq ? "groq/llama-3.3-70b-versatile" : "anthropic/claude-haiku-4-5" %>" },
-    "critic/gemini": { "model": "<%= has_groq ? "groq/llama-3.1-8b-instant" : "anthropic/claude-haiku-4-5" %>" },
-    "consensus":  { "steps": 20 },
-    "researcher": { "steps": 15 }
+<%- if personal -%>
+<%- personal_agent_overrides.each do |name, model| -%>
+    "<%= name %>": { "model": "<%= model %>" },
+<%- end -%>
+<%- end -%>
+<%- if work -%>
+<%- critic_models.each do |name, model| -%>
+    "<%= name %>": <%= JSON.pretty_generate(critic_shared.merge("model" => model)).gsub("\n", "\n    ") %>,
+<%- end -%>
+<%- end -%>
+    "consensus":  { "steps": 50 },
+    "researcher": { "steps": 30 }
   },
-  <%- end -%>
-  "provider": {
-<%- if personal && has_groq -%>
-    "groq": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "Groq",
-      "options": {
-        "baseURL": "https://api.groq.com/openai/v1",
-        "apiKey": "{env:GROQ_API_KEY}"
-      },
-      "models": {
-        "llama-3.3-70b-versatile": {
-          "name": "Llama 3.3 70B",
-          "limit": { "context": 131072, "output": 32768 }
-        },
-        "llama-3.1-8b-instant": {
-          "name": "Llama 3.1 8B Instant",
-          "limit": { "context": 131072, "output": 131072 }
-        }
-      }
-    }<%= has_ollama ? "," : "" %>
-<%- end -%>
-<%- if personal && has_ollama -%>
-    "ollama": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "Ollama (local)",
-      "options": {
-        "baseURL": "<%= ollama_host %>/v1"
-      },
-      "models": {
-<%- ollama_models.each_with_index do |model, idx| -%>
-        "<%= model %>": { "name": "<%= model %>" }<%= idx < ollama_models.size - 1 ? "," : "" %>
-<%- end -%>
-      }
-    }
-<%- end -%>
-  }
+  "provider": <%= providers.empty? ? "{}" : JSON.pretty_generate(providers).gsub("\n", "\n  ") %>
 }

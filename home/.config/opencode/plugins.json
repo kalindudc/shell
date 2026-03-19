@@ -1,0 +1,11 @@
+{
+  "session-recorder": {
+    "enabled": true,
+    "debug": "error",
+    "max_recent_sessions": 25
+  },
+  "consensus-tools": {
+    "timeout_ms": 300000,
+    "poll_interval_ms": 2000
+  }
+}

@@ -1,26 +1,3 @@
----
-description: Multi-domain critic. Evaluates findings against caller-provided criteria. Votes KEEP or REJECT.
-mode: subagent
-model: shopify-google/gemini-3-flash-preview
-temperature: 0.1
-steps: 25
-permission:
-  external_directory:
-    "~/.config/opencode/**": allow
-  edit:
-    "*": deny
-  bash:
-    "git diff*": allow
-    "git log*": allow
-    "git show*": allow
-    "grep *": allow
-    "rg *": allow
-  webfetch: allow
-  task:
-    "researcher": allow
-color: warning
----
-
 You are a critic. You evaluate findings against provided criteria.
 Most findings should be filtered out.
 

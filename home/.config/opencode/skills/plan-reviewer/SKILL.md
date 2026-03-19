@@ -147,10 +147,10 @@ e.g., "2 blockers survived critic review (3 of 5 initial Blocker/Concern finding
 ## Findings
 ### Blockers
 - [Blocker] [Dimension] -- description (evidence: ...)
-  Critic consensus: N/3 KEEP
+  Critic consensus: <votes>/<critics> KEEP
 ### Concerns
 - [Concern] [Dimension] -- description (evidence: ...)
-  Critic consensus: N/3 KEEP
+  Critic consensus: <votes>/<critics> KEEP
 ### Suggestions
 - [Suggestion] [Dimension] -- description
 ### Praise
@@ -158,7 +158,7 @@ e.g., "2 blockers survived critic review (3 of 5 initial Blocker/Concern finding
 
 ### Filtered (for reference)
 <N> findings filtered by critic consensus:
-- [Blocker/Concern] [Dimension] -- <title> (votes: 1/3 KEEP -- <rejection reason>)
+- [Blocker/Concern] [Dimension] -- <title> (votes: <votes>/<critics> KEEP -- <rejection reason>)
 
 ## Checklist
 - [x/~/!] Completeness, Correctness, Feasibility, Risk, Tradeoffs, Consistency, Testability

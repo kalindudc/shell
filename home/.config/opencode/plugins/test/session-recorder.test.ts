@@ -442,18 +442,39 @@ describe("session-recorder plugin", () => {
     const disabledTmp = await mkdtemp(path.join(os.tmpdir(), "session-recorder-disabled-"))
     process.env.SESSION_RECORDER_MEMORY_DIR = disabledTmp
 
+    // Override plugins.json (primary config source)
+    const pluginsConfigPath = path.join(os.homedir(), ".config/opencode/plugins.json")
+    const origPluginsConfig = existsSync(pluginsConfigPath) ? await readFile(pluginsConfigPath, "utf-8") : null
+
+    // Also override legacy config for backward compat testing
     const configPath = path.join(os.homedir(), ".config/opencode/session-recorder.json")
     const origConfig = existsSync(configPath) ? await readFile(configPath, "utf-8") : null
+
+    // Write disabled config to plugins.json
+    const disabledPluginsConfig: Record<string, any> = origPluginsConfig ? JSON.parse(origPluginsConfig) : {}
+    disabledPluginsConfig["session-recorder"] = { enabled: false }
+    await writeFile(pluginsConfigPath, JSON.stringify(disabledPluginsConfig), "utf-8")
     await writeFile(configPath, JSON.stringify({ enabled: false }), "utf-8")
 
     try {
+      // Reset the shared config cache so the fresh import picks up the new file
+      const { resetConfigCache } = await import("../../lib/plugin-config.ts")
+      resetConfigCache()
+
       const freshModule = await import("../session-recorder.ts?" + Date.now())
       const disabledHooks = await freshModule.SessionRecorderPlugin(mockCtx as any)
       expect(Object.keys(disabledHooks).length).toBe(0)
     } finally {
+      if (origPluginsConfig !== null) {
+        await writeFile(pluginsConfigPath, origPluginsConfig, "utf-8")
+      }
       if (origConfig !== null) {
         await writeFile(configPath, origConfig, "utf-8")
       }
+      // Reset cache again to restore original config for remaining tests
+      const { resetConfigCache } = await import("../../lib/plugin-config.ts")
+      resetConfigCache()
+
       process.env.SESSION_RECORDER_MEMORY_DIR = origDir
       await rm(disabledTmp, { recursive: true, force: true })
     }

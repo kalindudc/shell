@@ -146,7 +146,7 @@ e.g., "2 critical, 1 medium findings survived critic review (5 of 8 initial find
 ### Critical
 - `file:line` -- **Title**: description with evidence and code snippets.
   Impact: <concrete impact>. Suggestion: <fix>.
-  Critic consensus: 3/3 KEEP
+  Critic consensus: <votes>/<critics> KEEP
 
 ### Medium
 - ...
@@ -159,7 +159,7 @@ e.g., "2 critical, 1 medium findings survived critic review (5 of 8 initial find
 
 ### Filtered (for reference)
 <N> findings filtered by critic consensus:
-- `file:line` -- <title> (votes: 1/3 KEEP -- <primary rejection reason>)
+- `file:line` -- <title> (votes: <votes>/<critics> KEEP -- <primary rejection reason>)
 
 ## Validation
 - `<command>` -- <result>
@@ -182,7 +182,7 @@ After execution, use `@skill-improver` to capture observations. Before execution
 - NEVER report style, formatting, or theoretical concerns -- bugs only
 - ALWAYS read changed files in full context, not just diff hunks
 - ALWAYS run tests/build as validation
-- No finding survives without >=2/3 critic votes
+- No finding survives without majority critic votes
 - If no real issues found, output PASS with empty sections
 - Keep findings terse -- one line each, explain "why" not "what"
 - Skip checklist dimensions that don't apply

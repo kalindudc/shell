@@ -9,7 +9,7 @@ description: On-demand multi-model critic consensus for arbitrary concerns -- in
 
 Evaluate user-provided concerns through multi-model critic consensus. Takes one or more
 concerns (about code, architecture, design, process, or any artifact), investigates each
-via the researcher agent, then filters through 3-model consensus to separate real issues
+via the researcher agent, then filters through multi-model critic consensus to separate real issues
 from speculative or unfounded worries.
 
 Goal: "Is this concern real, evidenced, and significant -- or speculative noise?"
@@ -86,12 +86,12 @@ e.g., "3 of 5 concerns validated by critic consensus. 1 filtered (speculative), 
 - **Description:** <what the concern is about>
 - **Evidence:** <researcher findings with file:line references>
 - **Impact:** <concrete impact assessment>
-- **Critic consensus:** N/3 KEEP
+- **Critic consensus:** <votes>/<critics> KEEP
 - **Recommendation:** <suggested action>
 
 ## Filtered Concerns
 <N> concerns filtered by critic consensus:
-- <title> (votes: N/3 KEEP -- <primary rejection reason>)
+- <title> (votes: <votes>/<critics> KEEP -- <primary rejection reason>)
 
 ## Insufficient Evidence
 <N> concerns skipped (researcher confidence below LIKELY):
@@ -109,7 +109,7 @@ After execution, use `@skill-improver` to capture observations. Before execution
 - NEVER modify source files -- this skill is read-only analysis
 - ALWAYS investigate concerns against actual source material before critic evaluation
 - ALWAYS include researcher confidence level for transparency
-- No concern survives without >=2/3 critic KEEP votes
+- No concern survives without majority critic KEEP votes
 - If no concerns are validated, output the analysis with empty Validated section
 - Keep output terse -- explain "why" not "what"
 - NEVER fabricate evidence -- if it can't be verified, report it as Insufficient Evidence

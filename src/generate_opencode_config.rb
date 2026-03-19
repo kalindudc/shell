@@ -2,7 +2,7 @@
 # typed: strict
 # frozen_string_literal: true
 
-# Generates ~/.config/opencode/opencode.json from src/templates/opencode.json.erb.
+# Generates ~/.config/opencode/opencode.jsonc from src/templates/opencode.json.erb.
 #
 # When the output file already exists the generated config is DEEP-MERGED into it:
 #   - Template values win on scalar conflicts  (propagates corrections/additions)
@@ -28,7 +28,7 @@
 #   ruby src/generate_opencode_config.rb [options]
 #
 # Options:
-#   -o, --output=PATH   output path (default: ~/.config/opencode/opencode.json)
+#   -o, --output=PATH   output path (default: ~/.config/opencode/opencode.jsonc)
 #   -i, --input=PATH    template path (default: src/templates/opencode.json.erb)
 #       --print         write merged result to STDOUT, do NOT touch any file
 #       --debug         verbose logging
@@ -40,7 +40,7 @@ require 'fileutils'
 require 'optparse'
 require 'logger'
 
-DEFAULT_OUTPUT = File.expand_path('~/.config/opencode/opencode.json').freeze
+DEFAULT_OUTPUT = File.expand_path('~/.config/opencode/opencode.jsonc').freeze
 DEFAULT_TEMPLATE = File.expand_path(
   'templates/opencode.json.erb', __dir__
 ).freeze

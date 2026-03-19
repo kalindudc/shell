@@ -146,7 +146,7 @@ Invoke the consensus orchestrator with the claims and the following criteria:
   **Verdict:** CORRECT or INCORRECT
   **Evidence:** <what you checked, 1-2 sentences>
 
-Any claim flagged INCORRECT by >=2 critics (FILTERED by orchestrator): revise the plan
+Any claim flagged INCORRECT by majority of critics (FILTERED by orchestrator): revise the plan
 before output. Log the revision in the "Verification Notes" section at the end of the plan.
 
 ## Plan Size Guidance

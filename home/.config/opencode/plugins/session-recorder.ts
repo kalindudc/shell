@@ -4,16 +4,18 @@
  * Dual-format architecture: .json for metrics, .md for conversation logs.
  * Zero external dependencies beyond @opencode-ai/plugin.
  *
- * Configuration (in ~/.config/opencode/session-recorder.json):
+ * Configuration (in ~/.config/opencode/plugins.json under "session-recorder" key,
+ *   or legacy ~/.config/opencode/session-recorder.json):
  *   enabled, debug, memory_dir, max_recent_sessions
  */
 import type { Plugin } from "@opencode-ai/plugin"
 import { mkdir, writeFile, readFile, appendFile, rename } from "fs/promises"
 import { existsSync } from "fs"
 import path from "path"
+import { getPluginConfig } from "../lib/plugin-config.ts"
 
 // -- Config & Constants --
-const PLUGIN_VERSION = "0.2.1"
+const PLUGIN_VERSION = "0.2.2"
 
 interface SessionRecorderConfig {
   enabled: boolean
@@ -29,18 +31,7 @@ const CONFIG_DEFAULTS: SessionRecorderConfig = {
   max_recent_sessions: 10,
 }
 
-function loadConfigSync(): SessionRecorderConfig {
-  const configPath = path.join(process.env.HOME!, ".config/opencode/session-recorder.json")
-  if (existsSync(configPath)) {
-    try {
-      const raw = require("fs").readFileSync(configPath, "utf-8")
-      return { ...CONFIG_DEFAULTS, ...JSON.parse(raw) }
-    } catch { /* Malformed config -- use defaults */ }
-  }
-  return { ...CONFIG_DEFAULTS }
-}
-
-const config = loadConfigSync()
+const config = getPluginConfig("session-recorder", CONFIG_DEFAULTS)
 if (process.env.SESSION_RECORDER_MEMORY_DIR) {
   config.memory_dir = process.env.SESSION_RECORDER_MEMORY_DIR
 }

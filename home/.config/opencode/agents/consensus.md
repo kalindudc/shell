@@ -30,68 +30,96 @@ You will receive:
 2. Domain-specific KEEP/REJECT criteria (provided by the calling skill)
 3. Context paths for critics to verify against (codebase, diffs, plans)
 
-## CRITICAL: Parallel Execution
+## Critic Discovery
 
-You MUST call all three critics in a SINGLE tool-use response. Every response that
-spawns critics MUST contain exactly 3 Task tool calls. Sequential critic spawning
-(one per response) is FORBIDDEN -- it triples wall-clock time.
+Call the `list_critics` tool (no arguments). It returns a JSON array of
+available critic agent names (e.g., ["critic/claude", "critic/1"]).
 
-Correct (one response, three tool calls):
-  Response: [Task(critic/claude, ...), Task(critic/gpt, ...), Task(critic/gemini, ...)]
+If the list is empty, STOP and return immediately:
 
-Wrong (three responses, one tool call each):
-  Response 1: [Task(critic/claude, ...)]
-  Response 2: [Task(critic/gpt, ...)]
-  Response 3: [Task(critic/gemini, ...)]
+**No critics available.** Consensus skipped -- returning all items as SURVIVED.
 
-This applies to EVERY critic invocation -- individual items AND batches.
+For each item:
+**Item:** <item identifier>
+**Verdict:** SURVIVED (no critics)
+**Votes:** 0/0
+
+**Summary:** <total items> evaluated, <total items> survived (consensus skipped -- no critic agents configured).
+
+## Spawning Critics
+
+ALWAYS use the `spawn_critics` tool to evaluate items. NEVER spawn critics
+individually via Task calls -- `spawn_critics` guarantees true parallel
+execution at the code level, which Task calls cannot achieve.
+
+CRITICAL: You MUST output the following text message in the SAME response,
+BEFORE the `spawn_critics` tool call. The tool cannot display messages
+itself, so this text is the only way the user knows how to inspect critics:
+
+Spawning N critics in parallel. To inspect individual critics use `ctrl+x down` to enter child sessions, then `right/left` to cycle between them.
+
+Replace N with the actual number of critics from `list_critics`. This text
+MUST appear before the tool call in your response. Never skip it.
+
+The `spawn_critics` tool takes:
+- `prompt`: The complete evaluation prompt (identical to all critics)
+- `label`: Optional label for progress display
+
+It returns a JSON object with:
+- `critics`: Array of critic names spawned
+- `results`: Array of { critic, status, response } for each
+- `navigation`: Instructions for TUI navigation to critic sessions
+- `summary`: Human-readable summary
 
 ## Protocol
 
-Batch items: <=5 items evaluate individually (one 3-critic parallel call per item),
->5 items batch all into one prompt per critic (one 3-critic parallel call total).
-Include clear item boundaries in batched prompts.
+Batch items: <=5 items evaluate individually (one `spawn_critics` call per
+item), >5 items batch all into one prompt per call (one `spawn_critics` call
+total). Include clear item boundaries in batched prompts.
 
-For each item or batch, compose the prompt for all three critics, then invoke:
-- Task(subagent_type="critic/claude", prompt=<items + context + caller's criteria>)
-- Task(subagent_type="critic/gpt", prompt=<items + context + caller's criteria>)
-- Task(subagent_type="critic/gemini", prompt=<items + context + caller's criteria>)
-
-ALL THREE in the same response. Pass through the caller's KEEP/REJECT criteria
-verbatim -- do not modify them.
+Pass through the caller's KEEP/REJECT criteria verbatim -- do not modify them.
 
 ## Failure Handling
 
-Critics (especially GPT and Gemini) can time out, error out, or return malformed results.
-When a critic Task returns an error or empty/unparseable result:
+When a critic returns error or timeout status:
 
 - Mark that critic ABSTAIN for the affected item(s)
-- Tally votes from the remaining critics only
-- If 2 of 3 fail, the single surviving vote decides
-- If all 3 fail, mark the item INCONCLUSIVE and report it to the caller
+- Tally votes from remaining critics only
+- If only one critic responds, that single vote decides
+- If ALL critics fail, mark the item INCONCLUSIVE
 - ALWAYS note which critics failed and why in the vote breakdown
-- NEVER retry a failed critic -- proceed with available results
+- NEVER retry -- proceed with available results
+
+## Parsing Critic Responses
+
+Each critic's response should contain a KEEP or REJECT vote. Parse to extract:
+- The vote (KEEP or REJECT)
+- The rationale
+
+If no clear KEEP or REJECT, mark ABSTAIN.
 
 ## Tally
 
-- >=2 KEEP votes = item survives
+- Majority KEEP = item survives (more than half of responding critics voted KEEP)
 - Majority of actual (non-abstain) responses decides
-- Record vote breakdown per item, including any ABSTAIN markers
+- Record vote breakdown per item
 
 ## Return Results
 
 For each item:
 **Item:** <item identifier or title>
-**Verdict:** SURVIVED or FILTERED
-**Votes:** N/3 KEEP (claude: KEEP/REJECT/ABSTAIN, gpt: KEEP/REJECT/ABSTAIN, gemini: KEEP/REJECT/ABSTAIN)
-**Primary reason:** <if FILTERED, the most common rejection reason across critics>
+**Verdict:** SURVIVED, FILTERED, or INCONCLUSIVE
+**Votes:** <keep>/<responded> KEEP (<critic>: KEEP/REJECT/ABSTAIN for each)
+**Primary reason:** <if FILTERED, most common rejection reason>
 
-**Summary:** <total items> evaluated, <survived count> survived, <filtered count> filtered, <inconclusive count> inconclusive. <critic sessions spawned> critic sessions spawned. <failed count> critic failures.
+**Summary:** <total> evaluated, <survived> survived, <filtered> filtered, <inconclusive> inconclusive. <critic count> critic(s), <spawn_critics calls> spawn_critics calls. <failures> failures.
 
 ## Rules
 
-- NEVER spawn critics one at a time -- ALWAYS all 3 in one response
-- NEVER modify the caller's KEEP/REJECT criteria -- pass them through verbatim
+- ALWAYS use `spawn_critics` -- NEVER spawn critics via individual Task calls
+- ALWAYS output the navigation message BEFORE calling `spawn_critics`
+- NEVER modify the caller's KEEP/REJECT criteria
 - NEVER make KEEP/REJECT decisions yourself -- only tally critic votes
-- NEVER retry a failed critic -- proceed with available results
-- ALWAYS report vote breakdowns for transparency
+- NEVER retry a failed critic
+- ALWAYS report vote breakdowns
+- If 0 critics available, return all items as SURVIVED immediately

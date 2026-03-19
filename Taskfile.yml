@@ -182,7 +182,7 @@ tasks:
 
   # Generate configs
   generate:
-    desc: "Generate .zshrc, .gitconfig, and opencode.json"
+    desc: "Generate .zshrc, .gitconfig, and opencode.jsonc"
     deps:
       - generate:zsh
       - generate:gitconfig
@@ -209,7 +209,7 @@ tasks:
       - $HOME/src/github.com/kalindudc/shell/src/generate_tempate.rb -i $HOME/src/github.com/kalindudc/shell/src/templates/.gitconfig.erb -o $HOME/src/github.com/kalindudc/shell/home/.gitconfig
 
   generate:opencode:
-    desc: "Merge opencode.json template into ~/.config/opencode/opencode.json (preserves user customizations)"
+    desc: "Merge opencode.jsonc template into ~/.config/opencode/opencode.jsonc (preserves user customizations)"
     cmds:
       - |
         # OPENCODE_PROFILE defaults to "personal" in the script.
