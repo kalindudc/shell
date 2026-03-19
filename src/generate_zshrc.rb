@@ -138,7 +138,12 @@ def generate_completions
     @logger.warn("todo binary not found at #{todo_bin}, skipping completions")
   end
 
+  # task or go-task provides the same completions, so we check for either one
   task_bin = `command -v task 2>/dev/null`.strip
+  if task_bin.empty?
+    task_bin = `command -v go-task 2>/dev/null`.strip
+  end
+
   if !task_bin.empty? && File.executable?(task_bin)
     output = `#{task_bin} --completion zsh 2>/dev/null`
     if $?.success? && !output.empty? # rubocop:disable Style/SpecialGlobalVars
