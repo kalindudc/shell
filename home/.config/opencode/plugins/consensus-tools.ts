@@ -3,15 +3,9 @@
  *
  * Provides:
  * - `list_critics`: Discovers available critic agents at runtime.
- * - `task` (override): Replaces the built-in task tool. For normal calls,
- *   replicates built-in behavior via the SDK. For the consensus agent calling
- *   critic agents, batches and runs ALL critics in parallel.
- *
- * The custom task tool produces proper TUI-visible, clickable ToolParts
- * because the TUI renders `tool === "task"` with the task component.
- *
- * The tool.execute.after hook injects metadata.sessionId into the completed
- * ToolPart so the TUI renders a clickable link to the child session.
+ * - `spawn_critics`: Spawns ALL available critics in parallel via
+ *   SubtaskPartInput. Used by the consensus agent to guarantee true
+ *   parallel execution at the code level.
  */
 import type { Plugin } from "@opencode-ai/plugin"
 import { tool } from "@opencode-ai/plugin"
@@ -30,12 +24,27 @@ const CONFIG_DEFAULTS: ConsensusToolsConfig = {
 const config = getPluginConfig("consensus-tools", CONFIG_DEFAULTS)
 
 export const ConsensusToolsPlugin: Plugin = async (ctx) => {
-  // -- Shared state for the tool.execute.after hook --
-  // Maps callID -> sessionId so the hook can inject metadata.sessionId
-  // into the completed ToolPart.
-  const sessionByCall: Record<string, string> = {}
-
   // -- Helpers --
+
+  /**
+   * Resolve where critic sessions should be parented.
+   *
+   * When consensus is itself a subagent (e.g., plan-generator -> consensus),
+   * critics parented to the consensus session become grandchildren of the
+   * top-level session and TUI navigation can't reach them. Fix: parent
+   * critics to the consensus session's parent instead (one level up).
+   *
+   * When consensus IS the top-level session (no parent), critics stay
+   * parented to it directly.
+   */
+  async function resolveParentForCritics(sessionId: string): Promise<string> {
+    try {
+      const res = await ctx.client.session.get({ path: { id: sessionId } })
+      const parentID = (res.data as any)?.parentID
+      if (parentID) return parentID
+    } catch { /* fall through to current session */ }
+    return sessionId
+  }
 
   async function discoverCritics(): Promise<string[]> {
     const res = await ctx.client.app.agents()
@@ -97,155 +106,7 @@ export const ConsensusToolsPlugin: Plugin = async (ctx) => {
     return ""
   }
 
-  // -- Normal task execution (replicates built-in behavior via SDK) --
-
-  async function executeNormalTask(
-    args: { description: string; prompt: string; subagent_type: string; task_id?: string },
-    context: any,
-  ): Promise<string> {
-    // Create or resume child session
-    let sessionId: string
-    if (args.task_id) {
-      sessionId = args.task_id
-    } else {
-      const sessionRes = await ctx.client.session.create({
-        body: {
-          parentID: context.sessionID,
-          title: `${args.description} (@${args.subagent_type} subagent)`,
-        },
-      })
-      if (!sessionRes.data?.id) throw new Error("Failed to create session")
-      sessionId = sessionRes.data.id
-    }
-
-    // Set metadata so TUI shows clickable link while running
-    context.metadata({
-      title: args.description,
-      metadata: { sessionId },
-    })
-
-    // Store for the tool.execute.after hook
-    sessionByCall[context.sessionID] = sessionId
-
-    // Run the prompt synchronously (like built-in TaskTool)
-    const promptRes = await ctx.client.session.prompt({
-      path: { id: sessionId },
-      body: {
-        agent: args.subagent_type,
-        parts: [{ type: "text" as const, text: args.prompt }],
-      },
-    })
-
-    // Extract text from response
-    const parts = (promptRes as any).data?.parts ?? []
-    const output = parts
-      .filter((p: any) => p.type === "text" && p.text)
-      .map((p: any) => p.text)
-      .join("\n").trim() || "Task completed."
-
-    return output
-  }
-
-  // -- Parallel critic execution --
-
-  async function executeParallelCritics(
-    args: { description: string; prompt: string },
-    context: any,
-    critics: string[],
-  ): Promise<string> {
-    const startTime = Date.now()
-
-    context.metadata({ title: `spawning ${critics.length} critics in parallel...` })
-
-    // Create wrapper sessions and fire SubtaskPartInput in parallel
-    const results = await Promise.all(
-      critics.map(async (criticName) => {
-        const st = Date.now()
-        try {
-          const sessionRes = await ctx.client.session.create({
-            body: {
-              parentID: context.sessionID,
-              title: `${criticName} evaluation subagent`,
-            },
-          })
-          if (!sessionRes.data?.id) {
-            return { critic: criticName, status: "error" as const, response: "Failed to create session" }
-          }
-          const sessionId = sessionRes.data.id
-
-          // Store first session for the hook
-          if (!sessionByCall[context.sessionID]) {
-            sessionByCall[context.sessionID] = sessionId
-            context.metadata({
-              title: `spawning ${critics.length} critics in parallel...`,
-              metadata: { sessionId },
-            })
-          }
-
-          await ctx.client.session.promptAsync({
-            path: { id: sessionId },
-            body: {
-              parts: [{
-                type: "subtask" as const,
-                prompt: args.prompt,
-                description: `${criticName} evaluation`,
-                agent: criticName,
-              }],
-            },
-          })
-
-          if (!await waitForIdle(sessionId, config.timeout_ms)) {
-            try { await ctx.client.session.abort({ path: { id: sessionId } }) } catch {}
-            return { critic: criticName, status: "timeout" as const, response: "Timed out", sessionId, durationMs: Date.now() - st }
-          }
-
-          const response = await extractResponse(sessionId)
-          if (!response) {
-            return { critic: criticName, status: "error" as const, response: "Empty response", sessionId, durationMs: Date.now() - st }
-          }
-
-          return { critic: criticName, status: "success" as const, response, sessionId, durationMs: Date.now() - st }
-        } catch (err) {
-          return { critic: criticName, status: "error" as const, response: String(err) }
-        }
-      }),
-    )
-
-    const succeeded = results.filter((r) => r.status === "success").length
-    const duration = formatDuration(Date.now() - startTime)
-    const votes = results.map((r) => {
-      const vote = r.status === "success" ? extractVote(r.response) : "ABSTAIN"
-      return `${r.critic.replace("critic/", "")}=${vote}`
-    }).join(", ")
-
-    context.metadata({
-      title: `${critics.length} critics complete (${votes})`,
-      metadata: { sessionId: sessionByCall[context.sessionID] },
-    })
-
-    return JSON.stringify({
-      critics,
-      results,
-      summary: `${critics.length} critics in parallel (${duration}). ${succeeded} succeeded.`,
-    })
-  }
-
   return {
-    "tool.execute.after": async (input, output) => {
-      if (input.tool !== "task") return
-      const sessionId = sessionByCall[input.sessionID]
-      try {
-        await ctx.client.app.log({ body: {
-          service: "consensus-tools",
-          message: `tool.execute.after: tool=${input.tool} sessionID=${input.sessionID} storedSessionId=${sessionId ?? "none"} currentMeta=${JSON.stringify(output.metadata)}`,
-        } as any })
-      } catch {}
-      if (sessionId) {
-        output.metadata = { ...output.metadata, sessionId }
-        delete sessionByCall[input.sessionID]
-      }
-    },
-
     tool: {
       list_critics: tool({
         description:
@@ -257,35 +118,94 @@ export const ConsensusToolsPlugin: Plugin = async (ctx) => {
         },
       }),
 
-      task: tool({
+      spawn_critics: tool({
         description:
-          "Launch a new agent to handle complex, multistep tasks autonomously. " +
-          "When the calling agent is consensus and the subagent_type is a critic " +
-          "agent, this tool batches ALL available critics and runs them in parallel.",
+          "Spawn ALL available critics in parallel to evaluate items. " +
+          "Creates one child session per critic, fires SubtaskPartInput " +
+          "via promptAsync, polls for completion, and returns structured results.",
         args: {
-          description: tool.schema.string().describe("A short (3-5 words) description of the task"),
-          prompt: tool.schema.string().describe("The task for the agent to perform"),
-          subagent_type: tool.schema.string().describe("The type of specialized agent to use for this task"),
-          task_id: tool.schema.string().optional().describe(
-            "Set to resume a previous task (continues the same subagent session).",
-          ),
+          prompt: tool.schema.string().describe("The complete evaluation prompt to send to each critic"),
+          label: tool.schema.string().optional().describe("Optional label for progress display"),
         },
         async execute(args, context) {
           const critics = await discoverCritics()
-          const isCriticCall = critics.includes(args.subagent_type)
-          const isConsensusAgent = context.agent === "consensus"
 
-          if (isConsensusAgent && isCriticCall) {
-            // Consensus agent calling a critic: batch ALL critics in parallel
-            return executeParallelCritics(
-              { description: args.description, prompt: args.prompt },
-              context,
-              critics,
-            )
+          if (critics.length === 0) {
+            return JSON.stringify({
+              critics: [],
+              results: [],
+              summary: "No critic agents configured.",
+            })
           }
 
-          // Normal task execution -- replicate built-in behavior
-          return executeNormalTask(args, context)
+          const startTime = Date.now()
+
+          context.metadata({ title: `spawning ${critics.length} critics in parallel...` })
+
+          // Resolve the correct parent for critic sessions.
+          const criticParentID = await resolveParentForCritics(context.sessionID)
+
+          // Create wrapper sessions and fire SubtaskPartInput in parallel
+          const results = await Promise.all(
+            critics.map(async (criticName) => {
+              const st = Date.now()
+              try {
+                const sessionRes = await ctx.client.session.create({
+                  body: {
+                    parentID: criticParentID,
+                    title: `${criticName} evaluation subagent`,
+                  },
+                })
+                if (!sessionRes.data?.id) {
+                  return { critic: criticName, status: "error" as const, response: "Failed to create session" }
+                }
+                const sessionId = sessionRes.data.id
+
+                await ctx.client.session.promptAsync({
+                  path: { id: sessionId },
+                  body: {
+                    parts: [{
+                      type: "subtask" as const,
+                      prompt: args.prompt,
+                      description: `${criticName} evaluation`,
+                      agent: criticName,
+                    }],
+                  },
+                })
+
+                if (!await waitForIdle(sessionId, config.timeout_ms)) {
+                  try { await ctx.client.session.abort({ path: { id: sessionId } }) } catch {}
+                  return { critic: criticName, status: "timeout" as const, response: "Timed out", sessionId, durationMs: Date.now() - st }
+                }
+
+                const response = await extractResponse(sessionId)
+                if (!response) {
+                  return { critic: criticName, status: "error" as const, response: "Empty response", sessionId, durationMs: Date.now() - st }
+                }
+
+                return { critic: criticName, status: "success" as const, response, sessionId, durationMs: Date.now() - st }
+              } catch (err) {
+                return { critic: criticName, status: "error" as const, response: String(err) }
+              }
+            }),
+          )
+
+          const succeeded = results.filter((r) => r.status === "success").length
+          const duration = formatDuration(Date.now() - startTime)
+          const votes = results.map((r) => {
+            const vote = r.status === "success" ? extractVote(r.response) : "ABSTAIN"
+            return `${r.critic.replace("critic/", "")}=${vote}`
+          }).join(", ")
+
+          context.metadata({
+            title: `${critics.length} critics complete (${votes})`,
+          })
+
+          return JSON.stringify({
+            critics,
+            results,
+            summary: `${critics.length} critics in parallel (${duration}). ${succeeded} succeeded.`,
+          })
         },
       }),
     },

@@ -47,6 +47,12 @@ function resetMocks() {
   for (const key of Object.keys(sessionStore)) delete sessionStore[key]
   sessionCounter = 0
   metadataCalls.length = 0
+  // Pre-seed the consensus session so session.get can resolve its parentID.
+  // Default: consensus is a subagent of "ses_toplevel".
+  sessionStore["ses_consensus"] = {
+    id: "ses_consensus", parentID: "ses_toplevel", title: "consensus subagent",
+    status: "idle", messages: [],
+  }
 }
 
 const mockClient = {
@@ -93,6 +99,11 @@ const mockClient = {
     messages: async ({ path: p }: any) => {
       apiCalls.push({ method: "session.messages", args: { path: p }, timestamp: Date.now() })
       return { data: sessionStore[p.id]?.messages ?? [] }
+    },
+    get: async ({ path: p }: any) => {
+      apiCalls.push({ method: "session.get", args: { path: p }, timestamp: Date.now() })
+      const s = sessionStore[p.id]
+      return { data: s ? { id: s.id, parentID: s.parentID, title: s.title } : undefined }
     },
     abort: async ({ path: p }: any) => {
       const s = sessionStore[p.id]; if (s) s.status = "idle"
@@ -146,8 +157,23 @@ describe("spawn_critics sessions", () => {
     expect(apiCalls.filter((c) => c.method === "session.create").length).toBe(4)
   })
 
-  test("all children parented to consensus session", async () => {
+  test("all children parented to consensus session's parent (top-level)", async () => {
     resetMocks()
+    await hooks.tool!.spawn_critics.execute({ prompt: "Evaluate" }, toolCtx as any)
+    // ses_consensus has parentID "ses_toplevel", so critics should be
+    // parented there -- not to the consensus session itself.
+    for (const call of apiCalls.filter((c) => c.method === "session.create")) {
+      expect(call.args.parentID).toBe("ses_toplevel")
+    }
+  })
+
+  test("children parented to consensus when consensus is top-level", async () => {
+    resetMocks()
+    // Override: consensus has no parent (it IS the top-level session)
+    sessionStore["ses_consensus"] = {
+      id: "ses_consensus", parentID: undefined, title: "consensus",
+      status: "idle", messages: [],
+    }
     await hooks.tool!.spawn_critics.execute({ prompt: "Evaluate" }, toolCtx as any)
     for (const call of apiCalls.filter((c) => c.method === "session.create")) {
       expect(call.args.parentID).toBe("ses_consensus")
