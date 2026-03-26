@@ -80,7 +80,9 @@ Scope: Run only the relevant test file(s) per task for fast feedback. Save the f
 - New tests: Test command (confirm tests pass)
 - Style changes: Lint command (confirm style compliance)
 - Structural changes: Verify files exist/don't exist as expected
-- Config/doc-only plans (no build/test/lint cycle): Verification is re-reading files and checking structural consistency. Baseline check reduces to `git status` showing a clean working tree.
+- Config/doc-only plans (no build/test/lint cycle): Verification is re-reading files and checking structural consistency. Baseline check reduces to `git status` showing a clean working tree. When project-specific validation commands are available (e.g., `ruby generate_config.rb --validate`), prefer them over bare `git status`.
+- Greenfield CREATE-only plans (all tasks create new files, no existing code to modify): Same baseline reduction as config/doc-only -- `git status` for a clean working tree, then structural verification (file existence, content checks) after each task.
+- Unavailable runtime: When a plan specifies runtime verification for a runtime not available locally, explicitly flag the deviation in the task record and recommend manual verification rather than silently skipping. This is distinct from missing credentials (which allow structural validation) -- missing runtimes block functional verification entirely.
 - Compilation-dependency chains (A references B, B removes C): Defer verification to the last task in the chain rather than attempting intermediate builds that cannot succeed.
 
 When running tests, prefer the `test_run_parsed` tool over raw bash for structured results. It returns pass/fail per test with parsed failure locations instead of raw terminal output. Note: `test_run_parsed` cannot parse Minitest output -- fall back to reading raw test output for Ruby/Minitest projects.
@@ -133,7 +135,7 @@ After all tasks are completed:
 
 1. Run ALL Validation Gates from the plan
 2. Run the full build + test + lint cycle
-3. Report final status: tasks completed (N/N), validation gates (pass/fail), files touched, deviations. Use the `git_diff_summary` tool for the final changeset summary -- it provides structured file categorization and counts instead of raw diff output.
+3. Report final status: tasks completed (N/N), validation gates (pass/fail), files touched, deviations. Use the `git_diff_summary` tool for the final changeset summary -- it provides structured file categorization and counts instead of raw diff output. Supplement with `git status` when the plan creates new files, since `git_diff_summary` only covers tracked changes and will miss untracked files.
 4. Update the plan with `## Implementation Status: COMPLETED` at the top
 
 ## Self-Improvement

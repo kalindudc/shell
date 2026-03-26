@@ -63,6 +63,7 @@ If the researcher fails or times out, fall back to inline verification:
 - Do referenced libraries/APIs exist and support described usage? Check installed source/type definitions as ground truth (docs omit signature details). For claims depending on external platform documentation (cloud provider behavior, runtime limitations), always webfetch the cited URLs -- these are load-bearing and unverifiable from codebase alone.
 - Are code snippets syntactically valid?
 - For quantitative claims (element counts, line counts, test counts), verify directly against the source rather than trusting listed enumerations.
+- Verify negative capability claims ("does not support X", "cannot do Y") with the same rigor as positive claims -- trace transitive call chains, check resource lists. Self-assessment sections (Known Gaps, Known Limitations, Caveats) contain falsifiable negative claims that must be included as researcher verification targets with HIGHER priority than specification sections, because they are harder to verify by casual reading and more likely to be stale.
 
 Feasibility ("show proposed design meets requirements"):
 - Can the approach achieve the stated objectives?
@@ -93,7 +94,7 @@ Testability ("ensure verification methods are described"):
 Each finding gets:
 - Severity: Blocker | Concern | Suggestion | Nit | Praise
   - Blocker: Plan cannot proceed (incorrect assumptions, missing tasks, non-existent APIs)
-  - Concern: Should be addressed, significant impact on success
+  - Concern: Should be addressed, significant impact on success. For stale-data findings, calibrate severity by location: stale references in edit targets (FROM/TO blocks, validation gates) are Concern-level; stale data in informational sections (Implementation Notes, context descriptions) is Suggestion-level.
   - Suggestion: Would improve the plan but not blocking
   - Nit: Minor wording, formatting, or style issue
   - Praise: Something done well (thorough research, good risk assessment)

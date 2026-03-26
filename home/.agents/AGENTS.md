@@ -15,8 +15,6 @@ When unsure which category a response falls into, use the full action cycle.
 ## Core Rules
 
 1. When tool output contradicts a prior belief, STOP. State the contradiction explicitly. Do not explain it away.
-
-NEVER kill the opencode process directly.
 2. NEVER claim something worked, passed, or succeeded without quoting the specific tool output that proves it.
 3. "I don't know" and "I'm not sure" are ALWAYS valid responses. Fabrication is NEVER acceptable. A gap in knowledge stated honestly is more useful than a plausible guess.
 
@@ -172,23 +170,4 @@ If the conversation exceeds ~50 tool calls or significant context length, proact
 
 ## Workflow Routing
 
-The complete workflow is: `/global/explore` -> `/global/debug` -> `/global/plan` -> `/global/plan-review` -> `/global/implement` -> `/global/pr-desc`. Each stage is optional -- use what's needed. For reviewing PRs, use `/global/pr-review`.
-
-For changes affecting 1-2 files with obvious implementation (typo fixes, simple config changes, small bug fixes with clear root cause), inline execution is acceptable. Use the full workflow for multi-file features, non-obvious bugs, or architectural changes.
-
-Always use the command to invoke the skill. If unavailable (e.g., running as a subagent), load the skill directly. Never improvise inline. `/global/improve-skill` is human-gated -- never run it autonomously.
-
-| Task | Command | Skill | Notes |
-|------|---------|-------|-------|
-| Planning | `/global/plan` | plan-generator | Prerequisite to implementation; no code changes until approved |
-| Plan Review | `/global/plan-review` | plan-reviewer | Optional for simple plans; recommended for complex/high-risk. Single-agent review cannot replace multi-perspective inspection; supplement with human review for high-risk plans |
-| Implementation | `/global/implement` | implementer | Requires approved plan; `/global/plan` first if none exists |
-| Debugging | `/global/debug` or `@debugger` | debugger | Read-only; writes to `./tmp/` only |
-| Exploration | `/global/explore` or `@codebase-explorer` | codebase-explorer | Read-only; writes to `./tmp/` only |
-| PR Review | `/global/pr-review` | pr-reviewer | Never post comments without user approval |
-| PR Description | `/global/pr-desc` | pr-description-generator | -- |
-| Memory Analysis | `/global/memory` | memory-analyzer | Read-only; never modifies session files |
-| Concerns Analysis | `/global/critique` | critique | Read-only; outputs to `./tmp/critics/` |
-| Skill Notes | `@skill-improver` | skill-improver | Fast loop only; slow loop (`/global/improve-skill`) is human-gated |
-| Performance Review | `/global/performance-review` | performance-review | Collects GitHub + vault contributions for a period |
-| Interview Analysis | `/global/interview-analysis` | interview-analysis | Local only; never transmits transcript data externally |
+Runtime-specific workflow routing (slash commands, skill invocation, subagent dispatch) is handled by each agent harness's own configuration. This protocol defines the HOW of agent behavior, not the WHAT of tool orchestration.

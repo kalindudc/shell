@@ -129,9 +129,21 @@ tasks:
       - test:bin
 
   test:unit:
-    desc: "Run unit tests with BATS"
+    desc: "Run unit tests (BATS + pi extension tests)"
     cmds:
       - bats test/unit/*.bats
+      - |
+        BUN="${HOME}/.bun/bin/bun"
+        if ! "$BUN" --version >/dev/null 2>&1; then
+          echo "Warning: bun not found at ${BUN}, skipping pi extension tests"
+          exit 0
+        fi
+        EXT_DIR="home/.pi/agent/extensions/custom-tools"
+        if [ ! -d "${EXT_DIR}/node_modules" ]; then
+          echo "Installing pi extension test dependencies..."
+          (cd "${EXT_DIR}" && "$BUN" install)
+        fi
+        (cd "${EXT_DIR}" && "$BUN" test test/)
 
   test:bin:
     desc: "Run home/bin/ tool tests (BATS + Ruby)"

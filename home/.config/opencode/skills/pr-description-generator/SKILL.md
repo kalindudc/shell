@@ -37,7 +37,8 @@ The entire PR description MUST be readable in under 5 minutes. A description nob
 
 ### 3. Get the git diff
 
-- Run `git diff <parent_branch>...HEAD` to get all changes. For stacked branches (Graphite, ghstack), this can over-report if the local parent ref is stale. Verify with `git diff-tree` on the branch's specific commits, or fetch the parent before diffing.
+- For stacked branches (Graphite, ghstack), ALWAYS use `git diff-tree -p <commit>` (or `git diff COMMIT^..COMMIT` for single-commit branches) as the PRIMARY diff method -- branch-based diffs over-report when local parent refs are stale. Fall back to `git diff <parent_branch>...HEAD` only for non-stacked branches or when diff-tree output is empty.
+- For non-stacked branches, run `git diff <parent_branch>...HEAD` to get all changes.
 - Use the `git_diff_summary` tool for a structured overview of changes with file categorization (source/test/config/docs/migration) and insertion/deletion counts. This replaces the need to chain `git diff --stat` and `git diff --numstat` manually.
 - Run `git log --oneline <parent_branch>...HEAD` to understand the commit narrative. Use commit messages to inform the Summary and Technical Details.
 
@@ -112,7 +113,7 @@ foo/bar/
 
 ## Output Format
 
-- Output the final PR description to `./tmp/pr/<branch_name>-pr.md` (truncate `<branch_name>` to 60 characters for the filename)
+- Output the final PR description to `./tmp/pr/<branch_name>-pr.md` (truncate `<branch_name>` to 60 characters for the filename). Note: the `Write` tool requires absolute paths that may not match relative `./tmp/**` permission globs -- if Write fails, fall back to `bash` with `cat > ./tmp/pr/<filename> <<'EOF'`.
 - Copy to clipboard if available (`pbcopy` on macOS, `xclip -selection clipboard` on Linux). Skip if neither is present.
 - Max 5 minute read time -- this is non-negotiable
 

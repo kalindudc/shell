@@ -1,0 +1,15 @@
+{
+  "name": "custom-tools",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "devDependencies": {
+    "@sinclair/typebox": "~0.34.48",
+    "@types/bun": "latest"
+  }
+}

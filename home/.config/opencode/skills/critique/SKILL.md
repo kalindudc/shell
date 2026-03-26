@@ -62,6 +62,8 @@ Invoke the consensus orchestrator with the investigated concerns and the followi
   - Evidence is VERIFIED against actual code, docs, or artifacts
   - Impact is CONCRETE and describable (not hypothetical)
 
+Note: The effective critic panel is frequently 3/4 rather than 4/4 due to timeouts (particularly GPT). This is normal operation -- apply dynamic consensus thresholds (e.g., 2/3 KEEP when one critic abstains) and note abstentions in the output.
+
 ### 4. Output
 
 Write structured analysis to `./tmp/critics/<label>-analysis.md`.
@@ -92,6 +94,12 @@ e.g., "3 of 5 concerns validated by critic consensus. 1 filtered (speculative), 
 ## Filtered Concerns
 <N> concerns filtered by critic consensus:
 - <title> (votes: <votes>/<critics> KEEP -- <primary rejection reason>)
+
+## Researcher Notes
+[Optional -- include when researcher investigation surfaces valuable factual findings
+separate from the concern's validity. These are concrete findings worth preserving even
+when the parent concern was filtered or skipped. Omit this section if no additional
+findings emerged.]
 
 ## Insufficient Evidence
 <N> concerns skipped (researcher confidence below LIKELY):
