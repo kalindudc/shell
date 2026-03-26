@@ -9,8 +9,22 @@ vars:
 tasks:
   # Development setup
   up:
-    desc: "Install development dependencies"
+    desc: "Install development dependencies (dev tools + Ruby gems)"
     cmds:
+      - |
+        # Install shell dev tools required for task test:unit and task style
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          brew install bats-core shellcheck shfmt
+        elif [[ -f /etc/arch-release ]]; then
+          sudo pacman -S --needed --noconfirm bats shellcheck shfmt
+        else
+          sudo apt-get install -y bats shellcheck
+          # shfmt not in apt on older Ubuntu; install via go if available
+          if command -v go >/dev/null 2>&1; then
+            go install mvdan.cc/sh/v3/cmd/shfmt@latest
+          fi
+        fi
+        echo "✓ Dev tools installed"
       - |
         REQUIRED_BUNDLER="4.0.3"
         BUNDLE_BIN="{{.GEM_BIN}}/bundle"
@@ -35,6 +49,11 @@ tasks:
     cmds:
       - ./install.sh
 
+  install:packages:
+    desc: "Install fnm and zsh plugins only — no config generation, stow, or auth"
+    cmds:
+      - ./install.sh --only-packages
+
   # Stow dotfiles
   stow:
     desc: "Re-stow the home directory"
@@ -56,17 +75,6 @@ tasks:
   style:
     desc: "Run ShellCheck linting and auto-fix formatting"
     cmds:
-      - |
-        if ! command -v shellcheck >/dev/null 2>&1; then
-          echo "ShellCheck not installed. Installing..."
-          if [[ "$OSTYPE" == "darwin"* ]]; then
-            brew install shellcheck
-          elif [[ -f /etc/arch-release ]]; then
-            sudo pacman -S --needed --noconfirm shellcheck
-          else
-            sudo apt-get install -y shellcheck
-          fi
-        fi
       - shellcheck install.sh src/setup.sh src/lib/*.sh home/bin/lib/*.sh
       - |
         for f in home/bin/*; do
@@ -123,33 +131,11 @@ tasks:
   test:unit:
     desc: "Run unit tests with BATS"
     cmds:
-      - |
-        if ! command -v bats >/dev/null 2>&1; then
-          echo "BATS not installed. Installing..."
-          if [[ "$OSTYPE" == "darwin"* ]]; then
-            brew install bats-core
-          elif [[ -f /etc/arch-release ]]; then
-            sudo pacman -S --needed --noconfirm bats
-          else
-            sudo apt-get install -y bats
-          fi
-        fi
       - bats test/unit/*.bats
 
   test:bin:
     desc: "Run home/bin/ tool tests (BATS + Ruby)"
     cmds:
-      - |
-        if ! command -v bats >/dev/null 2>&1; then
-          echo "BATS not installed. Installing..."
-          if [[ "$OSTYPE" == "darwin"* ]]; then
-            brew install bats-core
-          elif [[ -f /etc/arch-release ]]; then
-            sudo pacman -S --needed --noconfirm bats
-          else
-            sudo apt-get install -y bats
-          fi
-        fi
       - bats home/bin/test/bats/*.bats
       - bundle exec ruby -e "Dir.glob('home/bin/test/**/*.rb').sort.each { |f| require_relative f }"
 

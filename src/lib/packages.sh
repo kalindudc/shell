@@ -209,7 +209,7 @@ update_path() {
       export PATH="${dir}:${PATH}"
     fi
   done
-  
+
   # Hash -r to refresh bash's command cache
   hash -r 2>/dev/null || true
 }
@@ -254,6 +254,11 @@ install_packages_core() {
   if command_exists gem; then
     log "Installing Ruby ERB (required for templating)..."
     gem install erb || true
+  fi
+
+  # install NVM for ubuntu / macos
+  if is_ubuntu || is_macos; then
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
   fi
 
   success "Core packages installed"
@@ -406,8 +411,8 @@ install_packages_runtimes() {
   # Install pyenv
   install_pyenv
 
-  # Install nvm
-  install_nvm
+  # Install fnm (replaces nvm)
+  install_fnm
 
   success "Runtime packages installed"
 }
@@ -576,22 +581,68 @@ install_starship() {
   success "Starship installed"
 }
 
-# Install NVM (Node Version Manager)
-install_nvm() {
-  if [[ -d "${HOME}/.nvm" ]]; then
-    log "NVM is already installed"
+# Install fnm (Fast Node Manager — replaces nvm)
+install_fnm() {
+  if command_exists fnm; then
+    log "fnm already installed: $(fnm --version)"
     return 0
   fi
 
-  log "Installing NVM..."
+  log "Installing fnm (Fast Node Manager)..."
 
-  if is_arch; then
-    yay -S --needed --noconfirm nvm
+  case "${OS_DISTRO}" in
+    macos)  brew install fnm ;;
+    arch)   maybe_sudo pacman -S --needed --noconfirm fnm ;;
+    *)      curl -fsSL https://fnm.vercel.app/install | \
+              bash --install-dir "${HOME}/.local/bin" --skip-shell ;;
+  esac
+
+  success "fnm installed"
+}
+
+# Clone a plugin repo if missing, pull to update if present.
+_clone_or_update() {
+  local dest="$1" url="$2" flags="${3:-}"
+  if [[ ! -d "${dest}" ]]; then
+    log "Cloning $(basename "${dest}")..."
+    # shellcheck disable=SC2086
+    git clone ${flags} "${url}" "${dest}"
   else
-    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash
+    log "Updating $(basename "${dest}")..."
+    git -C "${dest}" pull --quiet
+  fi
+}
+
+# Install zsh plugins to $XDG_DATA_HOME/zsh/plugins
+install_zsh_plugins() {
+  local plugin_dir="${XDG_DATA_HOME:-${HOME}/.local/share}/zsh/plugins"
+  log "Installing zsh plugins to ${plugin_dir}..."
+  mkdir -p "${plugin_dir}"
+
+  # OMZ repo — shallow clone as plugin data source only (not sourced as framework)
+  _clone_or_update "${plugin_dir}/ohmyzsh" \
+    "https://github.com/ohmyzsh/ohmyzsh.git" "--depth 1"
+
+  _clone_or_update "${plugin_dir}/zsh-autosuggestions" \
+    "https://github.com/zsh-users/zsh-autosuggestions.git" "--depth 1"
+
+  _clone_or_update "${plugin_dir}/zsh-completions" \
+    "https://github.com/zsh-users/zsh-completions.git" "--depth 1"
+
+  _clone_or_update "${plugin_dir}/evalcache" \
+    "https://github.com/mroth/evalcache.git" "--depth 1"
+
+  _clone_or_update "${plugin_dir}/fast-syntax-highlighting" \
+    "https://github.com/zdharma-continuum/fast-syntax-highlighting.git" "--depth 1"
+
+  # kubectl completion — generated, not cloned
+  if command_exists kubectl; then
+    log "Generating kubectl completion..."
+    mkdir -p "${plugin_dir}/kubectl-autocomplete"
+    kubectl completion zsh > "${plugin_dir}/kubectl-autocomplete/kubectl-autocomplete.plugin.zsh"
   fi
 
-  success "NVM installed"
+  success "zsh plugins installed to ${plugin_dir}"
 }
 
 # Install pyenv (Python version manager)
@@ -669,6 +720,7 @@ export -f install_packages_dev install_packages_runtimes
 export -f install_packages_devops install_packages_fonts
 export -f install_packages_optional
 export -f version_gte install_fzf
-export -f install_starship install_nvm install_pyenv
+export -f install_starship install_fnm install_pyenv
+export -f _clone_or_update install_zsh_plugins
 export -f install_ohmyzsh install_pipx_packages
 export -f install_docker

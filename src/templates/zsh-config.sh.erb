@@ -1,0 +1,52 @@
+ZSH_CONFIG_SCRIPT="yes"
+
+# Completion system
+autoload -Uz compinit
+compinit -C -d "${ZDOTDIR:-$HOME}/.zcompdump"
+
+zmodload -i zsh/complist
+WORDCHARS=''
+unsetopt menu_complete flowcontrol
+setopt auto_menu complete_in_word always_to_end
+
+zstyle ':completion:*:*:*:*:*' menu select
+zstyle ':completion:*' matcher-list 'm:{[:lower:][:upper:]}={[:upper:][:lower:]}' 'r:|=*' 'l:|=* r:|=*'
+zstyle ':completion:*' special-dirs true
+zstyle ':completion:*' list-colors ''
+zstyle ':completion:*:*:kill:*:processes' list-colors '=(#b) #([0-9]#) ([0-9a-z-]#)*=01;34=0=01'
+zstyle ':completion:*:*:*:*:processes' command "ps -u $USERNAME -o pid,user,comm -w -w"
+zstyle ':completion:*:cd:*' tag-order local-directories directory-stack path-directories
+zstyle ':completion:*' use-cache yes
+zstyle ':completion:*' cache-path "${ZDOTDIR:-$HOME}/.zsh_cache"
+
+# History additions (base.sh.erb already sets HISTSIZE/HISTFILESIZE/INC_APPEND_HISTORY etc.)
+[ -z "$HISTFILE" ] && HISTFILE="$HOME/.zsh_history"
+SAVEHIST=10000
+setopt extended_history hist_expire_dups_first hist_verify share_history
+
+# Key bindings
+bindkey -e
+autoload -U up-line-or-beginning-search down-line-or-beginning-search
+zle -N up-line-or-beginning-search
+zle -N down-line-or-beginning-search
+bindkey '^[[A'  up-line-or-beginning-search
+bindkey '^[[B'  down-line-or-beginning-search
+if (( ${+terminfo[kcuu1]} )); then bindkey "${terminfo[kcuu1]}" up-line-or-beginning-search; fi
+if (( ${+terminfo[kcud1]} )); then bindkey "${terminfo[kcud1]}" down-line-or-beginning-search; fi
+bindkey '^r'    history-incremental-search-backward
+bindkey ' '     magic-space
+bindkey '^f'    forward-word
+if (( ${+terminfo[khome]} )); then bindkey "${terminfo[khome]}" beginning-of-line; fi
+if (( ${+terminfo[kend]}  )); then bindkey "${terminfo[kend]}"  end-of-line; fi
+if (( ${+terminfo[kdch1]} )); then bindkey "${terminfo[kdch1]}" delete-char; fi
+
+# Bracketed paste (existing behaviour preserved)
+pasteinit() {
+  OLD_SELF_INSERT=${${(s.:.)widgets[self-insert]}[2,3]}
+  zle -N self-insert url-quote-magic
+}
+pastefinish() {
+  zle -N self-insert $OLD_SELF_INSERT
+}
+zstyle :bracketed-paste-magic paste-init pasteinit
+zstyle :bracketed-paste-magic paste-finish pastefinish

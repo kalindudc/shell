@@ -44,10 +44,13 @@ detect_os() {
 
 # Detect Linux distribution
 detect_linux_distro() {
-  if [[ -f /etc/os-release ]]; then
-    # Parse /etc/os-release
-    local id
-    id="$(grep '^ID=' /etc/os-release | cut -d= -f2 | tr -d '"')"
+  # Accept an optional path for testability; defaults to the real file.
+  local os_release_file="${1:-/etc/os-release}"
+
+  if [[ -f "${os_release_file}" ]]; then
+    local id id_like
+    id="$(grep '^ID=' "${os_release_file}" | cut -d= -f2 | tr -d '"')"
+    id_like="$(grep '^ID_LIKE=' "${os_release_file}" | cut -d= -f2 | tr -d '"' 2>/dev/null || echo "")"
 
     case "${id}" in
       ubuntu|debian)
@@ -60,8 +63,18 @@ detect_linux_distro() {
         OS_DISTRO="fedora"
         ;;
       *)
-        warn "Unknown Linux distribution: ${id}. Assuming Ubuntu/Debian."
-        OS_DISTRO="ubuntu"
+        # Unknown ID= — consult ID_LIKE= for derivative distributions.
+        # Per the FreeDesktop os-release spec, ID_LIKE is a space-separated
+        # list of base families (e.g. CachyOS: ID=cachyos ID_LIKE=arch).
+        case "${id_like}" in
+          *arch*)            OS_DISTRO="arch" ;;
+          *debian*|*ubuntu*) OS_DISTRO="ubuntu" ;;
+          *fedora*|*rhel*)   OS_DISTRO="fedora" ;;
+          *)
+            warn "Unknown Linux distribution: ${id}. Assuming Ubuntu/Debian."
+            OS_DISTRO="ubuntu"
+            ;;
+        esac
         ;;
     esac
   elif [[ -f /etc/debian_version ]]; then

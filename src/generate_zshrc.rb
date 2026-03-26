@@ -30,6 +30,7 @@ DEFAULT_OUTPUT_PATH = "#{File.expand_path('..', File.dirname(__FILE__))}/home/.z
 DEFAULT_ZSHRC_TEMPLATE_PATH = "#{File.expand_path('.', File.dirname(__FILE__))}/templates/.zshrc.erb".freeze
 
 BASE_TEMPLATE = "#{File.expand_path('.', File.dirname(__FILE__))}/templates/base.sh.erb".freeze
+ZSH_CONFIG_TEMPLATE = "#{File.expand_path('.', File.dirname(__FILE__))}/templates/zsh-config.sh.erb".freeze
 ALIASES_TEMPLATE = "#{File.expand_path('.', File.dirname(__FILE__))}/templates/aliases.sh.erb".freeze
 GIT_TEMPLATE = "#{File.expand_path('.', File.dirname(__FILE__))}/templates/git.sh.erb".freeze
 FUNCTIONS_TEMPLATE = "#{File.expand_path('.', File.dirname(__FILE__))}/templates/functions.sh.erb".freeze
@@ -73,6 +74,9 @@ def main
 
   @logger.info("Rendering template #{BASE_TEMPLATE}")
   base_template_contents = render_template(BASE_TEMPLATE)
+
+  @logger.info("Rendering template #{ZSH_CONFIG_TEMPLATE}")
+  zsh_config_template_contents = render_template(ZSH_CONFIG_TEMPLATE)
 
   @logger.info("Rendering template #{ALIASES_TEMPLATE}")
   aliases_template_contents = render_template(ALIASES_TEMPLATE)
@@ -138,8 +142,12 @@ def generate_completions
     @logger.warn("todo binary not found at #{todo_bin}, skipping completions")
   end
 
-  # task or go-task provides the same completions, so we check for either one
+  # task or go-task provides the same completions, so we check for either one.
+  # GO_TASK_EXE tells the completion script which command name to bind to.
+  # If the binary is named 'task' we set GO_TASK_EXE=task so the generated
+  # completion registers as `compdef _go_task task`, not `compdef _go_task go-task`.
   task_bin = `command -v task 2>/dev/null`.strip
+  task_exe_name = task_bin.empty? ? 'go-task' : File.basename(task_bin)
   if task_bin.empty?
     task_bin = `command -v go-task 2>/dev/null`.strip
   end
@@ -147,6 +155,17 @@ def generate_completions
   if !task_bin.empty? && File.executable?(task_bin)
     output = `#{task_bin} --completion zsh 2>/dev/null`
     if $?.success? && !output.empty? # rubocop:disable Style/SpecialGlobalVars
+      # The completion script defaults to 'go-task' as the bound command name.
+      # Two patches are required so `task<TAB>` works without completing `go_task` first:
+      #
+      # 1. Patch the runtime default so GO_TASK_CMD resolves to the actual binary.
+      output = output.gsub('${GO_TASK_EXE:-go-task}', "${GO_TASK_EXE:-#{task_exe_name}}")
+      #
+      # 2. Patch the #compdef autoload header to include the binary name.
+      #    compinit reads this line to know which commands trigger autoload of this
+      #    function. Without it, _comps[task] is never populated and completion only
+      #    fires after completing the phantom 'go_task' command first.
+      output = output.sub(/^(#compdef\s+go_task)(\s*)$/, "\\1 #{task_exe_name}\\2")
       File.write(File.join(completions_dir, '_task'), output)
       @logger.info("Generated zsh completions at #{completions_dir}/_task")
     else

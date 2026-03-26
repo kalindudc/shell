@@ -14,6 +14,10 @@ SHELL_DIR="$(dirname "${SETUP_SCRIPT_DIR}")"
 # Source library modules
 # shellcheck source=src/lib/common.sh
 source "${SETUP_SCRIPT_DIR}/lib/common.sh"
+# shellcheck source=src/lib/os_detect.sh
+source "${SETUP_SCRIPT_DIR}/lib/os_detect.sh"
+# shellcheck source=src/lib/packages.sh
+source "${SETUP_SCRIPT_DIR}/lib/packages.sh"
 # shellcheck source=src/lib/state.sh
 source "${SETUP_SCRIPT_DIR}/lib/state.sh"
 
@@ -50,47 +54,6 @@ do_stow() {
 
   stow home -d "${SHELL_DIR}" -t "${HOME}" --adopt
   success "Dotfiles stowed successfully"
-}
-
-# Install oh-my-zsh plugins
-install_ohmyzsh_plugins() {
-  log "Installing oh-my-zsh plugins..."
-
-  # Remove old installation and re-clone fresh
-  rm -rf "${HOME}/.oh-my-zsh/"
-  git clone https://github.com/ohmyzsh/ohmyzsh.git "${HOME}/.oh-my-zsh"
-
-  # Clean up existing plugins
-  local custom_dir="${ZSH_CUSTOM:-${HOME}/.oh-my-zsh/custom}"
-  rm -rf "${custom_dir}/plugins/zsh-autosuggestions"
-  rm -rf "${custom_dir}/plugins/zsh-syntax-highlighting"
-  rm -rf "${custom_dir}/plugins/evalcache"
-  rm -rf "${custom_dir}/plugins/enhancd"
-  rm -rf "${custom_dir}/plugins/zsh-completions"
-
-  # Clone plugins
-  git clone https://github.com/zsh-users/zsh-autosuggestions \
-    "${custom_dir}/plugins/zsh-autosuggestions"
-
-  git clone https://github.com/zsh-users/zsh-syntax-highlighting.git \
-    "${custom_dir}/plugins/zsh-syntax-highlighting"
-
-  git clone https://github.com/mroth/evalcache \
-    "${custom_dir}/plugins/evalcache"
-
-  git clone https://github.com/b4b4r07/enhancd.git \
-    "${custom_dir}/plugins/enhancd"
-
-  git clone https://github.com/zsh-users/zsh-completions \
-    "${custom_dir}/plugins/zsh-completions"
-
-  # kubectl completion
-  if command_exists kubectl; then
-    mkdir -p "${custom_dir}/plugins/kubectl-autocomplete/"
-    kubectl completion zsh > "${custom_dir}/plugins/kubectl-autocomplete/kubectl-autocomplete.plugin.zsh"
-  fi
-
-  success "oh-my-zsh plugins installed"
 }
 
 # Backup existing configs
@@ -294,54 +257,59 @@ main() {
   # Initialize state management
   init_or_load_state
 
-  # Step 1: Install oh-my-zsh plugins
-  run_step "INSTALL_OHMYZSH_PLUGINS" \
-    "Installing oh-my-zsh plugins" \
-    install_ohmyzsh_plugins
+  # Step 1: Install fnm (Fast Node Manager)
+  run_step "INSTALL_FNM" \
+    "Installing fnm (Fast Node Manager)" \
+    install_fnm
 
-  # Step 2: Backup existing configs
+  # Step 2: Install zsh plugins to $ZSH_PLUGIN_DIR
+  run_step "INSTALL_ZSH_PLUGINS" \
+    "Installing zsh plugins" \
+    install_zsh_plugins
+
+  # Step 4: Backup existing configs
   run_step "BACKUP_CONFIGS" \
     "Backing up existing configurations" \
     backup_existing_configs
 
-  # Step 3: Remove existing configs
+  # Step 5: Remove existing configs
   run_step "REMOVE_CONFIGS" \
     "Removing existing configurations" \
     remove_existing_configs
 
-  # Step 4: Install vim-plug
+  # Step 6: Install vim-plug
   run_step "INSTALL_VIM_PLUG" \
     "Installing vim-plug" \
     install_vim_plug
 
-  # Step 5: Generate .zshrc
+  # Step 7: Generate .zshrc
   run_step "GENERATE_ZSHRC" \
     "Generating .zshrc" \
     generate_zshrc
 
-  # Step 6: Prompt for git config (not wrapped in run_step as it's interactive)
+  # Step 8: Prompt for git config (not wrapped in run_step as it's interactive)
   if ! is_step_complete "PROMPT_GIT_CONFIG"; then
     prompt_git_config "${silent_mode}"
     mark_step_complete "PROMPT_GIT_CONFIG"
   fi
 
-  # Step 7: Generate .gitconfig
+  # Step 9: Generate .gitconfig
   run_step "GENERATE_GITCONFIG" \
     "Generating .gitconfig" \
     generate_gitconfig
 
-  # Step 8: Stow dotfiles
+  # Step 10: Stow dotfiles
   run_step "STOW_DOTFILES" \
     "Stowing dotfiles" \
     do_stow
 
-  # Step 9: Setup GitHub CLI (not wrapped as it's interactive)
+  # Step 11: Setup GitHub CLI (not wrapped as it's interactive)
   if ! is_step_complete "SETUP_GH_AUTH"; then
     setup_gh_auth "${silent_mode}"
     mark_step_complete "SETUP_GH_AUTH"
   fi
 
-  # Step 10: Bootstrap OpenCode skill notes
+  # Step 12: Bootstrap OpenCode skill notes
   run_step "BOOTSTRAP_SKILL_NOTES" \
     "Bootstrapping OpenCode skill notes" \
     "${SHELL_DIR}/src/scripts/bootstrap-skill-notes.sh"

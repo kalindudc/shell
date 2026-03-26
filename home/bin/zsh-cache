@@ -1,0 +1,226 @@
+#!/usr/bin/env bash
+
+# zsh-cache - Inspect and clear zsh caches
+#
+# Clears evalcache (pyenv/direnv init), compinit dumps, and compiled .zwc
+# files so the next shell startup rebuilds everything from scratch.
+# Useful when testing completion changes or verifying cache behaviour.
+#
+# Usage:
+#   zsh-cache              Show cache status (sizes, counts, ages)
+#   zsh-cache clear        Clear all caches
+#   zsh-cache clear --dry-run   Preview what would be removed
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/cli_common.sh
+source "${SCRIPT_DIR}/lib/cli_common.sh"
+
+# ── Cache locations ──────────────────────────────────────────────────────────
+
+EVALCACHE_DIR="${HOME}/.zsh-evalcache"
+COMPDUMP_MAIN="${HOME}/.zcompdump"
+ZSH_COMPLETIONS_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/zsh/completions"
+
+# ── Helpers ──────────────────────────────────────────────────────────────────
+
+_file_age() {
+  local path="${1}"
+  [[ -e "${path}" ]] || { printf 'n/a'; return; }
+  local mtime now diff
+  mtime=$(stat -c %Y "${path}" 2>/dev/null || stat -f %m "${path}" 2>/dev/null)
+  now=$(date +%s)
+  diff=$(( now - mtime ))
+  if   (( diff < 60 ));    then printf '%ds ago'  "${diff}"
+  elif (( diff < 3600 ));  then printf '%dm ago'  "$(( diff / 60 ))"
+  elif (( diff < 86400 )); then printf '%dh ago'  "$(( diff / 3600 ))"
+  else                          printf '%dd ago'  "$(( diff / 86400 ))"
+  fi
+}
+
+_section() { printf '\n%s\n' "$(cli_color bold "${1}")"; }
+
+_row() {
+  local label="${1}" value="${2}" extra="${3:-}"
+  printf '  %-28s %s' "${label}" "$(cli_color green "${value}")"
+  [[ -n "${extra}" ]] && printf '  %s' "$(cli_color dim "${extra}")"
+  printf '\n'
+}
+
+_row_none() { printf '  %-28s %s\n' "${1}" "$(cli_color dim "none")"; }
+
+# ── Status ───────────────────────────────────────────────────────────────────
+
+cmd_status() {
+  printf '%s\n' "$(cli_color bold "zsh cache status")"
+  printf '%s\n' "$(cli_color dim "─────────────────────────────────────────")"
+
+  # evalcache
+  _section "evalcache  (${EVALCACHE_DIR})"
+  if [[ -d "${EVALCACHE_DIR}" ]]; then
+    local ec_files=()
+    while IFS= read -r -d '' f; do
+      ec_files+=("${f}")
+    done < <(find "${EVALCACHE_DIR}" -maxdepth 1 -type f -name "*.sh" -print0 2>/dev/null)
+
+    if (( ${#ec_files[@]} == 0 )); then
+      _row_none "cached entries"
+    else
+      for f in "${ec_files[@]}"; do
+        local name
+        name=$(basename "${f}" .sh | sed 's/^init-//' | cut -d- -f1)
+        _row "${name}" "$(_file_age "${f}")" "$(basename "${f}")"
+      done
+    fi
+  else
+    _row_none "directory"
+  fi
+
+  # compinit dumps
+  _section "compinit dump  (${HOME}/.zcompdump*)"
+  local dumps=()
+  while IFS= read -r -d '' f; do
+    dumps+=("${f}")
+  done < <(find "${HOME}" -maxdepth 1 -name ".zcompdump*" -print0 2>/dev/null)
+
+  if (( ${#dumps[@]} == 0 )); then
+    _row_none "dump files"
+  else
+    for f in "${dumps[@]}"; do
+      local kb
+      kb=$(wc -c < "${f}" 2>/dev/null | awk '{printf "%.0fKB", $1/1024}')
+      _row "$(basename "${f}")" "$(_file_age "${f}")" "${kb}"
+    done
+  fi
+
+  # compiled completions (.zwc)
+  _section "compiled completions  (${ZSH_COMPLETIONS_DIR})"
+  local zwc_files=()
+  if [[ -d "${ZSH_COMPLETIONS_DIR}" ]]; then
+    while IFS= read -r -d '' f; do
+      zwc_files+=("${f}")
+    done < <(find "${ZSH_COMPLETIONS_DIR}" -maxdepth 1 -name "*.zwc" -print0 2>/dev/null)
+  fi
+
+  if (( ${#zwc_files[@]} == 0 )); then
+    _row_none ".zwc files"
+  else
+    for f in "${zwc_files[@]}"; do
+      _row "$(basename "${f}")" "$(_file_age "${f}")"
+    done
+  fi
+
+  printf '\n%s\n' "$(cli_color dim "Run 'zsh-cache clear' to remove all caches, then 'exec zsh' to rebuild.")"
+}
+
+# ── Clear ────────────────────────────────────────────────────────────────────
+
+cmd_clear() {
+  local dry_run=false
+  while [[ $# -gt 0 ]]; do
+    case "${1}" in
+      --dry-run|-n) dry_run=true ;;
+      --help|-h)    cmd_help; exit 0 ;;
+      *) printf "Unknown flag: %s\n" "${1}" >&2; exit 1 ;;
+    esac
+    shift
+  done
+
+  local removed=0
+
+  if [[ "${dry_run}" == true ]]; then
+    printf '%s\n' "$(cli_color yellow "Dry run — nothing will be deleted")"
+  fi
+
+  # evalcache
+  if [[ -d "${EVALCACHE_DIR}" ]]; then
+    local ec_files=()
+    while IFS= read -r -d '' f; do
+      ec_files+=("${f}")
+    done < <(find "${EVALCACHE_DIR}" -maxdepth 1 \( -name "*.sh" -o -name "*.sh.zwc" \) -print0 2>/dev/null)
+
+    for f in "${ec_files[@]}"; do
+      local label="evalcache/$(basename "${f}")"
+      if [[ "${dry_run}" == true ]]; then
+        printf '  %s %s\n' "$(cli_color yellow "would remove")" "$(cli_color dim "${label}")"
+      else
+        rm -f "${f}"
+        printf '  %s %s\n' "$(cli_color red "removed")" "${label}"
+        (( removed++ )) || true
+      fi
+    done
+  fi
+
+  # compinit dumps + compiled .zwc variants
+  local dumps=()
+  while IFS= read -r -d '' f; do
+    dumps+=("${f}")
+  done < <(find "${HOME}" -maxdepth 1 -name ".zcompdump*" -print0 2>/dev/null)
+
+  for f in "${dumps[@]}"; do
+    local label
+    label=$(basename "${f}")
+    if [[ "${dry_run}" == true ]]; then
+      printf '  %s %s\n' "$(cli_color yellow "would remove")" "$(cli_color dim "${label}")"
+    else
+      rm -f "${f}"
+      printf '  %s %s\n' "$(cli_color red "removed")" "${label}"
+      (( removed++ )) || true
+    fi
+  done
+
+  # compiled completions
+  if [[ -d "${ZSH_COMPLETIONS_DIR}" ]]; then
+    local zwc_files=()
+    while IFS= read -r -d '' f; do
+      zwc_files+=("${f}")
+    done < <(find "${ZSH_COMPLETIONS_DIR}" -maxdepth 1 -name "*.zwc" -print0 2>/dev/null)
+
+    for f in "${zwc_files[@]}"; do
+      local label="${ZSH_COMPLETIONS_DIR}/$(basename "${f}")"
+      if [[ "${dry_run}" == true ]]; then
+        printf '  %s %s\n' "$(cli_color yellow "would remove")" "$(cli_color dim "${label}")"
+      else
+        rm -f "${f}"
+        printf '  %s %s\n' "$(cli_color red "removed")" "${label}"
+        (( removed++ )) || true
+      fi
+    done
+  fi
+
+  if [[ "${dry_run}" == false ]]; then
+    if (( removed == 0 )); then
+      printf '\n%s\n' "$(cli_color dim "Nothing to clear.")"
+    else
+      printf '\n%s %s\n' "$(cli_color green "✓")" "$(cli_color bold "Cleared ${removed} file(s).")"
+      printf '%s\n' "$(cli_color dim "Run 'exec zsh' to start a fresh shell with all caches rebuilt.")"
+    fi
+  fi
+}
+
+# ── Help ─────────────────────────────────────────────────────────────────────
+
+cmd_help() {
+  cli_print_help "zsh-cache" "inspect and clear zsh caches" \
+    "(no args)|Show cache status" \
+    "clear|Remove all caches (evalcache, compinit dumps, .zwc files)" \
+    "clear --dry-run|Preview what would be removed without deleting" \
+    "--help, -h|Show this help"
+
+  printf 'Caches managed:\n'
+  printf '  %-28s %s\n' "evalcache"  "${EVALCACHE_DIR}"
+  printf '  %-28s %s\n' "compinit"   "${COMPDUMP_MAIN}*"
+  printf '  %-28s %s\n' "compiled"   "${ZSH_COMPLETIONS_DIR}/*.zwc"
+  printf '\n'
+  printf 'After clearing, run %s to rebuild all caches.\n' "$(cli_color bold "exec zsh")"
+}
+
+# ── Entry point ──────────────────────────────────────────────────────────────
+
+case "${1:-}" in
+  clear)     shift; cmd_clear "$@" ;;
+  --help|-h) cmd_help ;;
+  "")        cmd_status ;;
+  *)         printf "Unknown command: %s\n\n" "${1}" >&2; cmd_help; exit 1 ;;
+esac

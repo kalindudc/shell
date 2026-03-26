@@ -88,6 +88,7 @@ SKIP_CATEGORIES=()
 RESET_STATE=false
 CONTINUE_INSTALL=false
 OS_OVERRIDE=""
+ONLY_PACKAGES=false
 
 # Display usage information
 usage() {
@@ -106,6 +107,7 @@ OPTIONS:
   --trace                 Enable debug tracing
   --show-state            Show current installation state
   --stow                  Run stow only (skip installation)
+  --only-packages         Install fnm and zsh plugins only (no config, no auth, no stow)
 
 EXAMPLES:
   ./install.sh                              # Auto-detect and install everything
@@ -153,6 +155,9 @@ parse_args() {
       --stow)
         "${INSTALL_SCRIPT_DIR}/src/setup.sh" --stow
         exit 0
+        ;;
+      --only-packages)
+        ONLY_PACKAGES=true
         ;;
       *)
         error "Unknown option: $1"
@@ -219,6 +224,18 @@ main() {
 
   # Parse arguments
   parse_args "$@"
+
+  # --only-packages: install fnm + zsh plugins then exit, bypassing full install
+  if [[ "${ONLY_PACKAGES}" == "true" ]]; then
+    log "Installing zsh packages and plugins only..."
+    init_os_detection
+    ensure_package_manager
+    install_fnm
+    install_zsh_plugins
+    echo ""
+    success "Done. Run 'task generate:zsh && task stow' to apply the new config."
+    exit 0
+  fi
 
   # Setup cleanup handlers
   setup_cleanup_handlers
@@ -298,7 +315,7 @@ main() {
   # Step 6: Install Runtime Packages
   if ! should_skip_category "runtimes"; then
     run_step "INSTALL_PACKAGES_RUNTIMES" \
-      "Installing runtime packages (pyenv, nvm, go)" \
+      "Installing runtime packages (pyenv, fnm, go)" \
       install_packages_runtimes
   fi
 

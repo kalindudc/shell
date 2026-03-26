@@ -36,17 +36,17 @@ DOCKER_COMPOSE_PID=""
 cleanup() {
   echo ""
   echo -e "${YELLOW}Received interrupt signal, cleaning up...${NC}"
-  
+
   # Kill docker compose if running
   if [[ -n "${DOCKER_COMPOSE_PID}" ]]; then
     kill "${DOCKER_COMPOSE_PID}" 2>/dev/null || true
     wait "${DOCKER_COMPOSE_PID}" 2>/dev/null || true
   fi
-  
+
   # Stop all containers
   cd "${SCRIPT_DIR}"
   docker compose down 2>/dev/null || true
-  
+
   echo -e "${YELLOW}Cleanup complete${NC}"
   exit 130
 }
@@ -70,7 +70,7 @@ else
         break
       fi
     done
-    
+
     if [[ "${valid}" == "true" ]]; then
       PLATFORMS+=("${platform}")
     else
@@ -96,11 +96,11 @@ PASSED=()
 
 for platform in "${PLATFORMS[@]}"; do
   echo -e "${BLUE}Testing ${platform}...${NC}"
-  
+
   # Run docker compose in background to track PID
   docker compose run --rm "${platform}" 2>&1 | tee "${LOG_DIR}/test-${platform}.log" &
   DOCKER_COMPOSE_PID=$!
-  
+
   # Wait for completion and check exit status
   if wait "${DOCKER_COMPOSE_PID}"; then
     echo -e "${GREEN}✓ ${platform} passed${NC}"
@@ -115,7 +115,7 @@ for platform in "${PLATFORMS[@]}"; do
     echo -e "${RED}✗ ${platform} failed${NC}"
     FAILED+=("${platform}")
   fi
-  
+
   DOCKER_COMPOSE_PID=""
   echo ""
 done
