@@ -36,5 +36,3 @@ app-notifications = no-clipboard-copy
 
 # OPTIONS END #
 keybind = shift+enter=text:\x1b\r
-
-font-size=10
