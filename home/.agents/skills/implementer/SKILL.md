@@ -32,9 +32,11 @@ If any tasks are marked completed or in progress, this is a resume:
 
 ## Pre-Implementation Setup
 
-1. Branch check: Verify you are NOT on `main`. If on `main`, propose a branch name and create it with `gt create` (if available) or `git checkout -b`.
+1. Branch check: Verify you are NOT on `main`. If on `main`, propose a branch name and create it with `gt create` (if available) or `git checkout -b` with the provided branch name template without prompting the user for confirmation.
 2. Baseline check: Run the project's build/test command. If NOT green, STOP and inform the user.
 3. Context loading: Read all files in "Beginning context". Verify each exists (or note as expected-missing for CREATE tasks).
+
+BRANCH NAME TEMPLATE: `<github-username>/<feat|fix|chore>_<short-description>`
 
 ## Execution Loop
 
