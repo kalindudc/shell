@@ -36,3 +36,6 @@ app-notifications = no-clipboard-copy
 
 # OPTIONS END #
 keybind = shift+enter=text:\x1b\r
+
+font-family="Jetbrains Mono Nerd Font"
+font-size=13
