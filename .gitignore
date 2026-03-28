@@ -20,6 +20,7 @@ vendor/
 .tmp/
 tmp/
 test-manual.sh
+node_modules/
 
 home/.claude/settings.json
 

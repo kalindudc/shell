@@ -1,0 +1,16 @@
+{
+  "name": "shell",
+  "version": "1.0.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kalindudc/shell.git"
+  },
+  "devDependencies": {
+    "@mariozechner/pi-coding-agent": "^0.63.0",
+    "@mariozechner/pi-tui": "^0.63.0",
+    "@sinclair/typebox": "^0.34.0",
+    "vitest": "^3.0.0",
+    "typescript": "^5.7.0"
+  }
+}

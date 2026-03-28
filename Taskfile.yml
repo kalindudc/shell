@@ -41,6 +41,10 @@ tasks:
         "${BUNDLE_BIN}" config set --global bin "{{.GEM_BIN}}"
 
         "${BUNDLE_BIN}" install
+
+        echo "Setup NPM"
+        npm install
+
       - echo "✓ Development dependencies installed"
 
   # Installation

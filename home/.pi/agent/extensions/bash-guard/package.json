@@ -1,0 +1,6 @@
+{
+  "name": "bash-guard",
+  "version": "1.0.0",
+  "description": "Protection against dangerous bash commands",
+  "type": "module"
+}
