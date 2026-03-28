@@ -7,11 +7,10 @@
  * - Critical: Auto-blocked without exception (rm -rf, fork bombs, disk ops, system paths)
  * - High: Prompts user for confirmation (sudo rm, service changes, /etc writes)
  *
- * Everything else is allowed with optional logging.
+ * Everything else is allowed.
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { isToolCallEventType } from "@mariozechner/pi-coding-agent";
 
 interface RiskPattern {
 	pattern: RegExp;
@@ -20,13 +19,12 @@ interface RiskPattern {
 }
 
 export default function (pi: ExtensionAPI): void {
-	// Minimal risk patterns - only absolute necessities
 	const riskPatterns: RiskPattern[] = [
 		// Critical - Auto-blocked, no exceptions
 		{
-			pattern: /\brm\s+(-[rf]*r[rf]*|--recursive)\s+(-[rf]*f[rf]*|--force)|rm\s+(-[rf]*f[rf]*|--force)\s+(-[rf]*r[rf]*|--recursive)/i,
+			pattern: /\brm\s+[^/\n]*(-[a-z]*r[a-z]*f|-[a-z]*f[a-z]*r)/i,
 			severity: "critical",
-			description: "Recursive force delete",
+			description: "Recursive force delete (rm -rf)",
 		},
 		{
 			pattern: /:\(\)\{.*:\|:.*\};:/,
@@ -51,18 +49,17 @@ export default function (pi: ExtensionAPI): void {
 			description: "Elevated delete operation",
 		},
 		{
-			pattern: /\bsudo\s+.*>\s*\/etc\//i,
+			pattern: /\bsudo\s+.*(>|tee)\s*\/etc\//i,
 			severity: "high",
 			description: "Writing to /etc with sudo",
 		},
 		{
-			pattern: /\b(systemctl|service)\s+(stop|disable|mask)/i,
+			pattern: /\b(systemctl\s+(stop|disable|mask)|service\s+\S+\s+(stop|disable|mask))/i,
 			severity: "high",
 			description: "Stopping or disabling system service",
 		},
 	];
 
-	// Protected paths - operations on these are critical
 	const protectedPaths = ["/", "/bin", "/boot", "/dev", "/etc", "/lib", "/proc", "/root", "/sbin", "/sys", "/usr"];
 
 	interface CommandAnalysis {
@@ -71,12 +68,10 @@ export default function (pi: ExtensionAPI): void {
 		protectedPathViolation: string | null;
 	}
 
-	// Analyze command for risks
 	function analyzeCommand(command: string): CommandAnalysis {
 		const risks: Array<{ pattern: RiskPattern; match: string }> = [];
 		let maxSeverity: "critical" | "high" | "safe" = "safe";
 
-		// Check for risk patterns
 		for (const riskPattern of riskPatterns) {
 			const match = command.match(riskPattern.pattern);
 			if (match) {
@@ -89,34 +84,34 @@ export default function (pi: ExtensionAPI): void {
 			}
 		}
 
-		// Check for protected path violations (critical)
 		let protectedPathViolation: string | null = null;
-		for (const path of protectedPaths) {
-			const pathPattern = new RegExp(
-				`\\b(rm|mv|chmod|chown)\\s+[^\\n]*${path.replace(/\//g, "\\/")}(?:\\/|\\s|$)`,
-				"i",
-			);
-			if (pathPattern.test(command)) {
-				protectedPathViolation = path;
-				maxSeverity = "critical";
-				break;
+		if (/\b(rm|mv|chmod|chown)\b/.test(command)) {
+			// Extract all arguments after the command
+			const args = command.split(/\s+/).slice(1);
+			for (const arg of args) {
+				for (const path of protectedPaths) {
+					// Check if argument starts with the protected path
+					// This catches /etc, /etc/file, etc but not /home/etc
+					if (arg === path || arg.startsWith(path + "/")) {
+						protectedPathViolation = path;
+						maxSeverity = "critical";
+						break;
+					}
+				}
+				if (protectedPathViolation) break;
 			}
 		}
 
 		return { risks, maxSeverity, protectedPathViolation };
 	}
 
-	// Format risk report
 	function formatRiskReport(command: string, analysis: CommandAnalysis): string {
 		const lines: string[] = [];
-		
-		// Show command
 		lines.push("Command:");
 		lines.push(`  ${command.split("\n")[0]}`);
 		if (command.split("\n").length > 1) lines.push(`  ... (${command.split("\n").length} lines)`);
 		lines.push("");
 
-		// Show risks
 		if (analysis.protectedPathViolation) {
 			lines.push(`Protected path: ${analysis.protectedPathViolation}`);
 		}
@@ -127,19 +122,17 @@ export default function (pi: ExtensionAPI): void {
 		return lines.join("\n");
 	}
 
-	// Main guard logic
-	pi.on("tool_call", async (event, ctx): Promise<{ block: boolean; reason: string } | undefined> => {
-		if (!isToolCallEventType("bash", event)) return undefined;
+	pi.on("tool_call", async (event, ctx) => {
+		if (event.toolName !== "bash") return undefined;
 
-		const command = event.input.command;
+		const command = event.input.command as string;
 		const analysis = analyzeCommand(command);
 
-		// Safe commands pass through
 		if (analysis.maxSeverity === "safe") return undefined;
 
 		const report = formatRiskReport(command, analysis);
 
-		// Critical: Auto-block, no exceptions
+		// Critical: Auto-block
 		if (analysis.maxSeverity === "critical") {
 			if (ctx.hasUI) {
 				ctx.ui.notify("Critical command blocked", "error");
@@ -150,7 +143,7 @@ export default function (pi: ExtensionAPI): void {
 			};
 		}
 
-		// High: Prompt user (or block in non-interactive)
+		// High: Prompt user
 		if (!ctx.hasUI) {
 			return {
 				block: true,
@@ -170,6 +163,4 @@ export default function (pi: ExtensionAPI): void {
 
 		return undefined;
 	});
-
-
 }
