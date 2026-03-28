@@ -15,6 +15,16 @@ A plan differs from a generic project plan by adding three AI-critical layers:
 - Implementation Strategy -- Specific libraries, code standards, repo patterns, architectural decisions.
 - Validation Gates -- Deterministic checks (build, test, lint) with TDD for quality control.
 
+---
+
+## Core protocol
+
+RESEARCH PHASE: Complete all investigation before writing.
+DECISION POINT: Write one sentence: "Approach: [what will be implemented]"
+WRITE PHASE: Use template. Reference decisions from exploration, not assumptions or alternatives.
+
+---
+
 ## Research Process
 
 Begin with thorough research to gather all necessary context:
@@ -52,6 +62,7 @@ Use these tools during the research process to gather context efficiently:
 - `stack_trace_resolve` -- resolve stack traces to actual source file:line references.
 - `gh` CLI / GitHub API -- use `gh api` and `gh search` for repo configuration state (branch protection, secrets, app installations). Verify commands work before including them in plans.
 
+---
 
 ## Plan Template
 
@@ -110,6 +121,8 @@ CREATE or UPDATE: [file path]
 - ALWAYS use `dev` or `task` (go-task) commands over manual commands, if needed, prompt the user for clarification on building new commands
 ```
 
+---
+
 ## Claim Verification
 
 Before outputting the plan, extract verifiable claims and validate them.
@@ -133,6 +146,8 @@ When performing inline verification (consensus unavailable):
 
 Any claim flagged INCORRECT: revise the plan before output. Log the revision in the "Verification Notes" section at the end of the plan.
 
+---
+
 ## Plan Size Guidance
 
 A plan should be implementable in a single session. If it can't be, split it into a plan stack -- multiple independent plans in a directory, each self-contained.
@@ -144,6 +159,17 @@ Keep plans concise but precise:
 - When deduplicating shared mechanics across 3+ skills (60+ lines of near-identical code), extract to a hidden orchestrator agent (agent = execution, skill = methodology). Quantify the overlap first to validate the extraction.
 
 CRITICAL: Plan stacks are a last resort. Always prefer a single plan, if a stack is needed, STOP, and confirm with the user before proceeding.
+
+---
+
+## Pre-Write Checklist
+
+Before writing, verify:
+- [ ] Approach decided (not "will try X or Y")
+- [ ] All APIs verified (list files: ___)
+- [ ] Decisive implementation notes, not exploratory musings
+
+---
 
 ## Output Format
 
