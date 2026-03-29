@@ -102,8 +102,19 @@ Use the following structure for every plan:
 1. [Task description]
 
 \```
-CREATE or UPDATE: [file path]
-[Implementation details]
+UPDATE: [file path]
+FROM:
+  [exact lines being replaced]
+TO:
+  [exact replacement lines]
+\```
+
+\```
+CREATE: [file path]
+[Exported signatures with exact types]
+[Key algorithmic decisions the implementer cannot infer from context]
+[What to import and from where]
+DO NOT write the implementation -- that is the implementer's job.
 \```
 
 ## Validation Gates
@@ -156,6 +167,12 @@ Keep plans concise but precise:
 - Implementation Notes: focus on what the agent can't infer from the code
 - Low-Level Tasks: enough detail to implement unambiguously, not more. Plans with exact FROM/TO diffs and verified API signatures reduce the implementer to mechanical execution -- the highest-efficiency mode.
 - Context sections: file paths and brief descriptions, not full file contents
+
+Task block rules:
+- UPDATE tasks contain ONLY the changed lines as FROM/TO diffs -- never the whole file
+- CREATE tasks contain ONLY exported signatures, key decisions, and imports -- never a full implementation
+- A task block over 25 lines is a red flag: review it and strip anything the implementer can infer
+- "Standalone" means all context needed to make a decision is present, NOT that the plan contains the code
 - When deduplicating shared mechanics across 3+ skills (60+ lines of near-identical code), extract to a hidden orchestrator agent (agent = execution, skill = methodology). Quantify the overlap first to validate the extraction.
 
 Anti-patterns -- NEVER do these:
@@ -180,6 +197,14 @@ STOP. Before writing the plan, complete every item. Do NOT skip this.
    - [ ] All APIs verified (list files: ___)
    - [ ] Implementation notes are decisive technical facts, not explanatory essays
    - [ ] Every planned Low-Level Task is a CREATE or UPDATE operation
+
+## Post-Write Review
+
+Before saving the plan file, scan every task block:
+- [ ] No UPDATE task contains a full file -- only changed lines
+- [ ] No CREATE task contains a full implementation -- only signatures, decisions, low level implementation details for ambiguous code
+- [ ] No task block exceeds 25 lines -- if it does, split it into multiple tasks or move details to Implementation Notes
+- [ ] No test task contains full test function bodies -- describe what to assert, not how to write it
 
 ---
 
