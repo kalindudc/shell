@@ -72,6 +72,7 @@ home/.pi/agent/*
 !home/.pi/agent/agents/
 !home/.pi/agent/skills/
 !home/.pi/agent/prompts/
+!home/.pi/agent/themes/
 !home/.pi/agent/docs/
 !home/.pi/agent/README.md
 !home/.pi/agent/AGENTS.md
