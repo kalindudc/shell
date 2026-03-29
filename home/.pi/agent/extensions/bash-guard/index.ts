@@ -37,7 +37,7 @@ export default function (pi: ExtensionAPI): void {
 			description: "Disk formatting or raw device write",
 		},
 		{
-			pattern: /\b(shutdown|reboot|halt|poweroff)\b/i,
+			pattern: /(^|[;&]\s*|\|\|?\s*|&&\s*)(sudo\s+)?(shutdown|reboot|halt|poweroff)\b/im,
 			severity: "critical",
 			description: "System shutdown/reboot",
 		},
