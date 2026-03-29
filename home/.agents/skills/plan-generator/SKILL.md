@@ -21,7 +21,7 @@ A plan differs from a generic project plan by adding three AI-critical layers:
 
 RESEARCH PHASE: Complete all investigation before writing.
 DECISION POINT: Write one sentence: "Approach: [what will be implemented]"
-WRITE PHASE: Use template. Reference decisions from exploration, not assumptions or alternatives.
+WRITE PHASE: Re-read the Plan Template, Plan Size Guidance, and Pre-Write Checklist sections of this skill file before writing. Then use the template. Reference decisions from exploration, not assumptions or alternatives.
 
 ---
 
@@ -158,16 +158,28 @@ Keep plans concise but precise:
 - Context sections: file paths and brief descriptions, not full file contents
 - When deduplicating shared mechanics across 3+ skills (60+ lines of near-identical code), extract to a hidden orchestrator agent (agent = execution, skill = methodology). Quantify the overlap first to validate the extraction.
 
+Anti-patterns -- NEVER do these:
+- Implementation Notes with ### subsections, tables, or multi-level nesting. Implementation Notes are a FLAT bullet list. Each bullet is a decisive technical fact the implementer cannot infer from code.
+- Low-Level Tasks that produce no files. Every task MUST be a CREATE or UPDATE on a specific file. Research and verification are NOT tasks -- they belong in Implementation Notes or Validation Gates.
+- Beginning context listing files the plan does not touch. List ONLY files the plan creates, updates, or reads as direct input for those changes.
+- Mid-Level Objectives that echo the Low-Level Task list. Mid-Level Objectives are measurable outcomes, not a file-by-file inventory.
+- Validation Gates asserting per-section content for every file. Use focused automated checks.
+
 CRITICAL: Plan stacks are a last resort. Always prefer a single plan, if a stack is needed, STOP, and confirm with the user before proceeding.
 
 ---
 
 ## Pre-Write Checklist
 
-Before writing, verify:
-- [ ] Approach decided (not "will try X or Y")
-- [ ] All APIs verified (list files: ___)
-- [ ] Decisive implementation notes, not exploratory musings
+STOP. Before writing the plan, complete every item. Do NOT skip this.
+
+1. Re-read the Plan Template and Plan Size Guidance sections of this skill file (use the read tool -- do not rely on memory)
+2. Read at least one past plan from `./tmp/plan/` and compare its structure against the template -- match its level of detail, not exceed it
+3. Verify:
+   - [ ] Approach decided (not "will try X or Y")
+   - [ ] All APIs verified (list files: ___)
+   - [ ] Implementation notes are decisive technical facts, not explanatory essays
+   - [ ] Every planned Low-Level Task is a CREATE or UPDATE operation
 
 ---
 
