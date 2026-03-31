@@ -11,10 +11,15 @@ import { Type } from "@sinclair/typebox";
 import TurndownService from "turndown";
 import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom";
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { randomBytes } from "node:crypto";
 
 // Constants
 
-const MAX_CONTENT_BYTES = 100 * 1024; // 100KB truncation limit
+const MAX_CONTENT_BYTES = 50 * 1024; // 50KB
+const MAX_CONTENT_LINES = 2000;
 
 const CHROME_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -23,15 +28,37 @@ const EXA_MCP_URL = "https://mcp.exa.ai/mcp";
 
 // Helpers
 
-function truncate(text: string, maxBytes: number): string {
-  if (Buffer.byteLength(text, "utf-8") <= maxBytes) return text;
+function truncate(text: string, maxBytes: number, maxLines: number): string {
+  const lines = text.split("\n");
+  const totalBytes = Buffer.byteLength(text, "utf-8");
 
-  // Truncate by slicing characters until we're under the byte limit
-  let end = text.length;
-  while (Buffer.byteLength(text.slice(0, end), "utf-8") > maxBytes) {
-    end = Math.floor(end * 0.9);
+  if (lines.length <= maxLines && totalBytes <= maxBytes) return text;
+
+  // Head-truncate: keep first N lines/bytes
+  const out: string[] = [];
+  let bytes = 0;
+  let hitBytes = false;
+  for (let i = 0; i < lines.length && i < maxLines; i++) {
+    const size = Buffer.byteLength(lines[i], "utf-8") + (i > 0 ? 1 : 0);
+    if (bytes + size > maxBytes) {
+      hitBytes = true;
+      break;
+    }
+    out.push(lines[i]);
+    bytes += size;
   }
-  return text.slice(0, end) + "\n\n[Content truncated]";
+
+  const removed = hitBytes ? totalBytes - bytes : lines.length - out.length;
+  const unit = hitBytes ? "bytes" : "lines";
+
+  // Save full content to temp file
+  const fullPath = join(tmpdir(), `pi-web-fetch-${randomBytes(8).toString("hex")}.md`);
+  writeFileSync(fullPath, text, "utf-8");
+
+  const preview = out.join("\n");
+  const hint = `The tool call succeeded but the output was truncated. Full output saved to: ${fullPath}\nUse read with offset/limit to view specific sections, or grep to search the full content.`;
+
+  return `${preview}\n\n...${removed} ${unit} truncated...\n\n${hint}`;
 }
 
 function isHtml(contentType: string): boolean {
@@ -218,7 +245,7 @@ export default function (pi: ExtensionAPI) {
           };
         }
 
-        content = truncate(content, MAX_CONTENT_BYTES);
+        content = truncate(content, MAX_CONTENT_BYTES, MAX_CONTENT_LINES);
 
         return {
           content: [{ type: "text", text: content }],
