@@ -684,6 +684,16 @@ export default function (pi: ExtensionAPI) {
   type Framework = "jest" | "vitest" | "pytest" | "go" | "rspec" | "unknown";
 
   function detectFramework(command: string): Framework {
+    const trimmed = command.trim();
+    
+    // Detect task runner commands by looking at the task name
+    // These need to match common task names in Taskfile.yml
+    if (/^task test/.test(trimmed)) return "vitest";  // pi-minions uses vitest
+    if (/^task jest/.test(trimmed)) return "jest";
+    if (/^task pytest/.test(trimmed)) return "pytest";
+    if (/^task rspec/.test(trimmed)) return "rspec";
+    
+    // Direct framework commands
     if (/\bvitest\b/.test(command)) return "vitest";
     if (/\bjest\b/.test(command) || /\breact-scripts test\b/.test(command)) return "jest";
     if (/\bpytest\b/.test(command)) return "pytest";
@@ -693,17 +703,24 @@ export default function (pi: ExtensionAPI) {
   }
 
   function appendJsonFlag(command: string, framework: Framework): string {
+    // Check if using task runner
+    const isTask = command.trim().startsWith("task ");
+    
     switch (framework) {
       case "jest":
-        return `${command} --json`;
+        return isTask ? `${command} json=true` : `${command} --json`;
       case "vitest":
-        return `${command} --reporter=json`;
+        // Use json=true variable for task, --reporter=json for direct vitest
+        return isTask ? `${command} json=true` : `${command} --reporter=json`;
       case "go":
+        if (isTask) {
+          return `${command} -- -json`;
+        }
         return command.replace("go test", "go test -json");
       case "rspec":
-        return `${command} --format json`;
+        return isTask ? `${command} json=true` : `${command} --format json`;
       case "pytest":
-        return `${command} -q --tb=short`;
+        return isTask ? `${command} -- -q --tb=short` : `${command} -q --tb=short`;
       default:
         return command;
     }
@@ -724,9 +741,10 @@ export default function (pi: ExtensionAPI) {
     error?: string;
   }
 
-  function parseJestVitest(raw: string): TestResult | null {
+  function parseJestJson(raw: string): TestResult | null {
     try {
       const data = JSON.parse(raw);
+      // Jest format: data.testResults[] with assertionResults[]
       const failures = (data.testResults || []).flatMap(
         (suite: {
           testFilePath?: string;
@@ -760,6 +778,40 @@ export default function (pi: ExtensionAPI) {
                 ) / 1000
               ).toFixed(1)}s`
             : undefined,
+        },
+        failures,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function parseVitestJson(raw: string): TestResult | null {
+    try {
+      const data = JSON.parse(raw);
+      // Vitest uses Jest-compatible format: testResults[].assertionResults[]
+      const failures: TestResult["failures"] = [];
+      
+      for (const result of data.testResults || []) {
+        const testFilePath = result.name;
+        
+        for (const test of result.assertionResults || []) {
+          if (test.status === "failed") {
+            failures.push({
+              testName: test.fullName || test.title || "unnamed test",
+              file: testFilePath,
+              line: test.line,
+              error: (test.failureMessages || []).join("\n").slice(0, 500),
+            });
+          }
+        }
+      }
+      
+      return {
+        summary: {
+          passed: data.numPassedTests || 0,
+          failed: data.numFailedTests || 0,
+          skipped: data.numPendingTests || 0,
         },
         failures,
       };
@@ -863,8 +915,10 @@ export default function (pi: ExtensionAPI) {
 
         let result: TestResult | null = null;
 
-        if (framework === "jest" || framework === "vitest") {
-          result = parseJestVitest(stdout);
+        if (framework === "jest") {
+          result = parseJestJson(stdout);
+        } else if (framework === "vitest") {
+          result = parseVitestJson(stdout);
         } else if (framework === "go") {
           result = parseGoTest(stdout);
         } else if (framework === "rspec") {

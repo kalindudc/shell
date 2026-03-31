@@ -223,10 +223,6 @@ If scope is abstract or ambiguous: present a concrete architectural strawman ear
 
 Plans always produce working software. Research informs Implementation Notes; Low-Level Tasks describe code to write (CREATE/UPDATE files), never report sections.
 
-## Self-Improvement
-
-After execution, use `skill-improver` to capture observations about this skill's performance. Before execution, check `SKILL_NOTES.md` for known edge cases.
-
 ## Rules
 
 - ONLY generate the plan document and DO NOT implement any code changes
