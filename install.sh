@@ -319,38 +319,43 @@ main() {
       install_packages_runtimes
   fi
 
-  # Step 7: Install DevOps Packages
+  # Step 7: Install pi-coding-agent
+  run_step "INSTALL_PI" \
+    "Installing pi-coding-agent" \
+    install_pi
+
+  # Step 8: Install DevOps Packages
   if ! should_skip_category "devops"; then
     run_step "INSTALL_PACKAGES_DEVOPS" \
       "Installing DevOps packages (kubectl, helm)" \
       install_packages_devops
   fi
 
-  # Step 8: Install Fonts
+  # Step 9: Install Fonts
   if ! should_skip_category "fonts"; then
     run_step "INSTALL_PACKAGES_FONTS" \
       "Installing Nerd Fonts" \
       install_packages_fonts
   fi
 
-  # Step 9: Install Optional Packages
+  # Step 10: Install Optional Packages
   if ! should_skip_category "optional"; then
     run_step "INSTALL_PACKAGES_OPTIONAL" \
       "Installing optional packages (vscode, ghostty)" \
       install_packages_optional
   fi
 
-  # Step 10: Install pipx packages
+  # Step 11: Install pipx packages
   run_step "INSTALL_PIPX_PACKAGES" \
     "Installing pipx packages" \
     install_pipx_packages
 
-  # Step 11: Clone/Update Shell Repository
+  # Step 12: Clone/Update Shell Repository
   run_step "CLONE_SHELL_REPO" \
     "Setting up shell repository" \
     setup_shell_repo
 
-  # Step 12: Run setup script
+  # Step 13: Run setup script
   if ! is_step_complete "RUN_SETUP"; then
     log "Running setup script..."
     if [[ "${NONINTERACTIVE:-0}" == "1" ]]; then
@@ -361,7 +366,7 @@ main() {
     mark_step_complete "RUN_SETUP"
   fi
 
-  # Step 13: Set zsh as default shell (FINAL STEP)
+  # Step 14: Set zsh as default shell (FINAL STEP)
   if ! should_skip_category "shell"; then
     run_step "SET_DEFAULT_SHELL" \
       "Setting zsh as default shell" \

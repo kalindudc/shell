@@ -688,6 +688,48 @@ install_ohmyzsh() {
   success "oh-my-zsh installed"
 }
 
+# Install pi-coding-agent (pi.dev)
+# Uses npm install -g; bootstraps fnm-managed node if npm is not yet in PATH
+install_pi() {
+  if command_exists pi; then
+    log "pi-coding-agent is already installed"
+    return 0
+  fi
+
+  log "Installing pi-coding-agent..."
+
+  # Ensure npm is available; if fnm is installed, bootstrap a node version
+  if ! command_exists npm; then
+    local fnm_exec=""
+    if command_exists fnm; then
+      fnm_exec="fnm"
+    elif [[ -x "${HOME}/.local/bin/fnm" ]]; then
+      fnm_exec="${HOME}/.local/bin/fnm"
+    fi
+
+    if [[ -n "${fnm_exec}" ]]; then
+      log "Bootstrapping Node.js via fnm..."
+      "${fnm_exec}" install --lts 2>/dev/null || true
+      eval "$("${fnm_exec}" env --shell bash 2>/dev/null)" || true
+    fi
+  fi
+
+  if ! command_exists npm; then
+    error "npm not found. Node.js is required to install pi-coding-agent."
+    error "Install Node.js (e.g. fnm install --lts) and re-run."
+    return 1
+  fi
+
+  npm install -g @mariozechner/pi-coding-agent
+
+  if command_exists pi; then
+    success "pi-coding-agent installed"
+  else
+    error "pi-coding-agent installation failed"
+    return 1
+  fi
+}
+
 # Install pipx and packages
 install_pipx_packages() {
   if ! command_exists pipx; then
@@ -723,4 +765,4 @@ export -f version_gte install_fzf
 export -f install_starship install_fnm install_pyenv
 export -f _clone_or_update install_zsh_plugins
 export -f install_ohmyzsh install_pipx_packages
-export -f install_docker
+export -f install_docker install_pi
