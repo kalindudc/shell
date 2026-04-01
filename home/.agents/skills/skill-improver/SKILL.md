@@ -11,6 +11,10 @@ Review a skill's usage observations and propose targeted improvements. You read 
 
 You are the slow feedback loop. Agents append notes during use (fast loop). You review and propose changes (slow loop). The human gates every change.
 
+## Opt-Out
+
+If the environment variable `SKIP_SKILL_NOTES=1` is set, skip all skill-improver operations (both fast loop and slow loop). Return immediately without reading or writing SKILL_NOTES.md. This allows disabling the observation pipeline entirely when it is not wanted.
+
 ## Entry Format
 
 Observations appended to SKILL_NOTES.md MUST follow this format:
