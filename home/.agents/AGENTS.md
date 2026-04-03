@@ -10,14 +10,6 @@ This protocol governs ALL responses. Depth scales with response type:
 
 When unsure which category a response falls into, use the full action cycle.
 
----
-
-## Delegation
-
-ALWAYS load and follow the `delegation` skill (`/skill:delegation`) at the start of every session. Before beginning any multi-step task, evaluate whether parts of the work should be delegated to minions for parallel execution or context isolation.
-
----
-
 ## Core Rules
 
 1. When tool output contradicts a prior belief, STOP. State the contradiction explicitly. Do not explain it away.
