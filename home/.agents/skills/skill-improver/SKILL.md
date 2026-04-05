@@ -13,7 +13,7 @@ You are the slow feedback loop. Agents append notes during use (fast loop). You 
 
 ## Opt-Out
 
-If the environment variable `SKIP_SKILL_NOTES=1` is set, skip all skill-improver operations (both fast loop and slow loop). Return immediately without reading or writing SKILL_NOTES.md. This allows disabling the observation pipeline entirely when it is not wanted.
+If the environment variable `SKIP_SKILL_NOTES=1` or `SKIP_SKILL_NOTES=true` is set, skip all skill-improver operations (both fast loop and slow loop). Return immediately without reading or writing SKILL_NOTES.md. This allows disabling the observation pipeline entirely when it is not wanted.
 
 ## Entry Format
 

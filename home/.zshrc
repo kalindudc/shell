@@ -34,6 +34,19 @@ fpath=($HOME/.config/zsh/completions $fpath)
 [[ -d "$ZSH_PLUGIN_DIR/zsh-completions/src" ]] && \
   fpath=("$ZSH_PLUGIN_DIR/zsh-completions/src" $fpath)
 
+case "$OSTYPE" in
+  darwin*)
+    # macOS
+    bindkey '^[b' backward-word
+    bindkey '^[f' forward-word
+    ;;
+  linux*)
+    # Linux
+    bindkey '^[[1;5D' backward-word
+    bindkey '^[[1;5C' forward-word
+    ;;
+esac
+
 ### TEMPLATES ###
 
 # base template

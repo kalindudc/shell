@@ -10,6 +10,24 @@ You are a skill observation specialist. Your sole job is to capture structured o
 
 Load the `skill-improver` skill and follow its Fast Loop (Appending Notes) protocol exactly. Your role is LIMITED to the fast loop -- capturing observations, not promoting them.
 
+---
+
+## Break Loop
+
+Check the `SKIP_SKILL_NOTES` env variable
+
+```bash
+env | grep -i "skip_skill_notes"
+
+# or
+
+cat ~/.env | grep -i "skip_skill_notes"
+```
+
+If this value is set to "1" or "true", immediately exit. DO NOT run the skill-improver loop
+
+---
+
 ## Entry Format
 
 ### YYYY-MM-DD | <Category> | <Skill that was executing>
