@@ -21,7 +21,21 @@ A plan differs from a generic project plan by adding three AI-critical layers:
 
 RESEARCH PHASE: Complete all investigation before writing.
 DECISION POINT: Write one sentence: "Approach: [what will be implemented]"
-WRITE PHASE: Re-read the Plan Template, Plan Size Guidance, and Pre-Write Checklist sections of this skill file before writing. Then use the template. Reference decisions from exploration, not assumptions or alternatives.
+
+Draft → Verify → Fix → Repeat (max 3 rounds)
+
+Cheap checks:
+- Task count ≤10
+- Task block ≤25 lines
+- Tasks numbered, not ### headers
+- Implementation Notes: flat bullets
+- FROM blocks: changed lines only
+- CREATE blocks: signatures only
+- Context: only files plan modifies
+
+If ANY fail: fix and re-verify.
+
+WRITE PHASE: Once research AND verification complete, re-read the Plan Template, Plan Size Guidance, and Pre-Write Checklist sections of this skill file before writing. Then use the template. Reference decisions from exploration, not assumptions or alternatives.
 
 ---
 
@@ -184,6 +198,15 @@ Anti-patterns -- NEVER do these:
 
 CRITICAL: Plan stacks are a last resort. Always prefer a single plan, if a stack is needed, STOP, and confirm with the user before proceeding.
 
+### Constraint Enforcement
+
+HARD LIMITS:
+- Max 10 tasks
+- Max 25 lines per task block
+- Max 300 lines total
+
+If exceeded: prefer consolidation first. If still over limits, create plan stack per existing protocol (STOP, confirm with user, split into multiple independent plans).
+
 ---
 
 ## Pre-Write Checklist
@@ -197,6 +220,7 @@ STOP. Before writing the plan, complete every item. Do NOT skip this.
    - [ ] All APIs verified (list files: ___)
    - [ ] Implementation notes are decisive technical facts, not explanatory essays
    - [ ] Every planned Low-Level Task is a CREATE or UPDATE operation
+   - [ ] Constraint enforcement completed
 
 ## Post-Write Review
 
