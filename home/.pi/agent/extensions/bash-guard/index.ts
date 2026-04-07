@@ -154,6 +154,7 @@ export default function (pi: ExtensionAPI): void {
 		const allow = await ctx.ui.confirm(
 			"High risk command",
 			`${report}\n\nAllow execution?`,
+			{ timeout: 30_000 },
 		);
 
 		if (!allow) {
