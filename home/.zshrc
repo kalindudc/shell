@@ -444,6 +444,11 @@ if [[ "$(uname)" == "Linux" ]]; then
   alias pbpaste='xclip -selection clipboard -o'
 fi
 
+# Arch Linux: go-task package provides 'go-task' binary, alias to 'task'
+if [[ -f /etc/arch-release ]]; then
+  alias task='go-task'
+fi
+
 # misc template end
 
 ### TEMPLATES END ###

@@ -99,6 +99,11 @@ def main
       alias pbcopy='xclip -selection clipboard'
       alias pbpaste='xclip -selection clipboard -o'
     fi
+
+    # Arch Linux: go-task package provides 'go-task' binary, alias to 'task'
+    if [[ -f /etc/arch-release ]]; then
+      alias task='go-task'
+    fi
   EOF
 
   @logger.info("Rendering template #{@options[:zshrc_template]}")
@@ -161,13 +166,29 @@ def generate_completions
       # 1. Patch the runtime default so GO_TASK_CMD resolves to the actual binary.
       output = output.gsub('${GO_TASK_EXE:-go-task}', "${GO_TASK_EXE:-#{task_exe_name}}")
       #
-      # 2. Patch the #compdef autoload header to include the binary name.
-      #    compinit reads this line to know which commands trigger autoload of this
-      #    function. Without it, _comps[task] is never populated and completion only
-      #    fires after completing the phantom 'go_task' command first.
-      output = output.sub(/^(#compdef\s+go_task)(\s*)$/, "\\1 #{task_exe_name}\\2")
-      File.write(File.join(completions_dir, '_task'), output)
-      @logger.info("Generated zsh completions at #{completions_dir}/_task")
+      # 2. Patch the #compdef autoload header to include all command variants
+      #    (go_task, task, go-task) so compinit registers completions for each.
+      output = output.sub(/^(#compdef\s+go_task.*)$/, "\\1 task go-task")
+
+      # 3. Add a _task() wrapper so the file works when autoloaded as _task.
+      #    go-task generates _go_task() but compinit names the function after
+      #    the file (_task). The wrapper delegates to the real implementation.
+      output += "\n_task() { _go_task \"$@\" }\n"
+
+      task_comp_file = File.join(completions_dir, '_task')
+      File.write(task_comp_file, output)
+      @logger.info("Generated zsh completions at #{task_comp_file}")
+
+      # Clean up stale symlinks from previous versions of this script.
+      ['_go-task', '_go_task'].each do |name|
+        stale = File.join(completions_dir, name)
+        FileUtils.rm_f(stale) if File.symlink?(stale)
+      end
+
+      # Invalidate the zcompdump cache so compinit picks up the new
+      # #compdef mappings on the next shell start.
+      zcompdump = File.join(Dir.home, '.zcompdump')
+      FileUtils.rm_f(zcompdump) if File.exist?(zcompdump)
     else
       @logger.warn('Failed to generate task completions')
     end
