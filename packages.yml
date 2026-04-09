@@ -1,0 +1,142 @@
+pacman:
+  - git
+  - curl
+  - wget
+  - stow
+  - ruby
+  - gnupg
+  - bc
+  - zsh
+  - ripgrep
+  - fd
+  - direnv
+  - neovim
+  - gcc
+  - jq
+  - go
+  - docker
+  - fnm
+  - base-devel
+  - xclip
+  - flatpak
+
+yay:
+  - github-cli
+  - go-task-bin
+  - git-delta
+  - zoxide
+  - visual-studio-code-bin
+  - ghostty
+  - starship
+  - kubectl
+  - helm
+  - docker-compose
+  - lazygit
+  - ttf-hack-nerd
+  - ttf-firacode-nerd
+  - ttf-jetbrains-mono-nerd
+  - ttf-meslo-nerd
+  - ttf-sourcecodepro-nerd
+
+apt:
+  - git
+  - curl
+  - wget
+  - stow
+  - ruby
+  - gnupg
+  - bc
+  - zsh
+  - ripgrep
+  - fd-find
+  - direnv
+  - neovim
+  - gcc
+  - jq
+  - docker.io
+  - xclip
+  - build-essential
+  - libssl-dev
+  - zlib1g-dev
+  - libbz2-dev
+  - libreadline-dev
+  - libsqlite3-dev
+  - libncursesw5-dev
+  - xz-utils
+  - tk-dev
+  - libxml2-dev
+  - libxmlsec1-dev
+  - libffi-dev
+  - liblzma-dev
+  - python3-pipx
+  - flatpak
+
+brew:
+  - git
+  - curl
+  - wget
+  - stow
+  - ruby
+  - gnupg
+  - zsh
+  - fzf
+  - ripgrep
+  - fd
+  - direnv
+  - zoxide
+  - neovim
+  - gh
+  - gcc
+  - go-task
+  - git-delta
+  - jq
+  - go
+  - starship
+  - fnm
+  - lazygit
+  - pipx
+  - 1password-cli
+  - kubectl
+  - helm
+
+brew_cask:
+  - docker
+  - visual-studio-code
+  - google-chrome
+  - discord
+
+snap:
+  - name: code
+    classic: true
+  - name: task
+    classic: true
+  - name: kubectl
+    classic: true
+  - name: helm
+    classic: true
+  - name: ghostty
+    classic: true
+
+flatpak:
+  - com.google.Chrome
+  - com.discordapp.Discord
+  - com.spotify.Client
+
+npm:
+  - "@mariozechner/pi-coding-agent"
+
+pipx:
+  - dunk
+
+custom:
+  - install_docker_post
+  - install_pyenv
+  - install_gum
+  - install_zsh_plugins
+  - install_fzf_latest
+  - install_delta_deb
+  - install_zoxide_curl
+  - install_starship_curl
+  - install_fnm_curl
+  - install_nerd_fonts_brew
+  - install_nvm_curl

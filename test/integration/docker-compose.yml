@@ -13,13 +13,14 @@ services:
       bash -c "
         cp -r . /tmp/shell-install &&
         cd /tmp/shell-install &&
-        NONINTERACTIVE=1 ./install.sh --skip-category=fonts --skip-category=optional
+        NONINTERACTIVE=1 ./install.sh
       "
     environment:
       - NONINTERACTIVE=1
       - DEBIAN_FRONTEND=noninteractive
       - TZ=America/New_York
       - TRACE=0
+      - SKIP_BACKENDS=snap,npm
       - GIT_EMAIL=test@example.com
       - GIT_NAME=Test User
       - GIT_SIGNING_KEY=AAAA1111BBBB2222
@@ -38,13 +39,14 @@ services:
       bash -c "
         cp -r . /tmp/shell-install &&
         cd /tmp/shell-install &&
-        NONINTERACTIVE=1 ./install.sh --skip-category=fonts --skip-category=optional
+        NONINTERACTIVE=1 ./install.sh
       "
     environment:
       - NONINTERACTIVE=1
       - DEBIAN_FRONTEND=noninteractive
       - TZ=America/New_York
       - TRACE=0
+      - SKIP_BACKENDS=snap,npm
       - GIT_EMAIL=test@example.com
       - GIT_NAME=Test User
       - GIT_SIGNING_KEY=AAAA1111BBBB2222
@@ -63,11 +65,12 @@ services:
       bash -c "
         cp -r . /tmp/shell-install &&
         cd /tmp/shell-install &&
-        NONINTERACTIVE=1 ./install.sh --skip-category=fonts --skip-category=optional
+        NONINTERACTIVE=1 ./install.sh
       "
     environment:
       - NONINTERACTIVE=1
       - TRACE=0
+      - SKIP_BACKENDS=snap,npm
       - GIT_EMAIL=test@example.com
       - GIT_NAME=Test User
       - GIT_SIGNING_KEY=AAAA1111BBBB2222
@@ -86,13 +89,14 @@ services:
       bash -c "
         cp -r . /tmp/shell-install &&
         cd /tmp/shell-install &&
-        NONINTERACTIVE=1 ./install.sh --skip-category=fonts --skip-category=optional
+        NONINTERACTIVE=1 ./install.sh
       "
     environment:
       - NONINTERACTIVE=1
       - DEBIAN_FRONTEND=noninteractive
       - TZ=America/New_York
       - TRACE=0
+      - SKIP_BACKENDS=snap,npm
       - GIT_EMAIL=test@example.com
       - GIT_NAME=Test User
       - GIT_SIGNING_KEY=AAAA1111BBBB2222

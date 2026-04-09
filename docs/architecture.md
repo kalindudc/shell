@@ -2,53 +2,117 @@
 
 ## Overview
 
-Unified installer with modular libraries, state management, and cross-platform support.
+Unified installer with a minimal bash bootstrap and Ruby orchestrator reading declarative package manifests.
 
 ## Components
 
 ```
-install.sh          # Main entry point
-src/lib/
-  common.sh         # Logging, prompts, version comparison
-  os_detect.sh      # OS/distro/architecture detection
-  state.sh          # State tracking and resume capability
-  packages.sh       # Package installation
-src/setup.sh        # Dotfiles setup (stow, oh-my-zsh, git config)
+install.sh          # Bash bootstrap (~60 lines): installs git + ruby, execs Ruby orchestrator
+src/install.rb      # Ruby orchestrator (~300 lines): reads YAML, detects OS, installs packages
+packages.yml        # Single declarative package manifest keyed by package manager backend
 ```
 
-## Installation Steps
+## Installation Flow
 
-1. OS detection
-2. Package manager setup
-3. Core packages
-4. Shell packages
-5. Dev packages
-6. Runtimes
-7. DevOps tools
-8. Fonts
-9. Optional packages
-10. pipx packages
-11. Clone repo
-12. Run setup
-13. Set default shell
+1. **Bootstrap** (`install.sh`)
+   - If run via curl: clone repo, re-execute from cloned location
+   - Ensure git is installed
+   - Ensure ruby is installed
+   - Exec `src/install.rb`
 
-Each step is tracked in `~/.shell_install_state` for resume capability.
+2. **Orchestration** (`src/install.rb`)
+   - Detect OS (10 lines: reads `/etc/os-release` or checks `RUBY_PLATFORM`)
+   - Map OS to backends (arch→pacman+yay, ubuntu→apt+snap, macos→brew+brew_cask)
+   - Run system update once
+   - For each backend: install packages from `packages.yml`
+   - Run post-install: config generation, stow, GPG setup, shell change
 
-## State File
+## Package Manifest (`packages.yml`)
 
-`~/.shell_install_state` tracks:
-- Completed steps (marked `done`)
-- Context: OS_TYPE, OS_DISTRO, OS_ARCH, PACKAGE_MANAGER, GIT_EMAIL, GIT_NAME
+Keyed by package manager backend, NOT by OS:
+
+```yaml
+pacman:
+  - git
+  - curl
+  - neovim
+
+yay:
+  - github-cli
+  - visual-studio-code-bin
+
+brew:
+  - git
+  - neovim
+
+npm:
+  - "@mariozechner/pi-coding-agent"
+
+custom:
+  - install_zsh_plugins
+  - install_pyenv
+```
+
+Backends are executed in order:
+1. OS-specific backends (system packages first)
+2. Shared backends (npm, pipx, custom)
+
+## OS Detection
+
+Minimal detection (~10 lines):
+- Read `/etc/os-release` `ID=` field for Linux
+- Check `RUBY_PLATFORM` for Darwin (macOS)
+- Map to backend list via constant hash
+
+No OS-specific package name mapping — package names are declared per-backend in YAML.
+
+## Custom Installers
+
+The `custom:` backend calls Ruby methods for packages needing special logic:
+- `install_docker_post` — enable docker service, add user to docker group
+- `install_pyenv` — curl installer
+- `install_zsh_plugins` — git clone plugin repos
+- `install_fzf_latest` — GitHub releases download
+- `install_delta_deb` — GitHub .deb download
+- `install_zoxide_curl` — curl installer
+- `install_starship_curl` — curl installer
+- `install_fnm_curl` — curl installer
+- `install_nerd_fonts_brew` — brew search + install
+- `install_nvm_curl` — curl installer (fallback)
+
+## Configuration Generation
+
+ERB template generation unchanged:
+- `generate_zshrc.rb` — generates `.zshrc`
+- `generate_tempate.rb` — generates `.gitconfig` from template
+- `generate_opencode_config.rb` — generates opencode config
+
+## Dotfile Symlinking
+
+Stow unchanged:
+```
+stow home -d $SHELL_DIR -t $HOME --adopt
+```
+
+## Sudo Handling
+
+Sudo is requested once at startup and kept alive via background process:
+- `sudo -v` to prompt
+- Background loop: `while true; do sudo -n true; sleep 50; done`
+- `at_exit` kills the background process
+
+## No State Management
+
+- No step tracking file
+- No resume capability (just re-run the installer, it's idempotent)
+- No lock files
+- No `--continue`, `--reset-state`, `--show-state` flags
 
 ## Supported Platforms
 
-- macOS (Homebrew)
-- Ubuntu/Debian (apt)
-- Arch Linux (pacman/yay)
-
-## Lock Files
-
-- `./tmp/shell_install.lock` (local)
-- `~/.shell_install.lock` (bootstrap)
-
-Prevents concurrent installations.
+| OS | Backends |
+|----|----------|
+| Arch Linux | pacman, yay, flatpak, npm, pipx, custom |
+| Ubuntu | apt, snap, flatpak, npm, pipx, custom |
+| Debian | apt, flatpak, npm, pipx, custom |
+| macOS | brew, brew_cask, npm, pipx, custom |

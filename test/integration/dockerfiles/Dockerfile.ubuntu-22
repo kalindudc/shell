@@ -16,6 +16,7 @@ RUN apt-get update && \
   git \
   curl \
   sudo \
+  ruby \
   ca-certificates \
   bats \
   && apt-get clean && \

@@ -53,11 +53,6 @@ tasks:
     cmds:
       - ./install.sh
 
-  install:packages:
-    desc: "Install fnm and zsh plugins only — no config generation, stow, or auth"
-    cmds:
-      - ./install.sh --only-packages
-
   # Stow dotfiles
   stow:
     desc: "Re-stow the home directory"
@@ -68,9 +63,6 @@ tasks:
   clean:
     desc: "Clean all generated files and state"
     cmds:
-      - rm -f ~/.shell_install_state
-      - rm -f ~/.shell_install.lock
-      - rm -f ./tmp/shell_install.lock
       - docker compose -f test/integration/docker-compose.yml down -v 2>/dev/null || true
       - rm -f ./tmp/test-*.log
       - echo "✓ Cleaned all generated files and state"
@@ -79,7 +71,7 @@ tasks:
   style:
     desc: "Run ShellCheck linting and auto-fix formatting"
     cmds:
-      - shellcheck install.sh src/setup.sh src/lib/*.sh home/bin/lib/*.sh
+      - shellcheck install.sh home/bin/lib/*.sh
       - |
         for f in home/bin/*; do
           [[ -f "$f" ]] || continue
@@ -89,11 +81,11 @@ tasks:
         done
       - |
         if command -v shfmt >/dev/null 2>&1; then
-          shfmt -i 2 -w install.sh src/setup.sh src/lib/*.sh
+          shfmt -i 2 -w install.sh
           echo "✓ Scripts formatted"
         fi
       - echo "✓ All scripts passed ShellCheck"
-      - bundle exec rubocop -A
+      - bundle exec rubocop -A src/install.rb
       - echo "✓ All Ruby files passed RuboCop"
 
   # Build
@@ -133,9 +125,12 @@ tasks:
       - test:bin
 
   test:unit:
-    desc: "Run unit tests (BATS + pi extension tests)"
+    desc: "Run unit tests (Ruby installer + pi extensions)"
     cmds:
-      - bats test/unit/*.bats
+      - |
+        echo "Running Ruby installer unit tests..."
+        ruby test/unit/test_installer.rb
+        echo "✓ Ruby installer tests passed"
       - |
         BUN="${HOME}/.bun/bin/bun"
         if ! "$BUN" --version >/dev/null 2>&1; then
