@@ -6,7 +6,9 @@
  * keepawake binary as the preferred cross-platform backend.
  *
  * Sleep inhibition starts on agent_start and ends on agent_end or
- * session_shutdown.
+ * session_shutdown. Reference-counted so parallel sessions (subagents,
+ * overlapping agent_start events, etc.) do not prematurely tear down the
+ * inhibitor while another session is still running.
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
@@ -36,29 +38,64 @@ async function resolveBackend(): Promise<Backend> {
 
 function spawnInhibitor(backend: Backend): ChildProcess | null {
 	if (backend === "keepawake") {
-		return spawn("keepawake", ["-i", "-d"], { stdio: "ignore" });
+		return spawn("keepawake", ["-i", "-d"], { stdio: "ignore", detached: true });
 	}
 
 	if (backend === "caffeinate") {
-		return spawn("caffeinate", ["-i", "-d"], { stdio: "ignore" });
+		return spawn("caffeinate", ["-i", "-d"], { stdio: "ignore", detached: true });
 	}
 
 	if (backend === "systemd-inhibit") {
+		// Embed the parent Node PID so we can distinguish inhibitors from
+		// different pi OS processes when debugging or cleaning up.
+		const who = `pi (pid: ${process.pid})`;
 		return spawn(
 			"systemd-inhibit",
 			[
 				"--what=idle:sleep",
-				"--who=pi",
+				"--who=" + who,
 				"--why=Active pi agent session",
 				"--mode=block",
-				"sleep",
-				"99999999",
+				"cat",
 			],
-			{ stdio: "ignore" },
+			{ stdio: ["pipe", "ignore", "ignore"], detached: true },
 		);
 	}
 
 	return null;
+}
+
+function terminateInhibitor(proc: ChildProcess): void {
+	// Closing stdin causes `cat` to exit cleanly, which causes
+	// systemd-inhibit to release the lock and terminate. If Node.js
+	// crashes, the kernel closes the pipe anyway, so this is inherently
+	// crash-safe.
+	proc.stdin?.end();
+
+	proc.kill("SIGTERM");
+
+	// Because we spawn with detached:true, the inhibitor gets its own
+	// process group. Kill the whole group to guarantee cleanup.
+	if (proc.pid && proc.pid > 0) {
+		try {
+			process.kill(-proc.pid, "SIGTERM");
+		} catch {
+			// already gone
+		}
+	}
+
+	// Last-resort force-kill after a short grace period.
+	setTimeout(() => {
+		if (!proc.pid) return;
+		try {
+			process.kill(proc.pid, "SIGKILL");
+			if (proc.pid > 0) {
+				process.kill(-proc.pid, "SIGKILL");
+			}
+		} catch {
+			// already gone
+		}
+	}, 500);
 }
 
 export default function (pi: ExtensionAPI): void {
@@ -68,12 +105,23 @@ export default function (pi: ExtensionAPI): void {
 		backend = b;
 	});
 
-	let proc: ChildProcess | null = null;
+	// Reference-count active agent sessions. Only spawn when the count
+	// transitions 0 -> 1; only terminate when it transitions 1 -> 0.
+	let activeSessions = 0;
+	let inhibitorProc: ChildProcess | null = null;
 	let notifiedMissing = false;
 
-	const startInhibitor = async (ctx?: Parameters<Parameters<typeof pi.on>[1]>[1]) => {
+	const startInhibitor = async (
+		ctx?: Parameters<Parameters<typeof pi.on>[1]>[1],
+	) => {
+		activeSessions++;
+
+		// Already holding an inhibitor; just bump the ref count.
+		if (inhibitorProc) return;
+
 		const b = await backendPromise;
 		if (!b) {
+			activeSessions = Math.max(0, activeSessions - 1);
 			if (!notifiedMissing) {
 				console.warn(
 					"[keep-awake] No supported backend found. Install keepawake or use macOS/Linux with built-in tools.",
@@ -83,40 +131,73 @@ export default function (pi: ExtensionAPI): void {
 			return;
 		}
 
-		if (proc) return; // already running
+		// If every session ended while we were awaiting the backend, bail out.
+		if (activeSessions === 0) return;
 
-		proc = spawnInhibitor(b);
-		if (!proc) return;
+		inhibitorProc = spawnInhibitor(b);
+		if (!inhibitorProc) {
+			activeSessions = Math.max(0, activeSessions - 1);
+			return;
+		}
 
 		if (ctx?.ui) {
 			const theme = ctx.ui.theme;
-			ctx.ui.setStatus("keep-awake", theme.fg("warning", "☕") + theme.fg("dim", " awake"));
+			ctx.ui.setStatus(
+				"keep-awake",
+				theme.fg("warning", "☕") + theme.fg("dim", " awake"),
+			);
 		}
 
-		proc.on("error", (err) => {
-			console.error(`[keep-awake] ${b} failed to spawn:`, err.message);
-			proc = null;
+		inhibitorProc.on("error", (err) => {
+			console.error(`[keep-awake] ${b} failed:`, err.message);
+			inhibitorProc = null;
 			if (ctx?.ui) {
 				ctx.ui.setStatus("keep-awake", undefined);
 			}
 		});
 
-		proc.on("exit", (code, signal) => {
-			if (code !== 0 && signal !== "SIGTERM" && signal !== null) {
-				console.warn(`[keep-awake] ${b} exited unexpectedly (code=${code}, signal=${signal})`);
+		inhibitorProc.on("exit", (code, signal) => {
+			// SIGTERM is expected during normal cleanup; null signal + code 0
+			// is expected when we close the pipe for systemd-inhibit + cat.
+			const expected =
+				signal === "SIGTERM" ||
+				signal === "SIGKILL" ||
+				(code === 0 && signal === null);
+			if (!expected) {
+				console.warn(
+					`[keep-awake] ${b} exited unexpectedly (code=${code}, signal=${signal})`,
+				);
 			}
-			proc = null;
+			inhibitorProc = null;
 			if (ctx?.ui) {
 				ctx.ui.setStatus("keep-awake", undefined);
 			}
 		});
 	};
 
-	const stopInhibitor = (ctx?: Parameters<Parameters<typeof pi.on>[1]>[1]) => {
-		if (proc) {
-			proc.kill();
-			proc = null;
+	const stopInhibitor = (
+		ctx?: Parameters<Parameters<typeof pi.on>[1]>[1],
+	) => {
+		activeSessions = Math.max(0, activeSessions - 1);
+		if (activeSessions > 0 || !inhibitorProc) return;
+
+		const p = inhibitorProc;
+		inhibitorProc = null;
+		terminateInhibitor(p);
+
+		if (ctx?.ui) {
+			ctx.ui.setStatus("keep-awake", undefined);
 		}
+	};
+
+	const forceStopInhibitor = (
+		ctx?: Parameters<Parameters<typeof pi.on>[1]>[1],
+	) => {
+		activeSessions = 0;
+		if (!inhibitorProc) return;
+		const p = inhibitorProc;
+		inhibitorProc = null;
+		terminateInhibitor(p);
 		if (ctx?.ui) {
 			ctx.ui.setStatus("keep-awake", undefined);
 		}
@@ -131,15 +212,24 @@ export default function (pi: ExtensionAPI): void {
 	});
 
 	pi.on("session_shutdown", async (_event, ctx) => {
-		stopInhibitor(ctx);
+		forceStopInhibitor(ctx);
+	});
+
+	process.on("exit", () => {
+		if (inhibitorProc && inhibitorProc.pid) {
+			terminateInhibitor(inhibitorProc);
+		}
 	});
 
 	pi.registerCommand("keep-awake", {
 		description: "Show keep-awake backend status",
 		handler: async (_args, ctx) => {
-			const state = proc ? "active" : "inactive";
+			const state = inhibitorProc ? "active" : "inactive";
 			const name = backend ?? "none";
-			ctx.ui.notify(`Backend: ${name} | Status: ${state}`, "info");
+			ctx.ui.notify(
+				`Backend: ${name} | Status: ${state} | Sessions: ${activeSessions}`,
+				"info",
+			);
 		},
 	});
 }
