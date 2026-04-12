@@ -10,6 +10,7 @@ $HOME/.opencode/bin:\
 $HOME/bin/:$HOME/.local/bin:$HOME/bin:\
 $HOME/.kube-plugins:\
 ${KREW_ROOT:-$HOME/.krew}/bin:\
+$HOME/.cargo/bin:\
 $HOME/go/bin:\
 /usr/bin/local:\
 /usr/local/opt/coreutils/libexec/gnubin:\
@@ -33,6 +34,9 @@ export ZSH_PLUGIN_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/plugins"
 fpath=($HOME/.config/zsh/completions $fpath)
 [[ -d "$ZSH_PLUGIN_DIR/zsh-completions/src" ]] && \
   fpath=("$ZSH_PLUGIN_DIR/zsh-completions/src" $fpath)
+# Homebrew completions (macOS) — must also be before compinit
+[[ -d /opt/homebrew/share/zsh/site-functions ]] && \
+  fpath=(/opt/homebrew/share/zsh/site-functions $fpath)
 
 case "$OSTYPE" in
   darwin*)
@@ -67,7 +71,12 @@ ZSH_CONFIG_SCRIPT="yes"
 
 # Completion system
 autoload -Uz compinit
-compinit -C -d "${ZDOTDIR:-$HOME}/.zcompdump"
+zcompdump="${ZDOTDIR:-$HOME}/.zcompdump"
+# Invalidate stale compdump cache when zshrc changes (fixes completions for newly added tools like zoxide)
+if [[ -f "$zcompdump" && "$HOME/.zshrc" -nt "$zcompdump" ]]; then
+  rm -f "$zcompdump" "$zcompdump.zwc" 2>/dev/null
+fi
+compinit -d "$zcompdump"
 
 zmodload -i zsh/complist
 WORDCHARS=''
@@ -460,7 +469,51 @@ fi
 eval "$(starship init zsh)"
 
 # zoxide (replaces enhancd)
-if command -v zoxide &>/dev/null; then eval "$(zoxide init zsh --cmd cd)"; fi
+if command -v zoxide &>/dev/null; then
+  eval "$(zoxide init zsh --cmd cd)"
+
+  # Override zoxide's default zsh completion:
+  # 1. `cd <TAB>` (no prefix) completes only local directories.
+  # 2. `cd que<TAB>` completes local directories AND zoxide database matches.
+  #    Using `compadd -U` allows zoxide's substring matches (e.g. "que"
+  #    matching "pi-quests") to appear even though they don't prefix-match.
+  # 3. `cd foo<SPACE><TAB>` triggers interactive fzf selection and inserts
+  #    the chosen path using `compadd -U` instead of the fragile upstream
+  #    DSR escape-sequence hack that breaks on many terminals
+  #    (see zoxide issues #737, #778, #1043).
+  function __zoxide_z_complete() {
+    [[ "${#words[@]}" -eq "${CURRENT}" ]] || return 0
+
+    # cd <TAB> with absolutely no prefix -> only local directories
+    if [[ "${#words[@]}" -eq 2 && "${words[-1]}" == '' ]]; then
+      _cd -/
+      return 0
+    fi
+
+    # cd foo<SPACE><TAB> -> interactive fzf via zoxide
+    if [[ "${words[-1]}" == '' ]]; then
+      __zoxide_result="$(\command zoxide query --exclude "$(__zoxide_pwd || \builtin true)" --interactive -- ${words[2,-1]})" || __zoxide_result=''
+      if [[ -n "${__zoxide_result}" ]]; then
+        compadd -U -S '' -- "${__zoxide_result}"
+      fi
+      return 0
+    fi
+
+    # cd que<TAB> -> local dirs + zoxide fuzzy matches
+    _cd -/
+    local -a zdirs znames
+    zdirs=(${(f)"$(\command zoxide query --list -- ${words[2,-1]} 2>/dev/null | head -30)"})
+    znames=(${(u)${zdirs:t}})
+    (( ${#znames} )) && compadd -U -S '' -a znames
+  }
+
+  if (( ${+functions[compdef]} )); then
+    compdef __zoxide_z_complete cd 2>/dev/null || true
+  fi
+fi
+
+# felix (TUI file manager) — shell integration for LWD (last working directory)
+if command -v fx &>/dev/null; then source <(command fx --init); fi
 
 # direnv
 if command -v direnv &>/dev/null; then _evalcache direnv hook zsh; fi

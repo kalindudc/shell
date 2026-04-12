@@ -2,7 +2,12 @@ ZSH_CONFIG_SCRIPT="yes"
 
 # Completion system
 autoload -Uz compinit
-compinit -C -d "${ZDOTDIR:-$HOME}/.zcompdump"
+zcompdump="${ZDOTDIR:-$HOME}/.zcompdump"
+# Invalidate stale compdump cache when zshrc changes (fixes completions for newly added tools like zoxide)
+if [[ -f "$zcompdump" && "$HOME/.zshrc" -nt "$zcompdump" ]]; then
+  rm -f "$zcompdump" "$zcompdump.zwc" 2>/dev/null
+fi
+compinit -d "$zcompdump"
 
 zmodload -i zsh/complist
 WORDCHARS=''

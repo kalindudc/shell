@@ -1,0 +1,49 @@
+# felix configuration
+# https://kyoheiu.dev/felix/
+
+# Default exec command when opening file.
+# Defaults to $EDITOR if not set.
+default: nvim
+
+# Exit behavior:
+# false -> ZZ exits without cd to LWD; ZQ exits to LWD
+# true  -> reversed (matches Vim)
+match_vim_exit_behavior: false
+
+# Case-insensitive search with `/`
+ignore_case: true
+
+# Color scheme: Gruvbox Dark
+# Reference palette:
+#   bg      #282828
+#   fg      #ebdbb2
+#   red     #cc241d
+#   green   #98971a
+#   yellow  #d79921
+#   blue    #458588
+#   purple  #b16286
+#   aqua    #689d6a
+#   gray    #a89984
+color:
+  dir_fg: !Rgb [215, 153, 33]      # gruvbox yellow
+  file_fg: !Rgb [235, 219, 178]    # gruvbox fg
+  symlink_fg: !Rgb [104, 157, 106] # gruvbox aqua
+  dirty_fg: !Rgb [204, 36, 29]     # gruvbox red
+
+# Optional: custom openers by file extension.
+# Uncomment and edit if you install the corresponding tools.
+# exec:
+#   zathura:
+#     - pdf
+#   'feh -.':
+#     - jpg
+#     - jpeg
+#     - png
+#     - gif
+#     - svg
+#     - hdr
+#   mpv:
+#     - mp4
+#     - mkv
+#     - avi
+#     - mov
