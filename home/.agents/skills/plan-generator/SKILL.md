@@ -201,9 +201,9 @@ CRITICAL: Plan stacks are a last resort. Always prefer a single plan, if a stack
 ### Constraint Enforcement
 
 HARD LIMITS:
-- Max 10 tasks
-- Max 25 lines per task block
-- Max 300 lines total
+- Max 10 - 15 tasks
+- Max 25 - 35 lines per task block
+- Max 300 - 650 lines total
 
 If exceeded: prefer consolidation first. If still over limits, create plan stack per existing protocol (STOP, confirm with user, split into multiple independent plans).
 
@@ -249,6 +249,7 @@ Plans always produce working software. Research informs Implementation Notes; Lo
 
 ## Rules
 
+- ALWAYS track the core protocol with TODOs or Quests, if the tooling supports it
 - ONLY generate the plan document and DO NOT implement any code changes
 - DO NOT generate any other documents like PR descriptions
 - NEVER create multiple plans for the same feature / task
