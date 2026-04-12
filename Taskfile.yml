@@ -56,6 +56,8 @@ tasks:
   # Stow dotfiles
   stow:
     desc: "Re-stow the home directory"
+    deps:
+      - generate:ghostty
     cmds:
       - stow home -d "./" -t $HOME --adopt
 
@@ -179,11 +181,12 @@ tasks:
 
   # Generate configs
   generate:
-    desc: "Generate .zshrc, .gitconfig, and opencode.jsonc"
+    desc: "Generate .zshrc, .gitconfig, opencode.jsonc, and ghostty config"
     deps:
       - generate:zsh
       - generate:gitconfig
       - generate:opencode
+      - generate:ghostty
 
   generate:zsh:
     desc: "Re-generate .zshrc and completions"
@@ -215,3 +218,8 @@ tasks:
         # OLLAMA_MODELS is optional; space-separated list, e.g. "qwen3:8b llama4:scout".
         # Set OLLAMA_MODELS="" to omit the ollama provider block.
         $HOME/src/github.com/kalindudc/shell/src/generate_opencode_config.rb
+
+  generate:ghostty:
+    desc: "Generate OS-specific ghostty font-size override config"
+    cmds:
+      - $HOME/src/github.com/kalindudc/shell/src/generate_ghostty_config.rb

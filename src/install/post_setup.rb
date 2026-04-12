@@ -104,6 +104,9 @@ module Installer
 
       opencode_script = File.join(SHELL_DIR, "src", "generate_opencode_config.rb")
       system("ruby", opencode_script) if File.exist?(opencode_script)
+
+      ghostty_script = File.join(SHELL_DIR, "src", "generate_ghostty_config.rb")
+      system("ruby", ghostty_script) if File.exist?(ghostty_script)
     end
   end
 end
