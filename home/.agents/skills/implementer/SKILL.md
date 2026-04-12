@@ -20,6 +20,7 @@ A plan file MUST be explicitly provided by the user. Do NOT auto-discover or ass
 5. Classify status: Completed (`[COMPLETED]`), In progress (`[IN PROGRESS]`), or Pending (no marker).
 6. Enumerate all tasks and their statuses. Track progress by updating task markers in the plan file.
 7. Read all files in the "Beginning context" section (or infer from task descriptions).
+8. Use the plan as a guide, not a strict contract, deviations can be made to achieve the overall goal but must be documented and approved by the user
 
 ### Resuming Partially Completed Plans
 
@@ -143,6 +144,7 @@ After execution, use `skill-improver` to capture observations about this skill's
 
 ## Rules
 
+- ALWAYS track the core protocol with TODOs or Quests, if the tooling supports it
 - NEVER skip a task -- execute them in strict order
 - NEVER modify the plan's High-Level or Mid-Level Objectives
 - NEVER work on `main` branch -- always use feature branches
