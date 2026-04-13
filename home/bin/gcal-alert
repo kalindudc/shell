@@ -1,0 +1,266 @@
+#!/usr/bin/env bash
+#
+# gcal-alert — Loud calendar event alerts via icalBuddy + macOS native tools
+#
+# Reads events from macOS Calendar (synced with Google Calendar) and fires
+# a loud, blocking alarm 2 minutes before each event during work hours.
+#
+# Requires: icalBuddy (brew install ical-buddy)
+#
+# Usage:
+#   gcal-alert              Check for upcoming events and alert (called by cron)
+#   gcal-alert silence [N]  Silence alerts for N days (default: 5)
+#   gcal-alert resume       Resume alerts (cancel silence)
+#   gcal-alert status       Show current status
+#   gcal-alert test         Fire a test alert
+#
+
+set -euo pipefail
+
+# Ensure Homebrew binaries are on PATH (cron uses /usr/bin:/bin only)
+if [[ -d /opt/homebrew/bin ]]; then
+    export PATH="/opt/homebrew/bin:$PATH"
+fi
+
+CONFIG_DIR="$HOME/.config/gcal-alert"
+SILENCE_FILE="$CONFIG_DIR/silenced_until"
+NOTIFIED_FILE="$CONFIG_DIR/notified_today"
+LOGFILE="$CONFIG_DIR/gcal-alert.log"
+
+ALERT_WINDOW_MINUTES=2
+WORK_START_HOUR=9   # 9 AM EST
+WORK_END_HOUR=17    # 5 PM EST
+TZ_NAME="America/New_York"
+
+mkdir -p "$CONFIG_DIR"
+
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOGFILE"
+}
+
+# --- Silence Management ---
+
+is_silenced() {
+    if [[ ! -f "$SILENCE_FILE" ]]; then
+        return 1
+    fi
+    local until
+    until=$(cat "$SILENCE_FILE")
+    local now
+    now=$(date +%s)
+    if (( now < until )); then
+        return 0
+    else
+        rm -f "$SILENCE_FILE"
+        return 1
+    fi
+}
+
+cmd_silence() {
+    local days="${1:-5}"
+    local until
+    until=$(date -v+"${days}d" +%s)
+    local until_human
+    until_human=$(date -v+"${days}d" '+%Y-%m-%d %H:%M %Z')
+    echo "$until" > "$SILENCE_FILE"
+    echo "🔇 Alerts silenced until $until_human ($days days)"
+    log "Silenced for $days days until $until_human"
+}
+
+cmd_resume() {
+    rm -f "$SILENCE_FILE"
+    echo "🔔 Alerts resumed"
+    log "Alerts resumed"
+}
+
+cmd_status() {
+    if is_silenced; then
+        local until
+        until=$(cat "$SILENCE_FILE")
+        local until_human
+        until_human=$(date -r "$until" '+%Y-%m-%d %H:%M %Z')
+        echo "🔇 Silenced until $until_human"
+    else
+        echo "🔔 Active"
+    fi
+
+    local now_hour
+    now_hour=$(TZ="$TZ_NAME" date +%H)
+    echo "⏰ Current time: $(TZ="$TZ_NAME" date '+%H:%M %Z') (window: ${WORK_START_HOUR}:00-${WORK_END_HOUR}:00)"
+
+    if (( 10#$now_hour >= WORK_START_HOUR && 10#$now_hour < WORK_END_HOUR )); then
+        echo "📅 Within alert window"
+    else
+        echo "🌙 Outside alert window"
+    fi
+
+    if [[ -f "$NOTIFIED_FILE" ]]; then
+        echo "📋 Already notified today:"
+        cat "$NOTIFIED_FILE"
+    fi
+}
+
+# --- Alert ---
+
+fire_alert() {
+    local title="$1"
+    local event_time="$2"
+
+    log "ALERT: $title at $event_time"
+
+    # Save current volume
+    local orig_vol
+    orig_vol=$(osascript -e 'output volume of (get volume settings)')
+    local orig_muted
+    orig_muted=$(osascript -e 'output muted of (get volume settings)')
+
+    # Max volume + unmute
+    osascript -e 'set volume output volume 100'
+    osascript -e 'set volume without output muted'
+
+    # Start repeating alarm in background
+    (
+        while true; do
+            afplay -v 2 /System/Library/Sounds/Sosumi.aiff
+            afplay -v 2 /System/Library/Sounds/Basso.aiff
+            afplay -v 2 /System/Library/Sounds/Submarine.aiff
+            afplay -v 2 /System/Library/Sounds/Bottle.aiff
+            sleep 0.5
+        done
+    ) &
+    local alarm_pid=$!
+
+    # Blocking modal dialog — alarm loops until dismissed
+    osascript -e "display dialog \"📅 $title\" & return & return & \"⏰ Starting at $event_time\" with title \"🚨 UPCOMING EVENT\" with icon stop buttons {\"Dismiss\"} default button \"Dismiss\""
+
+    # Kill alarm and all child afplay processes
+    kill "$alarm_pid" 2>/dev/null
+    wait "$alarm_pid" 2>/dev/null
+    pkill -P $$ afplay 2>/dev/null
+
+    # Restore volume
+    osascript -e "set volume output volume $orig_vol"
+    if [[ "$orig_muted" == "true" ]]; then
+        osascript -e 'set volume with output muted'
+    fi
+
+    log "Alert dismissed for: $title"
+}
+
+# --- Event Checking ---
+
+already_notified() {
+    local key="$1"
+    if [[ ! -f "$NOTIFIED_FILE" ]]; then
+        return 1
+    fi
+    grep -qF "$key" "$NOTIFIED_FILE"
+}
+
+mark_notified() {
+    local key="$1"
+    echo "$key" >> "$NOTIFIED_FILE"
+}
+
+cleanup_notified() {
+    # Reset the notified file daily
+    local today
+    today=$(date +%Y-%m-%d)
+    local marker_file="$CONFIG_DIR/.last_cleanup"
+
+    if [[ ! -f "$marker_file" ]] || [[ "$(cat "$marker_file")" != "$today" ]]; then
+        > "$NOTIFIED_FILE"
+        echo "$today" > "$marker_file"
+        log "Cleaned up notified list for new day"
+    fi
+}
+
+cmd_check() {
+    # Check silence
+    if is_silenced; then
+        log "Skipped: silenced"
+        return 0
+    fi
+
+    # Check work hours (EST)
+    local now_hour
+    now_hour=$(TZ="$TZ_NAME" date +%H)
+    if (( 10#$now_hour < WORK_START_HOUR || 10#$now_hour >= WORK_END_HOUR )); then
+        log "Skipped: outside work hours ($now_hour)"
+        return 0
+    fi
+
+    cleanup_notified
+
+    log "Starting event check"
+
+    # Get events starting within ±ALERT_WINDOW_MINUTES of now
+    # -ea = exclude all-day events
+    local now_ts earlier_ts later_ts
+    now_ts=$(date +%s)
+    earlier_ts=$(( now_ts - ALERT_WINDOW_MINUTES * 60 ))
+    later_ts=$(( now_ts + ALERT_WINDOW_MINUTES * 60 ))
+
+    local events
+    events=$(icalBuddy -nc -nrd -ea -sed \
+        -df "%Y-%m-%dT%H:%M" -tf "" \
+        -b "" -iep "title,datetime" -po "datetime,title" \
+        -ps "| |" \
+        eventsFrom:today to:today+1 2>/dev/null) || true
+
+    if [[ -z "$events" ]]; then
+        log "No events found"
+        return 0
+    fi
+
+    # Parse events: each line is "YYYY-MM-DDTHH:MM -  Title"
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+
+        # Extract datetime and title
+        local event_dt event_title
+        event_dt=$(echo "$line" | sed -n 's/^\([0-9T:-]*\) - .*/\1/p')
+        event_title=$(echo "$line" | sed -n 's/^[0-9T:-]* -  \(.*\)/\1/p')
+
+        [[ -z "$event_dt" || -z "$event_title" ]] && continue
+
+        # Convert event time to epoch
+        local event_ts
+        event_ts=$(date -j -f "%Y-%m-%dT%H:%M" "$event_dt" +%s 2>/dev/null) || continue
+
+        # Check if event starts within ±ALERT_WINDOW_MINUTES of now
+        if (( event_ts >= earlier_ts && event_ts <= later_ts )); then
+            local event_time_human
+            event_time_human=$(date -j -f "%Y-%m-%dT%H:%M" "$event_dt" "+%l:%M %p" 2>/dev/null)
+
+            local notify_key="${event_dt}_${event_title}"
+
+            if ! already_notified "$notify_key"; then
+                mark_notified "$notify_key"
+                fire_alert "$event_title" "$event_time_human"
+            else
+                log "Already notified: $event_title"
+            fi
+        fi
+    done <<< "$events"
+}
+
+cmd_test() {
+    echo "🧪 Firing test alert..."
+    fire_alert "Test Event — This Is Your Alert" "$(date -v+2M '+%l:%M %p')"
+    echo "✅ Test complete"
+}
+
+# --- Main ---
+
+case "${1:-check}" in
+    check)    cmd_check ;;
+    silence)  cmd_silence "${2:-5}" ;;
+    resume)   cmd_resume ;;
+    status)   cmd_status ;;
+    test)     cmd_test ;;
+    *)
+        echo "Usage: gcal-alert [check|silence [N]|resume|status|test]"
+        exit 1
+        ;;
+esac

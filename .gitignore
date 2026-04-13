@@ -89,3 +89,5 @@ home/.pi/agent/extensions/guard
 # SKILL_NOTES.md files are local observations, bootstrapped by src/scripts/bootstrap-skill-notes.sh
 home/.pi/agents/skills/*/SKILL_NOTES.md
 home/.agents/skills/*/SKILL_NOTES.md
+
+home/.config/ghostty/config-os
