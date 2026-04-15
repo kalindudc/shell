@@ -3,6 +3,12 @@
 %>
 #!/usr/bin/env zsh
 
+# Capture the real hostname before anything (shadowenv/dev) can clobber $HOST.
+# Ghostty's shell integration uses $HOST in OSC 7 CWD reporting; if shadowenv
+# sets HOST to a dev-internal service hostname, Ghostty rejects the update
+# ("OSC 7 host must be local") and new tabs get stuck at a stale directory.
+typeset -g __real_host="$HOST"
+
 # PATH — set once, at the top
 export PATH=\
 $HOME/.opencode/bin:\
@@ -238,4 +244,21 @@ if command -v gdate &>/dev/null; then
 else
   ENDTIME=$(($(date +%s%3N)))
 fi
+# Ghostty CWD fix — override _ghostty_report_pwd to use the real hostname
+# captured at shell startup instead of $HOST (which shadowenv overwrites).
+# _ghostty_deferred_init runs on the first precmd, so we schedule our
+# one-shot fixer to run after it.
+if [[ -n "$GHOSTTY_RESOURCES_DIR" ]]; then
+  __ghostty_fix_cwd_host() {
+    if (( ${+functions[_ghostty_report_pwd]} )); then
+      _ghostty_report_pwd() {
+        builtin print -nu $_ghostty_fd '\e]7;kitty-shell-cwd://'"$__real_host""$PWD"'\a'
+      }
+    fi
+    # Remove this one-shot hook
+    precmd_functions=(${precmd_functions:#__ghostty_fix_cwd_host})
+  }
+  precmd_functions+=(__ghostty_fix_cwd_host)
+fi
+
 printf 'Start time %.4fs\n' $(echo "($ENDTIME - $STARTTIME)/1000" | bc -l)
