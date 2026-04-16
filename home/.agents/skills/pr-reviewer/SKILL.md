@@ -41,7 +41,7 @@ Do NOT report: formatting, naming, style, linter-level issues, theoretical optim
 If no real issues are found, produce a PASS verdict with empty findings sections. Do NOT invent concerns to populate the template.
 
 For each potential finding, invoke the researcher agent for deep investigation:
-  Task(subagent_type="researcher", prompt=<potential finding + diff path + worktree path>)
+  spawn(agent: "researcher", task: "<potential finding + diff path + worktree path>")
 
 The researcher investigates (call-stack tracing, test coverage checks, language
 verification, line number verification) and returns findings with confidence levels
@@ -75,11 +75,17 @@ Self-review: If the reviewer is also the PR author, note the conflict in the Sum
 
 ### Stage 3: Multi-model critic consensus
 
-If multi-model consensus tooling is unavailable, retain all findings that passed researcher verification with CERTAIN or LIKELY confidence. Note in the output: "Consensus step skipped -- findings retained based on researcher verification only. N findings would normally be filtered by consensus." Skip to Stage 4.
+If the critique infrastructure is unavailable (critics.yml missing or unreadable), retain all findings that passed researcher verification with CERTAIN or LIKELY confidence. Note in the output: "Consensus step skipped -- findings retained based on researcher verification only. N findings would normally be filtered by consensus." Skip to Stage 4.
 
-Invoke the consensus orchestrator with the findings and the following criteria:
+Invoke multi-model critic consensus using the critique infrastructure:
 
-  Task(subagent_type="consensus", prompt=<findings + PR diff + worktree path + criteria below>)
+1. Read `~/.agents/skills/critique/critics.yml` to get the available critic models
+2. Read `~/.agents/skills/critique/critic-prompt.md` to get the shared evaluation prompt
+3. For each finding, construct a `spawn` call with `tasks` array -- one task per critic model.
+   Each task's `task` field = the critic prompt + finding details + evaluation criteria below + PR diff context.
+   Each task's `model` field = the model identifier from critics.yml.
+4. Collect results, extract KEEP/REJECT/ABSTAIN votes from each critic's response
+5. Apply dynamic consensus: majority KEEP = finding survives. Adjust threshold when critics abstain/timeout (e.g., 2/3 KEEP when one critic abstains).
 
 Each critic receives: the finding (severity, file:line, title, description, suggestion),
 the PR diff (or relevant excerpts for large diffs), and the worktree path for code exploration.

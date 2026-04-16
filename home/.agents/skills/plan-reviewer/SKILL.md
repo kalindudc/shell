@@ -52,7 +52,7 @@ Completeness ("ensure requirements are complete and flowdown is adequate"):
 Correctness ("compare output against requirements"):
 
 Invoke the researcher agent for factual claim verification:
-  Task(subagent_type="researcher", prompt=<claims to verify + plan path + codebase path>)
+  spawn(agent: "researcher", task: "<claims to verify + plan path + codebase path>")
 
 The researcher verifies: file existence, API signatures, code snippet validity,
 quantitative claims, and negative claims. Its findings (with confidence levels and
@@ -103,11 +103,17 @@ Each finding gets:
 
 ### 5. Multi-model critic consensus on Blockers and Concerns
 
-If multi-model consensus tooling is unavailable (e.g., consensus extension not yet configured), retain all Blocker and Concern findings from researcher verification. Note in the output: "Consensus step skipped -- findings retained based on researcher verification only." Skip to step 6.
+If the critique infrastructure is unavailable (critics.yml missing or unreadable), retain all Blocker and Concern findings from researcher verification. Note in the output: "Consensus step skipped -- findings retained based on researcher verification only." Skip to step 6.
 
-For each finding with severity Blocker or Concern, invoke the consensus orchestrator:
+Invoke multi-model critic consensus using the critique infrastructure:
 
-  Task(subagent_type="consensus", prompt=<findings + plan file path + codebase path + criteria below>)
+1. Read `~/.agents/skills/critique/critics.yml` to get the available critic models
+2. Read `~/.agents/skills/critique/critic-prompt.md` to get the shared evaluation prompt
+3. For each finding with severity Blocker or Concern, construct a `spawn` call with `tasks` array -- one task per critic model.
+   Each task's `task` field = the critic prompt + finding details + evaluation criteria below + plan context.
+   Each task's `model` field = the model identifier from critics.yml.
+4. Collect results, extract KEEP/REJECT/ABSTAIN votes from each critic's response
+5. Apply dynamic consensus: majority KEEP = finding survives. Adjust threshold when critics abstain/timeout (e.g., 2/3 KEEP when one critic abstains).
 
 Each critic receives: the finding (severity, dimension, description, evidence),
 the plan file path, and the codebase path for verification.

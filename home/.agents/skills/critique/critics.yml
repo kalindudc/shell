@@ -1,0 +1,8 @@
+# Add a new critic by adding a model entry. The critique skill reads this file at runtime.
+critics:
+  - model: anthropic/claude-sonnet-4-6
+    name: Claude
+  - model: google/gemini-3.1-pro-preview
+    name: Gemini
+  - model: xai/grok-4.20-beta-0309-reasoning
+    name: Grok

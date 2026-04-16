@@ -60,8 +60,8 @@ Begin with thorough research to gather all necessary context:
 - Verify both what patterns exist AND what infrastructure is absent -- missing frameworks/conventions are as important as existing ones
 - Before proposing edits to config or deployed files, check if they are produced by a build/template system (Makefile, Taskfile, ERB, Jinja, code generation). Search for generator scripts, `src/templates/`, and build task definitions -- editing generated files directly will be overwritten
 - Use the `codebase-explorer` skill for systematic research if the repo is unfamiliar
-- For complex verification (patterns, dependencies, infrastructure), invoke the researcher agent.
-  In Pi, use the subagent tool with the `researcher` agent. In OpenCode, use `Task(subagent_type="researcher", ...)`.
+- For complex verification (patterns, dependencies, infrastructure), invoke the researcher agent:
+  spawn(agent: "researcher", task: "<claims to verify + relevant paths>")
   The researcher returns verified findings with confidence levels and file:line evidence,
   replacing ad-hoc Read/Glob calls for complex verification. Simple file reads remain inline.
   If the researcher fails or times out, fall back to inline verification.
@@ -159,9 +159,17 @@ Claims to extract:
 - Quantitative claims: line counts, element counts, test counts
 - Negative claims: "X does not support Y", "there is no Z"
 
-Invoke multi-model consensus to verify claims. If consensus tooling is unavailable, perform inline verification and note the limitation in Verification Notes.
+Invoke multi-model critic consensus to verify claims using the critique infrastructure:
 
-In Pi, use the subagent tool with a consensus agent when available. In OpenCode, use `Task(subagent_type="consensus", ...)`.
+1. Read `~/.agents/skills/critique/critics.yml` to get the available critic models
+2. Read `~/.agents/skills/critique/critic-prompt.md` to get the shared evaluation prompt
+3. Construct a `spawn` call with `tasks` array -- one task per critic model.
+   Each task's `task` field = the critic prompt + claims to verify + plan context.
+   Each task's `model` field = the model identifier from critics.yml.
+4. Collect results, extract KEEP/REJECT/ABSTAIN votes from each critic's response
+5. Apply dynamic consensus: majority KEEP = claim verified.
+
+If the critique infrastructure is unavailable (critics.yml missing or unreadable), perform inline verification and note the limitation in Verification Notes.
 
 When performing inline verification (consensus unavailable):
 - For each file existence claim, verify with `ls` or `find`
