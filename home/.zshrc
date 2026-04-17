@@ -469,14 +469,20 @@ fi
 ### TEMPLATES END ###
 
 # Homebrew (macOS)
-[[ -x /opt/homebrew/bin/brew ]] && eval $(/opt/homebrew/bin/brew shellenv)
+# Cached via _evalcache: brew shellenv output is deterministic per-install.
+# To refresh after a Homebrew upgrade or prefix change, run `_evalcache_clear`.
+[[ -x /opt/homebrew/bin/brew ]] && _evalcache /opt/homebrew/bin/brew shellenv
 
 # starship prompt
-eval "$(starship init zsh)"
+# Cached via _evalcache: starship init output is deterministic per starship
+# version. If you upgrade starship, run `_evalcache_clear` to refresh.
+_evalcache starship init zsh
 
 # zoxide (replaces enhancd)
 if command -v zoxide &>/dev/null; then
-  eval "$(zoxide init zsh --cmd cd)"
+  # Cached via _evalcache: zoxide init output is deterministic per version +
+  # flags. Run `_evalcache_clear` after a zoxide upgrade.
+  _evalcache zoxide init zsh --cmd cd
 
   # Override zoxide's default zsh completion:
   # 1. `cd <TAB>` (no prefix) completes only local directories.
@@ -519,16 +525,22 @@ if command -v zoxide &>/dev/null; then
 fi
 
 # felix (TUI file manager) — shell integration for LWD (last working directory)
-if command -v fx &>/dev/null; then source <(command fx --init); fi
+# Cached via _evalcache: the init output only depends on $XDG_RUNTIME_DIR/$TMPDIR,
+# which are stable across shells for a given user session.
+if command -v fx &>/dev/null; then _evalcache fx --init; fi
 
 # direnv
 if command -v direnv &>/dev/null; then _evalcache direnv hook zsh; fi
 
 # pyenv
+# Pass `--no-rehash` to skip `command pyenv rehash` on every shell start
+# (~70ms saving). Rehashing is only needed after installing a new Python
+# version or a gem/package that provides a new shim — in those cases run
+# `pyenv rehash` manually.
 if [[ -d "$HOME/.pyenv" ]]; then
   export PYENV_ROOT="$HOME/.pyenv"
   export PATH="$PYENV_ROOT/bin:$PYENV_ROOT/shims:$PATH"
-  _evalcache pyenv init -
+  _evalcache pyenv init - --no-rehash
 fi
 
 # fnm (Fast Node Manager — replaces nvm)

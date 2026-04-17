@@ -11,8 +11,8 @@ $git_status\
 $fill\
 $time\
 $battery\
-$line_break\
 $status\
+$line_break\
 $character"""
 
 [directory]
