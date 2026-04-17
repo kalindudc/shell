@@ -57,6 +57,7 @@ home/.config/opencode/*
 !home/.config/opencode/session-recorder.json
 !home/.config/opencode/plugins.json
 home/.config/opencode/**/*interview*
+home/.agents/**/*interview*
 
 # SKILL_NOTES.md files are local observations, bootstrapped by src/scripts/bootstrap-skill-notes.sh
 home/.config/opencode/skills/*/SKILL_NOTES.md
@@ -76,6 +77,7 @@ home/.pi/agent/*
 !home/.pi/agent/docs/
 !home/.pi/agent/README.md
 !home/.pi/agent/AGENTS.md
+home/.pi/agent/**/*interview*
 
 home/.pi/agent/extensions/shopify-proxy
 home/.pi/agent/extensions/pkg
