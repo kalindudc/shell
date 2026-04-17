@@ -1,157 +1,326 @@
+"$schema" = 'https://starship.rs/config-schema.json'
+
+command_timeout = 2000
+scan_timeout    = 30
+add_newline     = true
+
 format = """
-$username\
-$hostname\
-$localip\
-$shlvl\
-$singularity\
 $directory\
-$vcsh\
-$fossil_branch\
-$fossil_metrics\
 $git_branch\
-$git_commit\
-$git_state\
-$git_metrics\
 $git_status\
-$hg_branch\
-$pijul_channel\
-$docker_context\
-$package\
-$c\
-$cmake\
-$cobol\
-$daml\
-$dart\
-$deno\
-$dotnet\
-$elixir\
-$elm\
-$erlang\
-$fennel\
-$golang\
-$guix_shell\
-$haskell\
-$haxe\
-$helm\
-$java\
-$julia\
-$kotlin\
-$gradle\
-$lua\
-$nim\
-$nodejs\
-$ocaml\
-$opa\
-$perl\
-$php\
-$pulumi\
-$purescript\
-$python\
-$raku\
-$rlang\
-$red\
-$ruby\
-$rust\
-$scala\
-$solidity\
-$swift\
-$terraform\
-$typst\
-$vlang\
-$vagrant\
-$zig\
-$buf\
-$nix_shell\
-$conda\
-$meson\
-$spack\
-$memory_usage\
-$aws\
-$gcloud\
-$openstack\
-$azure\
-$direnv\
-$env_var\
-$crystal\
-$custom\
-$sudo\
-$cmd_duration\
 $fill\
-$kubernetes\
-$battery\
 $time\
-$status\
+$battery\
 $line_break\
-$jobs\
-$os\
-$container\
-$shell\
+$status\
 $character"""
 
-command_timeout = 500
-
-[[battery.display]]
-threshold = 25
-style = 'bold red'
-
 [directory]
-style = "bold #fe8019"
-read_only = " 󰌾"
-
-[docker_context]
-symbol = " "
+style             = "bold #fe8019"
+read_only         = " 󰌾"
+truncation_length = 3
+truncate_to_repo  = true
 
 [fill]
 symbol = ' '
 
-[gcloud]
-disabled = true
-
 [git_branch]
-symbol = " "
-style = 'bold green'
-
-[git_commit]
-tag_symbol = '  '
-
-[git_metrics]
-disabled = true
+symbol = " "
+style  = 'bold green'
 
 [git_status]
-format = '([$stashed$staged$modified$untracked$conflicted$ahead_behind]($style) )'
-stashed = '[*$count ](bold purple)'
-staged = '[+$count ](bold green)'
-modified = '[!$count ](bold yellow)'
-untracked = '[?$count ](bold blue)'
+format     = '([$stashed$staged$modified$untracked$conflicted$ahead_behind]($style) )'
+stashed    = '[*$count ](bold purple)'
+staged     = '[+$count ](bold green)'
+modified   = '[!$count ](bold yellow)'
+untracked  = '[?$count ](bold blue)'
 conflicted = '[x$count ](bold red)'
 
-[hostname]
-ssh_symbol = " "
+[time]
+disabled    = false
+format      = '[$time]($style) '
+time_format = '%H:%M:%S'
+style       = 'bold #a89984'
 
-[kubernetes]
-disabled = true
+[battery]
+format = '[$symbol$percentage]($style) '
 
-[lua]
-disabled = true
+[[battery.display]]
+threshold = 25
+style     = 'bold red'
 
-[ruby]
-disabled = true
+[[battery.display]]
+threshold = 50
+style     = 'bold yellow'
 
 [status]
 disabled = false
-symbol = " "
+symbol   = '✖ '
+format   = '[$symbol$status]($style) '
+style    = 'bold red'
 
-[time]
-disabled = false
+[character]
+success_symbol = '[❯](bold green)'
+error_symbol   = '[❯](bold red)'
 
-[python]
+# Kill-switches — every module not in root `format` is disabled to prevent
+# reactivation from preset merges, $all defaults, or new releases.
+# Ordered alphabetically for grep-ability. Two-line form per TOML spec.
+
+[aws]
+disabled = true
+
+[azure]
 disabled = true
 
 [buf]
 disabled = true
 
+[bun]
+disabled = true
+
+[c]
+disabled = true
+
+[cmake]
+disabled = true
+
+[cobol]
+disabled = true
+
+[conda]
+disabled = true
+
+[container]
+disabled = true
+
+[cpp]
+disabled = true
+
+[crystal]
+disabled = true
+
+[daml]
+disabled = true
+
+[dart]
+disabled = true
+
+[deno]
+disabled = true
+
+[direnv]
+disabled = true
+
+[docker_context]
+disabled = true
+
+[dotnet]
+disabled = true
+
+[elixir]
+disabled = true
+
+[elm]
+disabled = true
+
+[erlang]
+disabled = true
+
+[fennel]
+disabled = true
+
+[fossil_branch]
+disabled = true
+
+[fossil_metrics]
+disabled = true
+
+[gcloud]
+disabled = true
+
+[git_commit]
+disabled = true
+
+[git_metrics]
+disabled = true
+
+[git_state]
+disabled = true
+
+[gleam]
+disabled = true
+
 [golang]
-symbol = " "
+disabled = true
+
+[gradle]
+disabled = true
+
+[guix_shell]
+disabled = true
+
+[haskell]
+disabled = true
+
+[haxe]
+disabled = true
+
+[helm]
+disabled = true
+
+[hg_branch]
+disabled = true
+
+[hostname]
+disabled = true
+
+[java]
+disabled = true
+
+[jobs]
+disabled = true
+
+[julia]
+disabled = true
+
+[kotlin]
+disabled = true
+
+[kubernetes]
+disabled = true
+
+[localip]
+disabled = true
+
+[lua]
+disabled = true
+
+[memory_usage]
+disabled = true
+
+[meson]
+disabled = true
+
+[mise]
+disabled = true
+
+[mojo]
+disabled = true
+
+[nats]
+disabled = true
+
+[netns]
+disabled = true
+
+[nim]
+disabled = true
+
+[nix_shell]
+disabled = true
+
+[nodejs]
+disabled = true
+
+[ocaml]
+disabled = true
+
+[odin]
+disabled = true
+
+[opa]
+disabled = true
+
+[openstack]
+disabled = true
+
+[os]
+disabled = true
 
 [package]
+disabled = true
+
+[perl]
+disabled = true
+
+[php]
+disabled = true
+
+[pijul_channel]
+disabled = true
+
+[pixi]
+disabled = true
+
+[pulumi]
+disabled = true
+
+[purescript]
+disabled = true
+
+[python]
+disabled = true
+
+[quarto]
+disabled = true
+
+[raku]
+disabled = true
+
+[red]
+disabled = true
+
+[rlang]
+disabled = true
+
+[ruby]
+disabled = true
+
+[rust]
+disabled = true
+
+[scala]
+disabled = true
+
+[shell]
+disabled = true
+
+[shlvl]
+disabled = true
+
+[singularity]
+disabled = true
+
+[solidity]
+disabled = true
+
+[spack]
+disabled = true
+
+[sudo]
+disabled = true
+
+[swift]
+disabled = true
+
+[terraform]
+disabled = true
+
+[typst]
+disabled = true
+
+[username]
+disabled = true
+
+[vagrant]
+disabled = true
+
+[vcsh]
+disabled = true
+
+[vlang]
+disabled = true
+
+[zig]
 disabled = true
