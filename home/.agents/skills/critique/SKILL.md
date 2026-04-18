@@ -11,6 +11,18 @@ Goal: "Is this concern real, evidenced, and significant -- or speculative noise?
 
 ## Process
 
+### 0. Pre-check
+
+If SKIP_CRITIQUE=true or SKIP_CRITIQUE=1 environment flag is set, then skip all steps and exit immediately with a message: "Critique skill skipped due to SKIP_CRITIQUE flag."
+
+```bash
+env | grep -i "SKIP_CRITIQUE"
+
+# or
+
+cat ~/.env | grep -i "SKIP_CRITIQUE"
+```
+
 ### 1. Parse concerns
 
 Extract individual concerns from user input. Each concern should have:

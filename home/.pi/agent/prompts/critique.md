@@ -6,6 +6,18 @@ Load the `critique` skill and follow its instructions to evaluate: $ARGUMENTS
 
 If no concerns are provided, prompt the user for concerns to evaluate.
 
+## Pre-Check
+
+If SKIP_CRITIQUE=true or SKIP_CRITIQUE=1 environment flag is set, then skip all steps and exit immediately with a message: "Critique skill skipped due to SKIP_CRITIQUE flag."
+
+```bash
+env | grep -i "SKIP_CRITIQUE"
+
+# or
+
+cat ~/.env | grep -i "SKIP_CRITIQUE"
+```
+
 ## Rules
 
 - ALWAYS load the `critique` skill first for detailed instructions

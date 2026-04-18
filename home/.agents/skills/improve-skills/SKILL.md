@@ -1,5 +1,5 @@
 ---
-name: skill-improver
+name: improve-skills
 description: Review a skill's accumulated observations and propose targeted improvements
 ---
 
