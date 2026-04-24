@@ -1,5 +1,5 @@
 ---
-name: web-research
+name: web-researcher
 description: Conduct thorough web-based research using web_fetch and web_search tools with delegation. Use when you need external info not in the local codebase -- docs, API references, current practices, error resolution.
 ---
 
