@@ -154,6 +154,11 @@ if command -v zoxide &>/dev/null; then
   # 2. `cd que<TAB>` completes local directories AND zoxide database matches.
   #    Using `compadd -U` allows zoxide's substring matches (e.g. "que"
   #    matching "pi-quests") to appear even though they don't prefix-match.
+  #    When `-U` candidates don't share a prefix with the typed text, zsh's
+  #    longest-common-prefix auto-insert would clobber the typed text (e.g.
+  #    `cd t<TAB>` -> `cd `). We set `compstate[insert]=menu` to disable
+  #    LCP auto-insert and require menu selection instead, which preserves
+  #    the typed prefix.
   # 3. `cd foo<SPACE><TAB>` triggers interactive fzf selection and inserts
   #    the chosen path using `compadd -U` instead of the fragile upstream
   #    DSR escape-sequence hack that breaks on many terminals
@@ -181,7 +186,12 @@ if command -v zoxide &>/dev/null; then
     local -a zdirs znames
     zdirs=(${(f)"$(\command zoxide query --list -- ${words[2,-1]} 2>/dev/null | head -30)"})
     znames=(${(u)${zdirs:t}})
-    (( ${#znames} )) && compadd -U -S '' -a znames
+    if (( ${#znames} )); then
+      compadd -U -S '' -a znames
+      # Prevent LCP auto-insert from clobbering the typed prefix when -U
+      # candidates don't share a common prefix with it (e.g. `cd t<TAB>`).
+      compstate[insert]=menu
+    fi
   }
 
   if (( ${+functions[compdef]} )); then
