@@ -91,6 +91,7 @@ home/.pi/agent/extensions/vault
 home/.pi/agent/extensions/guard
 home/.pi/agent/extensions/pi-sieve
 home/.pi/agent/extensions/rtk-rewrite
+home/.pi/agent/extensions/data-portal
 
 # SKILL_NOTES.md files are local observations, bootstrapped by src/scripts/bootstrap-skill-notes.sh
 home/.pi/agents/skills/*/SKILL_NOTES.md

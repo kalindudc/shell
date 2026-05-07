@@ -9,8 +9,12 @@
 # ("OSC 7 host must be local") and new tabs get stuck at a stale directory.
 typeset -g __real_host="$HOST"
 
+# pnpm
+export PNPM_HOME="/Users/kalindu/.local/share/pnpm"
+
 # PATH — set once, at the top
 export PATH=\
+$PNPM_HOME:\
 $HOME/.opencode/bin:\
 /opt/homebrew/bin:/opt/homebrew/sbin:\
 $HOME/bin/:$HOME/.local/bin:$HOME/bin:\
