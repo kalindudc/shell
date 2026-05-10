@@ -155,7 +155,8 @@ if command -v zoxide &>/dev/null; then
 
   # Override zoxide's default zsh completion:
   # 1. `cd <TAB>` (no prefix) completes only local directories.
-  # 2. `cd que<TAB>` completes local directories AND zoxide database matches.
+  # 2. `cd que<TAB>` completes local directories first; if no local match,
+  #    falls back to zoxide database matches.
   #    Using `compadd -U` allows zoxide's substring matches (e.g. "que"
   #    matching "pi-quests") to appear even though they don't prefix-match.
   #    When `-U` candidates don't share a prefix with the typed text, zsh's
@@ -185,16 +186,19 @@ if command -v zoxide &>/dev/null; then
       return 0
     fi
 
-    # cd que<TAB> -> local dirs + zoxide fuzzy matches
+    # cd que<TAB> -> local dirs first; zoxide fuzzy matches only if no local match
+    local -i nm_before=compstate[nmatches]
     _cd -/
-    local -a zdirs znames
-    zdirs=(${(f)"$(\command zoxide query --list -- ${words[2,-1]} 2>/dev/null | head -30)"})
-    znames=(${(u)${zdirs:t}})
-    if (( ${#znames} )); then
-      compadd -U -S '' -a znames
-      # Prevent LCP auto-insert from clobbering the typed prefix when -U
-      # candidates don't share a common prefix with it (e.g. `cd t<TAB>`).
-      compstate[insert]=menu
+    if (( compstate[nmatches] == nm_before )); then
+      local -a zdirs znames
+      zdirs=(${(f)"$(\command zoxide query --list -- ${words[2,-1]} 2>/dev/null | head -30)"})
+      znames=(${(u)${zdirs:t}})
+      if (( ${#znames} )); then
+        compadd -U -S '' -a znames
+        # Prevent LCP auto-insert from clobbering the typed prefix when -U
+        # candidates don't share a common prefix with it (e.g. `cd t<TAB>`).
+        compstate[insert]=menu
+      fi
     fi
   }
 
