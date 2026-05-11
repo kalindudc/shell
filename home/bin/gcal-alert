@@ -8,11 +8,13 @@
 # Requires: icalBuddy (brew install ical-buddy)
 #
 # Usage:
-#   gcal-alert              Check for upcoming events and alert (called by cron)
-#   gcal-alert silence [N]  Silence alerts for N days (default: 5)
-#   gcal-alert resume       Resume alerts (cancel silence)
-#   gcal-alert status       Show current status
-#   gcal-alert test         Fire a test alert
+#   gcal-alert               Check for upcoming events and alert (called by cron)
+#   gcal-alert silence [N]   Silence alerts for N days (default: 5)
+#   gcal-alert resume        Resume alerts (cancel silence)
+#   gcal-alert status        Show current status
+#   gcal-alert test          Fire a test alert
+#   gcal-alert calendars     List all available calendars and subscription state
+#   gcal-alert subscribe     Interactively toggle calendar subscriptions (fzf)
 #
 
 set -euo pipefail
@@ -25,6 +27,7 @@ fi
 CONFIG_DIR="$HOME/.config/gcal-alert"
 SILENCE_FILE="$CONFIG_DIR/silenced_until"
 NOTIFIED_FILE="$CONFIG_DIR/notified_today"
+SUBSCRIBED_FILE="$CONFIG_DIR/subscribed_calendars"
 LOGFILE="$CONFIG_DIR/gcal-alert.log"
 
 ALERT_WINDOW_MINUTES=2
@@ -73,6 +76,152 @@ cmd_resume() {
     log "Alerts resumed"
 }
 
+# --- Calendar Subscriptions ---
+
+# Print every calendar name (one per line) from `icalBuddy calendars`.
+list_all_calendars() {
+    # icalBuddy output:
+    #   • Calendar Name
+    #     type: CalDAV
+    #     UID: ...
+    # We want only the top-level bulleted names.
+    icalBuddy -nc calendars 2>/dev/null \
+        | sed -n 's/^• //p'
+}
+
+# Read subscribed calendar names (one per line). Strips blank lines.
+load_subscribed() {
+    if [[ -f "$SUBSCRIBED_FILE" ]]; then
+        grep -v '^[[:space:]]*$' "$SUBSCRIBED_FILE" || true
+    fi
+}
+
+is_subscribed() {
+    local name="$1"
+    [[ -f "$SUBSCRIBED_FILE" ]] || return 1
+    grep -qxF "$name" "$SUBSCRIBED_FILE"
+}
+
+cmd_calendars() {
+    local all
+    all=$(list_all_calendars)
+    if [[ -z "$all" ]]; then
+        echo "No calendars found (is icalBuddy installed and Calendar access granted?)"
+        return 1
+    fi
+
+    local has_file=0
+    [[ -f "$SUBSCRIBED_FILE" ]] && has_file=1
+
+    if (( has_file )); then
+        echo "Subscribed calendars (alerts fire for [✓] only):"
+    else
+        echo "No subscription file yet — alerts currently fire for ALL calendars."
+        echo "Run 'gcal-alert subscribe' to restrict to specific calendars."
+        echo
+        echo "Available calendars:"
+    fi
+
+    while IFS= read -r name; do
+        [[ -z "$name" ]] && continue
+        if (( has_file )) && is_subscribed "$name"; then
+            echo "  [✓] $name"
+        else
+            echo "  [ ] $name"
+        fi
+    done <<< "$all"
+}
+
+cmd_subscribe() {
+    if ! command -v fzf >/dev/null 2>&1; then
+        echo "fzf not found — install with: brew install fzf" >&2
+        return 1
+    fi
+
+    local all
+    all=$(list_all_calendars)
+    if [[ -z "$all" ]]; then
+        echo "No calendars found (is icalBuddy installed and Calendar access granted?)" >&2
+        return 1
+    fi
+
+    # Build display lines with current state markers.
+    #   [✓] Work
+    #   [ ] Birthdays
+    local display=""
+    while IFS= read -r name; do
+        [[ -z "$name" ]] && continue
+        if is_subscribed "$name"; then
+            display+="[✓] $name"$'\n'
+        else
+            display+="[ ] $name"$'\n'
+        fi
+    done <<< "$all"
+
+    local header
+    header=$(printf '%s\n%s\n%s' \
+        "Tab: select calendars to TOGGLE   Enter: apply   Esc: cancel" \
+        "[✓] = currently subscribed   [ ] = not subscribed" \
+        "Selected calendars will have their subscription flipped.")
+
+    local selected
+    set +e
+    selected=$(printf '%s' "$display" \
+        | fzf --multi --ansi --header="$header" --prompt='toggle> ' --no-sort)
+    local fzf_rc=$?
+    set -e
+
+    if (( fzf_rc != 0 )) || [[ -z "$selected" ]]; then
+        echo "No changes."
+        return 0
+    fi
+
+    # Build new subscription list by toggling each selected name.
+    # Start from current state, then flip for each selected line.
+    local -a toggled=()
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        # Strip the "[✓] " or "[ ] " prefix (4 visible chars + space; ✓ is multi-byte).
+        local name="${line#\[*\] }"
+        toggled+=("$name")
+    done <<< "$selected"
+
+    # Compute new subscribed set: start with currently subscribed, XOR with toggled.
+    local tmp
+    tmp=$(mktemp)
+    while IFS= read -r name; do
+        [[ -z "$name" ]] && continue
+        local should_toggle=0
+        local t
+        for t in "${toggled[@]}"; do
+            if [[ "$t" == "$name" ]]; then
+                should_toggle=1
+                break
+            fi
+        done
+
+        local currently=0
+        is_subscribed "$name" && currently=1
+
+        # XOR
+        if (( currently ^ should_toggle )); then
+            echo "$name" >> "$tmp"
+        fi
+    done <<< "$all"
+
+    mv "$tmp" "$SUBSCRIBED_FILE"
+
+    log "Updated subscriptions: toggled ${#toggled[@]} calendar(s)"
+
+    echo
+    echo "Updated. Now subscribed to:"
+    if [[ -s "$SUBSCRIBED_FILE" ]]; then
+        sed 's/^/  ✓ /' "$SUBSCRIBED_FILE"
+    else
+        echo "  (none — alerts will not fire)"
+    fi
+}
+
 cmd_status() {
     if is_silenced; then
         local until
@@ -97,6 +246,14 @@ cmd_status() {
     if [[ -f "$NOTIFIED_FILE" ]]; then
         echo "📋 Already notified today:"
         cat "$NOTIFIED_FILE"
+    fi
+
+    if [[ -f "$SUBSCRIBED_FILE" ]]; then
+        local sub_count
+        sub_count=$(grep -cv '^[[:space:]]*$' "$SUBSCRIBED_FILE" 2>/dev/null || echo 0)
+        echo "📚 Subscribed calendars: $sub_count (see 'gcal-alert calendars')"
+    else
+        echo "📚 Subscribed calendars: all (no filter — run 'gcal-alert subscribe' to restrict)"
     fi
 }
 
@@ -201,11 +358,33 @@ cmd_check() {
     earlier_ts=$(( now_ts - ALERT_WINDOW_MINUTES * 60 ))
     later_ts=$(( now_ts + ALERT_WINDOW_MINUTES * 60 ))
 
+    # Build the calendar filter:
+    #   - subscription file missing  -> no filter (backward compat: alert on all)
+    #   - file present but empty     -> alert on nothing (user opted out of everything)
+    #   - file present with names    -> pass to icalBuddy via -ic
+    local -a ic_args=()
+    if [[ -f "$SUBSCRIBED_FILE" ]]; then
+        local subs
+        subs=$(load_subscribed)
+        if [[ -z "$subs" ]]; then
+            log "Skipped: subscription file present but empty (no calendars subscribed)"
+            return 0
+        fi
+        # icalBuddy -ic takes a comma-separated list of calendar names.
+        local ic_list
+        ic_list=$(printf '%s\n' "$subs" | paste -sd ',' -)
+        ic_args=(-ic "$ic_list")
+        log "Filtering to subscribed calendars: $ic_list"
+    else
+        log "No subscription file — alerting on all calendars"
+    fi
+
     local events
     events=$(icalBuddy -nc -nrd -ea -sed \
         -df "%Y-%m-%dT%H:%M" -tf "" \
         -b "" -iep "title,datetime" -po "datetime,title" \
         -ps "| |" \
+        "${ic_args[@]}" \
         eventsFrom:today to:today+1 2>/dev/null) || true
 
     if [[ -z "$events" ]]; then
@@ -254,13 +433,15 @@ cmd_test() {
 # --- Main ---
 
 case "${1:-check}" in
-    check)    cmd_check ;;
-    silence)  cmd_silence "${2:-5}" ;;
-    resume)   cmd_resume ;;
-    status)   cmd_status ;;
-    test)     cmd_test ;;
+    check)      cmd_check ;;
+    silence)    cmd_silence "${2:-5}" ;;
+    resume)     cmd_resume ;;
+    status)     cmd_status ;;
+    test)       cmd_test ;;
+    calendars)  cmd_calendars ;;
+    subscribe)  cmd_subscribe ;;
     *)
-        echo "Usage: gcal-alert [check|silence [N]|resume|status|test]"
+        echo "Usage: gcal-alert [check|silence [N]|resume|status|test|calendars|subscribe]"
         exit 1
         ;;
 esac
