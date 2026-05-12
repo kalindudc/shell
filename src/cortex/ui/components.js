@@ -327,7 +327,7 @@ function ActiveTaskPane() {
           draggable="true"
           onDragStart=${e => e.dataTransfer.setData("application/x-cortex-task-id", String(at.id))}
           onClick=${() => editing.value = true}
-          style="cursor:text"
+          style="cursor:pointer"
           title="Click to edit">${at.title}</h2>
         ${/* Description display shows the raw markdown SOURCE with token-
              level syntax coloring — we deliberately do NOT render markdown.
@@ -335,7 +335,7 @@ function ActiveTaskPane() {
              editing round-trips losslessly. Click anywhere to enter edit mode. */ ""}
         <div class="md-display"
           onClick=${() => editing.value = true}
-          style="cursor:text; min-height:96px"
+          style="cursor:pointer; min-height:96px"
           title="Click to edit (markdown source highlighting)">
           ${at.body
             ? html`<pre class="md-source"><code class="hljs"
@@ -488,37 +488,81 @@ function InboxPane() {
 }
 
 // ---------- command palette ----------
+// Command shape:
+//   { id, label, hint?, icon, action }   — leaf: runs and closes the palette
+//   { id, label, hint?, icon, submenu }  — branch: clicking dives into a
+//                                          new scope; `submenu()` returns
+//                                          the next list of commands
+//
+// Branches keep the root short (one "Edit lane…" entry, not 50). Picking a
+// branch pushes it onto the palette's scope stack; Esc / Backspace / clicking
+// the breadcrumb pops back. Lazy `submenu` evaluation means we don't build
+// per-lane lists until the user actually opens that scope.
 function buildCommands() {
   const at = activeTask.value;
   const cmds = [];
+
+  // ----- always-available -----
   cmds.push({ id: "new-task",    label: "New task",              hint: "",       icon: "plus",        action: () => { paletteOpen.value = false; setTimeout(() => document.getElementById("new-task-input")?.focus(), 0); } });
   cmds.push({ id: "post-update", label: "Focus post-update box", hint: kbd("/"), icon: "eye",         action: () => { paletteOpen.value = false; setTimeout(() => document.getElementById("post-update-input")?.focus(), 0); } });
   cmds.push({ id: "next",        label: "Next task",             hint: "",       icon: "chevronDown", action: () => moveSelection(+1) });
   cmds.push({ id: "prev",        label: "Previous task",         hint: "",       icon: "chevronDown", action: () => moveSelection(-1) });
+
+  // ----- active-task scoped -----
   if (at) {
-    cmds.push({ id: "edit",   label: "Edit task\u2026", hint: `[${at.id}]`, icon: "eye", action: () => editing.value = true });
-    for (const s of STATUS) {
-      if (s !== at.status) cmds.push({ id: `status-${s}`, label: `Mark as ${STATUS_LABEL[s].toLowerCase()}`, hint: `[${at.id}]`, icon: "checkCircle", action: () => api.setStat(at.id, s) });
-    }
-    cmds.push({ id: "delete", label: "Delete task\u2026", hint: `[${at.id}]`, icon: "trash", action: () => modal.value = { kind: "confirm-delete", id: at.id } });
+    cmds.push({ id: "edit-task", label: "Edit task\u2026", hint: `[${at.id}]`, icon: "eye",
+      action: () => editing.value = true });
+    cmds.push({ id: "set-status", label: "Set status\u2026", hint: `[${at.id}]`, icon: "checkCircle",
+      submenu: () => STATUS.filter(s => s !== at.status).map(s => ({
+        id: `status-${s}`, label: STATUS_LABEL[s], hint: "", icon: "checkCircle",
+        action: () => api.setStat(at.id, s),
+      })),
+    });
+    cmds.push({ id: "set-priority", label: "Set priority\u2026", hint: `[${at.id}]`, icon: "star",
+      submenu: () => [0, 1, 2, 3, 5].filter(p => p !== at.priority).map(p => ({
+        id: `priority-${p}`, label: `P${p}` + (p === 0 ? " (urgent)" : ""), hint: "", icon: "star",
+        action: () => api.editTask(at.id, { priority: p }),
+      })),
+    });
+    cmds.push({ id: "delete-task", label: "Delete task\u2026", hint: `[${at.id}]`, icon: "trash",
+      action: () => modal.value = { kind: "confirm-delete", id: at.id } });
   }
-  if (at) {
-    for (const p of [0, 1, 2, 3, 5]) {
-      if (p !== at.priority) {
-        cmds.push({ id: `priority-${p}`, label: `Set priority P${p}` + (p === 0 ? " (urgent)" : ""), hint: `[${at.id}]`, icon: "star", action: () => api.editTask(at.id, { priority: p }) });
-      }
-    }
+
+  // ----- lane scoped (one root entry per verb) -----
+  cmds.push({ id: "filter-lane", label: "Filter by lane\u2026", hint: "", icon: "inbox",
+    submenu: () => [
+      { id: "lane-all", label: "All lanes", hint: "", icon: "inbox",
+        action: () => { selectedLane.value = null; selectedId.value = null; } },
+      ...lanes.value.map(l => ({
+        id: `lane-${l.name}`, label: l.name, hint: "", icon: "inbox",
+        action: () => { selectedLane.value = l.name; selectedId.value = null; },
+      })),
+    ],
+  });
+  if (lanes.value.length > 0) {
+    cmds.push({ id: "edit-lane", label: "Edit lane\u2026", hint: "", icon: "eye",
+      submenu: () => lanes.value.map(l => ({
+        id: `lane-edit-${l.name}`, label: l.name, hint: "", icon: "eye",
+        action: () => modal.value = { kind: "lane-edit", name: l.name },
+      })),
+    });
   }
-  cmds.push({ id: "lane-all", label: "Show all lanes", hint: "", icon: "inbox", action: () => { selectedLane.value = null; selectedId.value = null; } });
-  for (const l of lanes.value) {
-    cmds.push({ id: `lane-${l.name}`,      label: `Filter to lane: ${l.name}`,  hint: "", icon: "inbox", action: () => { selectedLane.value = l.name; selectedId.value = null; } });
-    cmds.push({ id: `lane-edit-${l.name}`, label: `Edit lane: ${l.name}\u2026`, hint: "", icon: "eye",   action: () => modal.value = { kind: "lane-edit", name: l.name } });
-    if (l.name !== "now" && !tasks.value.some(t => t.lane === l.name)) {
-      cmds.push({ id: `lane-del-${l.name}`, label: `Delete lane: ${l.name}\u2026`, hint: "", icon: "trash", action: () => modal.value = { kind: "confirm-lane-delete", name: l.name } });
-    }
+  // Delete lane: only show if there's at least one deletable lane (not 'now',
+  // no tasks). If none qualify, hide the verb entirely — a sub-menu with zero
+  // entries is a dead end.
+  const deletable = lanes.value.filter(l => l.name !== "now" && !tasks.value.some(t => t.lane === l.name));
+  if (deletable.length > 0) {
+    cmds.push({ id: "delete-lane", label: "Delete lane\u2026", hint: "", icon: "trash",
+      submenu: () => deletable.map(l => ({
+        id: `lane-del-${l.name}`, label: l.name, hint: "", icon: "trash",
+        action: () => modal.value = { kind: "confirm-lane-delete", name: l.name },
+      })),
+    });
   }
-  cmds.push({ id: "new-lane", label: "New lane\u2026", hint: "", icon: "plus", action: () => { newLaneOpen.value = true; setTimeout(() => document.querySelector(".pane-lanes input")?.focus(), 0); } });
-  // Theme — a single command that flips to the other mode.
+  cmds.push({ id: "new-lane", label: "New lane\u2026", hint: "", icon: "plus",
+    action: () => { newLaneOpen.value = true; setTimeout(() => document.querySelector(".pane-lanes input")?.focus(), 0); } });
+
+  // ----- system -----
   cmds.push({
     id: "theme-toggle",
     label: theme.value === "dark" ? "Switch to light mode" : "Switch to dark mode",
@@ -537,40 +581,79 @@ function buildCommands() {
 function CommandPalette() {
   const query = useSignal("");
   const cursor = useSignal(0);
+  // Scope stack: each entry is { title, cmds }. Empty stack = root scope
+  // (rebuilt from buildCommands() every render so it tracks live signals).
+  // Non-empty = inside one or more sub-menus. This is what lets us collapse
+  // "50 lanes × 3 verbs = 150 root entries" down to 3 verbs that dive into
+  // pickers on demand.
+  const stack = useSignal([]);
   const inputRef = useRef(null);
-  // Autofocus the search box on every open. Because this component is now
-  // truly remounted per open (see comment above), this useEffect fires every
-  // time. We still defer once via setTimeout(..., 0) as a fallback for when
-  // the keydown that opened the palette is still in flight and a stale focus
-  // target would otherwise win.
   useEffect(() => {
     inputRef.current?.focus();
     const t = setTimeout(() => inputRef.current?.focus(), 0);
     return () => clearTimeout(t);
   }, []);
-  // Keep the active row in view when ArrowDown/ArrowUp moves the cursor
-  // past the visible viewport of .palette-list.
   useEffect(() => {
     const el = document.querySelector(".palette-list .palette-row.active");
     if (el && typeof el.scrollIntoView === "function") el.scrollIntoView({ block: "nearest" });
   });
-  const cmds = buildCommands();
+
+  const cmds = stack.value.length === 0
+    ? buildCommands()
+    : stack.value[stack.value.length - 1].cmds;
   const q = query.value.trim().toLowerCase();
   const filtered = q ? cmds.filter(c => c.label.toLowerCase().includes(q) || c.id.includes(q)) : cmds;
   const safeCursor = Math.min(cursor.value, Math.max(0, filtered.length - 1));
+  const inSubmenu = stack.value.length > 0;
+
+  // Pop one scope level. Resets query + cursor so the parent menu shows
+  // unfiltered. Re-focuses the input — keyboard users should never lose
+  // focus when navigating in/out of sub-menus.
+  const popScope = () => {
+    stack.value = stack.value.slice(0, -1);
+    query.value = "";
+    cursor.value = 0;
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  // Push a new scope. Lazily evaluates submenu() so per-lane lists aren't
+  // built unless the user actually dives in.
+  const pushScope = (cmd) => {
+    stack.value = [...stack.value, { title: cmd.label.replace(/\u2026$/, ""), cmds: cmd.submenu() }];
+    query.value = "";
+    cursor.value = 0;
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
   const exec = async (cmd) => {
+    if (cmd.submenu) { pushScope(cmd); return; }
     paletteOpen.value = false;
     try { await cmd.action(); } catch (e) { showError(e); }
   };
+
   return html`<div class="overlay overlay-top" onClick=${e => { if (e.target.classList.contains("overlay") || e.target.classList.contains("overlay-top")) paletteOpen.value = false; }}>
     <div class="modal palette">
-      <input ref=${inputRef} class="palette-input" placeholder="Type a command\u2026" autoFocus
+      ${inSubmenu ? html`<div class="palette-breadcrumb">
+        <button class="btn-icon" onClick=${popScope} title="Back" aria-label="Back to previous menu">
+          <${Icon} name="chevronDown" className="rotate-90-cw"/>
+        </button>
+        <span class="meta">${stack.value.map(s => s.title).join(" / ")}</span>
+      </div>` : null}
+      <input ref=${inputRef} class="palette-input"
+        placeholder=${inSubmenu ? `Pick a ${stack.value[stack.value.length - 1].title.toLowerCase()}\u2026` : "Type a command\u2026"}
+        autoFocus
         value=${query.value}
         onInput=${e => { query.value = e.target.value; cursor.value = 0; }}
         onKeyDown=${e => {
           if (e.key === "ArrowDown")    { e.preventDefault(); cursor.value = Math.min(filtered.length - 1, safeCursor + 1); }
           else if (e.key === "ArrowUp") { e.preventDefault(); cursor.value = Math.max(0, safeCursor - 1); }
           else if (e.key === "Enter")   { e.preventDefault(); const c = filtered[safeCursor]; if (c) exec(c); }
+          // Submenu navigation. ArrowLeft / Backspace (when query empty) /
+          // Escape all pop one level. At root, Escape falls through to the
+          // global handler in app.js which closes the palette.
+          else if (inSubmenu && e.key === "Escape")    { e.preventDefault(); e.stopPropagation(); popScope(); }
+          else if (inSubmenu && e.key === "ArrowLeft" && query.value === "") { e.preventDefault(); popScope(); }
+          else if (inSubmenu && e.key === "Backspace" && query.value === "") { e.preventDefault(); popScope(); }
         }}/>
       <div class="palette-list">
         ${filtered.length === 0 ? html`<div class="meta" style="padding:12px">No matching commands</div>` :
@@ -580,12 +663,13 @@ function CommandPalette() {
             <${Icon} name=${c.icon}/>
             <span class="grow">${c.label}</span>
             ${c.hint ? html`<span class="meta num">${c.hint}</span>` : null}
+            ${c.submenu ? html`<${Icon} name="chevronDown" className="rotate-90-ccw"/>` : null}
           </button>`)}
       </div>
       <div class="palette-foot meta">
         <span><span class="kbd">\u2191</span><span class="kbd">\u2193</span> navigate</span>
         <span><span class="kbd">\u21b5</span> select</span>
-        <span><span class="kbd">Esc</span> close</span>
+        <span><span class="kbd">Esc</span> ${inSubmenu ? "back" : "close"}</span>
       </div>
     </div>
   </div>`;

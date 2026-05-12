@@ -147,6 +147,29 @@ body {
   color: var(--text); background: var(--bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Default cursor everywhere; only true text-input surfaces (input,
+     textarea) get the I-beam, and only buttons / links / draggables get
+     pointer/grab. The browser's auto behaviour is to show the I-beam over
+     any selectable text node, which made labels, headings, and even chrome
+     feel like a document being edited. This keeps the app feeling app-y. */
+  cursor: default;
+  /* Disable text selection on chrome so clicking on a label / row / heading
+     doesn't drop a blinking selection caret in the text and make it look
+     editable. Real content surfaces (inputs, textareas, the markdown source
+     view) re-enable selection below. */
+  -webkit-user-select: none;
+  user-select: none;
+}
+input, textarea {
+  cursor: text;
+  -webkit-user-select: text;
+  user-select: text;
+}
+/* Markdown source view inside the active task: this is the user's own
+   content (their task descriptions), so allow selection for copy/paste. */
+.md-source {
+  -webkit-user-select: text;
+  user-select: text;
 }
 ::selection { background: var(--accent-tint); color: var(--text); }
 ::placeholder { color: var(--text-3); }
@@ -220,14 +243,23 @@ main {
 /* Sticky section header for both lanes-section and tasks-section. Sits at
    the top of its scrolling parent so the title (and the new-lane form when
    open) stays visible no matter how far you scroll. Background matches the
-   pane so scrolling content disappears cleanly underneath. */
+   pane so scrolling content disappears cleanly underneath.
+
+   min-height matches the .btn-icon height (28px) so the Tasks heading
+   (eyebrow only) reads at the same visual weight as the Lanes heading
+   (eyebrow + plus button). flex-column + justify-content:center vertically
+   centers content within the min-height box. */
 .lanes-section > .section-head,
 .tasks-section > .section-head {
   position: sticky;
   top: 0;
   z-index: 1;
   background: var(--panel);
-  padding: 12px 16px 8px 16px;
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 28px;
 }
 .lanes-section > .section-body,
 .tasks-section > .section-body {
@@ -552,17 +584,37 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
   background: transparent;
 }
 .palette-input:focus { outline: none; box-shadow: none; border-bottom-color: var(--border); }
+
+/* Breadcrumb shown above the search input when the palette is inside a sub-
+   menu. Click the back button OR press Esc / Backspace / ← (when query is
+   empty) to pop one scope level. */
+.palette-breadcrumb {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 8px 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.palette-breadcrumb .meta { font-size: var(--fs-2); }
+
 .palette-list {
   max-height: 360px; overflow: auto; padding: 4px;
 }
 .palette-row {
-  display: grid; grid-template-columns: 14px 1fr auto;
+  display: grid; grid-template-columns: 14px 1fr auto auto;
   align-items: center; gap: 10px;
   width: 100%; padding: 8px 12px; border-radius: var(--r-2);
   color: var(--text-2); font-size: var(--fs-4);
   text-align: left;
   transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
 }
+/* The trailing chevron on submenu rows uses --text-3 so the affordance is
+   present but quiet — the row label is what the user is reading. */
+.palette-row > .icon.rotate-90-ccw { color: var(--text-3); }
+
+/* Chevron rotation utilities. The ICONS table only has chevronDown; we
+   rotate that single SVG instead of carrying chevronRight / chevronLeft. */
+.icon.rotate-90-ccw { transform: rotate(-90deg); }
+.icon.rotate-90-cw  { transform: rotate(90deg); }
 .palette-row.active,
 .palette-row:hover { background: var(--tint); color: var(--text); }
 .palette-row.active { background: var(--accent-tint); color: var(--text); }
