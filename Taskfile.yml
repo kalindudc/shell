@@ -168,6 +168,27 @@ tasks:
         fi
       - test/integration/run-install-test.sh {{.CLI_ARGS}}
 
+  cortex:build:
+    desc: "Compile cortex CLI to a single binary at home/bin/cortex"
+    cmds:
+      - cd src/cortex && pnpm install --frozen-lockfile
+      - |
+        BUN="${HOME}/.bun/bin/bun"
+        TARGET="bun-$(uname | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')"
+        cd src/cortex && "$BUN" build cli.ts --compile --minify --bytecode \
+          --target="$TARGET" --outfile ../../home/bin/cortex
+      - chmod +x home/bin/cortex && echo "✓ Built home/bin/cortex"
+
+  cortex:test:
+    desc: "Run cortex unit + integration tests"
+    cmds:
+      - cd src/cortex && ${HOME}/.bun/bin/bun test
+
+  cortex:dev:
+    desc: "Run cortex from source via bun. Use CLI_ARGS to pass args."
+    cmds:
+      - cd src/cortex && ${HOME}/.bun/bin/bun cli.ts {{.CLI_ARGS}}
+
   # Generate configs
   generate:
     desc: "Generate .zshrc, .gitconfig, and ghostty config"
