@@ -28,7 +28,6 @@ export type Update = {
 export type Lane = {
   name: string;
   color: string | null;
-  wip_limit: number;
   sort: number;
 };
 
@@ -56,13 +55,11 @@ export type AddUpdateInput = {
 export type AddLaneInput = {
   name: string;
   color?: string | null;
-  wip_limit?: number;
   sort?: number;
 };
 
 export type EditLaneFields = {
   color?: string | null;
-  wip_limit?: number;
   sort?: number;
   /** new lane name. ON UPDATE CASCADE propagates to tasks.lane FK. */
   rename?: string;
@@ -94,10 +91,9 @@ export class Store {
     this.db.transaction(() => {
       this.db.run(`
         CREATE TABLE IF NOT EXISTS lanes (
-          name      TEXT PRIMARY KEY,
-          color     TEXT,
-          wip_limit INTEGER NOT NULL DEFAULT 3,
-          sort      INTEGER NOT NULL DEFAULT 0
+          name  TEXT PRIMARY KEY,
+          color TEXT,
+          sort  INTEGER NOT NULL DEFAULT 0
         );
       `);
       this.db.run(`
@@ -127,9 +123,13 @@ export class Store {
         );
       `);
       this.db.run(
-        `INSERT OR IGNORE INTO lanes (name, color, wip_limit, sort)
-         VALUES ('now', '#fe8019', 3, 0);`,
+        `INSERT OR IGNORE INTO lanes (name, color, sort) VALUES ('now', '#fe8019', 0);`,
       );
+      // NOTE: pre-existing DBs may still have `wip_limit` (lanes) and
+      // `focus`/`parked_at`/`park_note` (tasks) columns from earlier versions.
+      // SQLite cannot drop columns without a full table rebuild; since each
+      // carries a NOT NULL DEFAULT (or is nullable), leaving them in place is
+      // harmless — our INSERT/SELECT no longer reference them.
     })();
   }
 
@@ -141,8 +141,7 @@ export class Store {
    */
   private ensureLane(name: string): void {
     this.db.run(
-      `INSERT OR IGNORE INTO lanes (name, color, wip_limit, sort)
-       VALUES (?, NULL, 3, 0);`,
+      `INSERT OR IGNORE INTO lanes (name, color, sort) VALUES (?, NULL, 0);`,
       [name],
     );
   }
@@ -292,15 +291,14 @@ export class Store {
 
   addLane(input: AddLaneInput): Lane {
     const color = input.color ?? null;
-    const wip = input.wip_limit ?? 3;
     const sort = input.sort ?? 0;
     const row = this.db
-      .query<Lane, [string, string | null, number, number]>(
-        `INSERT INTO lanes (name, color, wip_limit, sort)
-         VALUES (?, ?, ?, ?)
+      .query<Lane, [string, string | null, number]>(
+        `INSERT INTO lanes (name, color, sort)
+         VALUES (?, ?, ?)
          RETURNING *;`,
       )
-      .get(input.name, color, wip, sort);
+      .get(input.name, color, sort);
     if (!row) throw new Error("failed to insert lane");
     return row;
   }
@@ -318,10 +316,6 @@ export class Store {
       if (fields.color !== undefined) {
         sets.push("color = ?");
         params.push(fields.color);
-      }
-      if (fields.wip_limit !== undefined) {
-        sets.push("wip_limit = ?");
-        params.push(fields.wip_limit);
       }
       if (fields.sort !== undefined) {
         sets.push("sort = ?");

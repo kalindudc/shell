@@ -14,25 +14,13 @@ const add = defineCommand({
       type: "string",
       alias: "c",
       valueHint: "#hex",
-      description: "display color hex (e.g. #fe8019); used by the dashboard in Plan 2",
-    },
-    wip: {
-      type: "string",
-      alias: "w",
-      valueHint: "int",
-      description: "work-in-progress soft limit (default: 3)",
+      description: "display color hex (e.g. #fe8019); used by the dashboard",
     },
   },
   async run({ args }) {
-    const wip = args.wip ? Number.parseInt(args.wip, 10) : undefined;
-    if (args.wip && (!Number.isFinite(wip) || (wip as number) < 0)) {
-      console.error("error: --wip must be a non-negative integer");
-      process.exit(1);
-    }
     const payload = {
       name: args.name,
       color: args.color || null,
-      wip_limit: wip,
     };
     const url = daemonUrl();
     if (url) {
@@ -79,7 +67,6 @@ const ls = defineCommand({
         lanes.map((l) => ({
           name: l.name,
           color: l.color ?? "",
-          wip_limit: l.wip_limit,
         })),
       );
     } finally {
@@ -102,12 +89,6 @@ const edit = defineCommand({
       valueHint: "#hex",
       description: "new display color",
     },
-    wip: {
-      type: "string",
-      alias: "w",
-      valueHint: "int",
-      description: "new WIP limit (non-negative integer)",
-    },
     rename: {
       type: "string",
       valueHint: "new-name",
@@ -117,21 +98,12 @@ const edit = defineCommand({
   async run({ args }) {
     const fields: {
       color?: string | null;
-      wip_limit?: number;
       rename?: string;
     } = {};
     if (args.color) fields.color = args.color;
-    if (args.wip) {
-      const n = Number.parseInt(args.wip, 10);
-      if (!Number.isFinite(n) || n < 0) {
-        console.error("error: --wip must be a non-negative integer");
-        process.exit(1);
-      }
-      fields.wip_limit = n;
-    }
     if (args.rename) fields.rename = args.rename;
     if (Object.keys(fields).length === 0) {
-      console.error("error: provide at least one of --color, --wip, --rename");
+      console.error("error: provide at least one of --color, --rename");
       process.exit(1);
     }
     const url = daemonUrl();

@@ -19,6 +19,11 @@ export default defineCommand({
       default: false,
       description: "run in the current shell instead of detaching as a daemon",
     },
+    "no-open": {
+      type: "boolean",
+      default: false,
+      description: "do not auto-open the dashboard in a browser (headless)",
+    },
   },
   run({ args }) {
     const port = Number.parseInt(args.port, 10);
@@ -49,7 +54,7 @@ export default defineCommand({
       const url = `http://127.0.0.1:${port}`;
       fs.writeFileSync(urlPath(), url);
       console.log(`✓ cortex serving at ${url} (pid ${child.pid})`);
-      if (process.platform === "darwin") {
+      if (process.platform === "darwin" && !args["no-open"]) {
         try {
           Bun.spawn(["open", url]);
         } catch {

@@ -189,6 +189,15 @@ tasks:
     cmds:
       - cd src/cortex && ${HOME}/.bun/bin/bun cli.ts {{.CLI_ARGS}}
 
+  cortex:serve:dev:
+    desc: "Run the cortex API server from source with hot-reload (bun --watch). HTML is served fresh per request, so UI edits show on browser refresh; .ts changes restart the server. Pass PORT to override."
+    cmds:
+      - |
+        # Stop any background daemon first so the watch server owns 7777.
+        cd src/cortex && ${HOME}/.bun/bin/bun cli.ts stop 2>/dev/null || true
+      - cd src/cortex && ${HOME}/.bun/bin/bun --watch cli.ts serve --foreground --no-open --port {{.PORT | default "7777"}}
+    interactive: true
+
   # Generate configs
   generate:
     desc: "Generate .zshrc, .gitconfig, and ghostty config"

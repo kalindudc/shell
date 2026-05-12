@@ -1,0 +1,728 @@
+/* ---------- design tokens ----------
+   Warm, low-contrast neutral palette with a single soft-orange accent.
+
+   Theme resolution (handled by state.js setTheme):
+     - <html> with no data-theme attribute    → follows prefers-color-scheme
+     - <html data-theme="light">              → forced light
+     - <html data-theme="dark">               → forced dark
+   The dark token block is duplicated below: once inside the
+   prefers-color-scheme media query (system default) and once under the
+   explicit [data-theme="dark"] selector (user override). Keep the two
+   copies in sync when editing. */
+:root {
+  /* surfaces — 4-step elevation, warm off-white → deeper taupe */
+  --bg:            #f6f2ec;  /* warm off-white base */
+  --panel:         #efe9dd;  /* slightly deeper for left/right panes */
+  --tint:          #e7e0d0;  /* hover/selected tint */
+  --tint-strong:   #d8cfba;  /* stronger interaction state */
+  --border:        #ddd4be;
+  --border-strong: #bdb19a;
+
+  /* text — warm near-black, with a softer grey for main-view content */
+  --text:         #2c2820;  /* chrome / labels / strong emphasis */
+  --text-content: #403a30;  /* main-view content (titles, headings) */
+  --text-2:       #56503f;  /* body */
+  --text-3:       #8a8170;  /* muted / meta */
+  --text-4:       #b5a994;  /* very muted */
+
+  /* accent — clean warm orange. accent-on is dark text (6.0:1 against the
+     accent, AA+ for normal body); white-on-accent would fail AA. The tint
+     is a very pale wash for halos / focus rings / selected backgrounds. */
+  --accent:        #ed8e60;
+  --accent-hover:  #d97a4b;
+  --accent-tint:   #f7e1d4;
+  --accent-on:     #2c2820;
+
+  /* semantic */
+  --ok:    #5e8a4b;
+  --warn:  #c08a3a;
+  --err:   #b14a48;
+  --info:  #4a728d;
+
+  /* Dot color for the page-wide texture on .pane-active. Held at low alpha
+     so it reads as a hint of grain rather than a pattern. */
+  --paper-dot: rgba(64, 58, 48, 0.15);
+
+  --r-1: 4px;  --r-2: 6px;  --r-3: 8px;  --r-4: 12px;  --r-pill: 9999px;
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px;  --s-4: 16px;  --s-5: 20px;  --s-6: 24px;  --s-7: 32px;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+               Roboto, ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+  --font-feat: "cv01","cv11","ss01","ss03";
+
+  --fs-1: 11px; --fs-2: 12px; --fs-3: 13px; --fs-4: 14px;
+  --fs-5: 15px; --fs-6: 17px; --fs-7: 20px; --fs-8: 24px;
+
+  --ease:    cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --dur-1:   120ms;
+  --dur-2:   160ms;
+  --dur-3:   240ms;
+
+  --shadow-pop: 0 1px 2px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.06);
+  --shadow-cmd: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+
+  color-scheme: light;
+}
+
+/* ---- dark token block ----
+   The exact same set of overrides applied in two places:
+     1) prefers-color-scheme: dark  AND  no explicit data-theme="light"
+     2) explicit data-theme="dark"  (user override)
+   Edit both copies together. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    /* Cool, slightly blue-tinted greys — not warm browns. Softened overall:
+       text sits around #dadbe0 (not stark white) so contrast stays around
+       AA+ instead of hammering AAA. */
+    --bg:            #1d1f24;
+    --panel:         #24262b;
+    --tint:          #2c2e34;
+    --tint-strong:   #383a40;
+    --border:        #2e3036;
+    --border-strong: #43454c;
+
+    --text:         #dadbe0;
+    --text-content: #c2c4ca;
+    --text-2:       #989aa0;
+    --text-3:       #6b6d72;
+    --text-4:       #4a4c52;
+
+    --accent:        #f5a47e;
+    --accent-hover:  #ffb795;
+    --accent-tint:   #2e2418;
+    --accent-on:     #1d1f24;
+
+    --ok:    #7eaa6c;
+    --warn:  #d8a558;
+    --err:   #e08580;
+    --info:  #7896b0;
+
+    --paper-dot: rgba(218, 219, 224, 0.05);
+
+    --shadow-pop: 0 1px 2px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.5);
+    --shadow-cmd: 0 8px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4);
+
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:            #1d1f24;
+  --panel:         #24262b;
+  --tint:          #2c2e34;
+  --tint-strong:   #383a40;
+  --border:        #2e3036;
+  --border-strong: #43454c;
+
+  --text:         #dadbe0;
+  --text-content: #c2c4ca;
+  --text-2:       #989aa0;
+  --text-3:       #6b6d72;
+  --text-4:       #4a4c52;
+
+  --accent:        #f5a47e;
+  --accent-hover:  #ffb795;
+  --accent-tint:   #2e2418;
+  --accent-on:     #1d1f24;
+
+  --ok:    #7eaa6c;
+  --warn:  #d8a558;
+  --err:   #e08580;
+  --info:  #7896b0;
+
+  --paper-dot: rgba(218, 219, 224, 0.15);
+
+  --shadow-pop: 0 1px 2px rgba(0,0,0,0.4), 0 4px 12px rgba(0,0,0,0.5);
+  --shadow-cmd: 0 8px 32px rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.4);
+
+  color-scheme: dark;
+}
+
+/* ---------- base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; }
+body {
+  font: 400 var(--fs-4)/1.5 var(--font-sans);
+  font-feature-settings: var(--font-feat);
+  color: var(--text); background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+::selection { background: var(--accent-tint); color: var(--text); }
+::placeholder { color: var(--text-3); }
+
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+/* All editable controls render in the monospace stack. The dashboard is a
+   developer tool; user-typed content (task titles, descriptions, update
+   bodies, lane names) reads better in mono. UI chrome (eyebrows, buttons,
+   meta labels) stays sans for visual contrast. */
+input, textarea, select {
+  font: 400 var(--fs-3) var(--font-mono);
+  color: inherit; background: var(--bg);
+  border: 1px solid var(--border); border-radius: var(--r-2);
+  padding: 6px 10px; transition: border-color var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
+}
+input:hover, textarea:hover, select:hover { border-color: var(--border-strong); }
+input:focus, textarea:focus, select:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint);
+}
+textarea { width: 100%; min-height: 80px; resize: vertical; line-height: 1.5; }
+a { color: var(--accent); text-decoration: none; }
+
+/* ---------- layout ---------- */
+main {
+  display: grid;
+  grid-template-columns: 220px 1fr 340px;
+  grid-template-areas: "lanes active inbox";
+  height: 100vh;
+  overflow: hidden;
+}
+.pane { overflow: auto; display: flex; flex-direction: column; min-height: 0; }
+/* Left sidebar opts out of pane-level scrolling: each domain section
+   (Lanes, Tasks) owns its own scroll context so the system strip, All
+   tasks button, and pane-foot stay pinned. */
+.pane-lanes  { grid-area: lanes; background: var(--panel); overflow: hidden; }
+
+/* Lanes section
+   ---------------
+   When ALONE in the middle (no tasks list rendered yet), it grows to fill
+   all remaining vertical space and scrolls internally if there are many
+   lanes.
+
+   When PAIRED with the tasks section, it caps at one-third of the pane
+   height (:has() selector below) so a long lane list can never squeeze the
+   task list out of view — task triage is the primary activity, lane
+   navigation is secondary. The lanes-section then becomes a fixed-basis
+   flex item; the tasks section consumes whatever's left.
+
+   Padding lives on the inner .section-head / .section-body (not on the
+   section itself) so the sticky header can span flush to the section's
+   edges and cover scrolling content underneath without a padding gap. */
+.pane-lanes > .lanes-section,
+.pane-lanes > .tasks-section {
+  padding: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.pane-lanes:has(> .tasks-section) > .lanes-section {
+  flex: 0 0 auto;
+  max-height: 33%;
+}
+.pane-lanes > .tasks-section {
+  /* Visible gap between the lane list and the task list — they're
+     conceptually separate, the spacing should reflect that. */
+  padding-top: 12px;
+}
+
+/* Sticky section header for both lanes-section and tasks-section. Sits at
+   the top of its scrolling parent so the title (and the new-lane form when
+   open) stays visible no matter how far you scroll. Background matches the
+   pane so scrolling content disappears cleanly underneath. */
+.lanes-section > .section-head,
+.tasks-section > .section-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel);
+  padding: 12px 16px 8px 16px;
+}
+.lanes-section > .section-body,
+.tasks-section > .section-body {
+  padding: 0 16px 16px 16px;
+}
+
+/* Shared scrollbar styling for both internal scrollers in the lanes pane. */
+.pane-lanes > .lanes-section::-webkit-scrollbar,
+.pane-lanes > .tasks-section::-webkit-scrollbar         { width: 8px; }
+.pane-lanes > .lanes-section::-webkit-scrollbar-track,
+.pane-lanes > .tasks-section::-webkit-scrollbar-track   { background: transparent; }
+.pane-lanes > .lanes-section::-webkit-scrollbar-thumb,
+.pane-lanes > .tasks-section::-webkit-scrollbar-thumb   { background: var(--border-strong); border-radius: 4px; }
+.pane-lanes > .lanes-section::-webkit-scrollbar-thumb:hover,
+.pane-lanes > .tasks-section::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+/* Active pane wears the dot-grid "paper" background as a subtle full-pane
+   texture. 26px gap + sub-pixel dots make it almost invisible until you
+   look for it — the goal is grain, not pattern. */
+.pane-active {
+  grid-area: active;
+  background-color: var(--bg);
+  background-image: radial-gradient(circle, var(--paper-dot) 0.8px, transparent 1.2px);
+  background-size: 26px 26px;
+  background-position: 0 0;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.pane-inbox  { grid-area: inbox;  background: var(--panel); }
+
+/* ---------- typography ---------- */
+.eyebrow {
+  font-size: var(--fs-1); font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-3); margin: 0;
+}
+/* Task display titles render in mono — they're user content that round-trips
+   through the edit form (also mono), so the visual weight stays consistent.
+   Color uses --text-content (a softer grey than the full text color) so the
+   title doesn't shout against the warm paper background. */
+.title-2 { font: 600 var(--fs-7)/1.33 var(--font-mono); margin: 0; letter-spacing: -0.01em; color: var(--text-content); }
+.title-3 { font: 600 var(--fs-8)/1.33 var(--font-mono); margin: 0; letter-spacing: -0.01em; color: var(--text-content); }
+.muted   { color: var(--text-3); }
+.meta    { color: var(--text-3); font-size: var(--fs-2); }
+.num     { font-variant-numeric: tabular-nums; }
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 28px; padding: 0 10px; border-radius: var(--r-2);
+  color: var(--text-2); background: transparent;
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+  font-size: var(--fs-3);
+}
+.btn:hover { background: var(--tint); color: var(--text); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn .kbd { margin-left: 4px; }
+.btn-primary {
+  background: var(--accent); color: var(--accent-on);
+  transition: background var(--dur-2) var(--ease);
+}
+.btn-primary:hover { background: var(--accent-hover); color: var(--accent-on); }
+.btn-icon {
+  width: 28px; height: 28px; padding: 0; justify-content: center;
+  color: var(--text-3);
+}
+.btn-icon:hover { color: var(--text); background: var(--tint); }
+.btn-danger:hover { color: var(--err); background: var(--tint); }
+.btn:disabled, .btn:disabled:hover {
+  opacity: 0.4; cursor: not-allowed; background: transparent; color: var(--text-3);
+}
+input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.icon { width: 14px; height: 14px; flex-shrink: 0; }
+.icon-sm { width: 12px; height: 12px; }
+.icon-lg { width: 20px; height: 20px; }
+
+/* ---------- kbd hint ----------
+   Subtle inline annotation, NOT a 3D keyboard cap. The earlier raised-key
+   styling clashed inside primary buttons (a tiny chip-on-a-chip look). The
+   refined version is a flat, low-contrast lozenge that reads as part of the
+   surrounding text/button rather than a separate widget.
+
+   - .kbd alone: subtle tint chip suitable for sidebars and inline copy
+   - .btn .kbd:  inherits the button's text color, very faint wash via
+                 currentColor so it sits on top of any button background
+                 (primary, ghost, danger) without an inline override. */
+.kbd {
+  display: inline-flex; align-items: center;
+  padding: 1px 6px;
+  font: 500 var(--fs-1)/1.4 var(--font-mono);
+  letter-spacing: 0.02em;
+  color: var(--text-3);
+  background: var(--tint);
+  border-radius: var(--r-1);
+}
+.btn .kbd {
+  margin-left: 6px;
+  padding: 1px 5px;
+  color: inherit;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  opacity: 0.78;
+  font-weight: 500;
+}
+
+/* ---------- view row (top-level non-lane filters like "All tasks") ----------
+   Distinct from .lane-row because views aren't lanes — they have no color
+   swatch column and no edit affordance, just an icon + label + count. Kept
+   visually similar enough that selection state reads the same. */
+.view-row {
+  display: grid; grid-template-columns: 14px 1fr auto;
+  align-items: center; gap: 8px;
+  width: 100%; padding: 6px 10px; border-radius: var(--r-2);
+  color: var(--text-2); text-align: left;
+  font-size: var(--fs-3);
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+}
+.view-row:hover    { background: var(--tint); color: var(--text); }
+.view-row.selected { background: var(--tint); color: var(--text); }
+.view-row.dragover { background: var(--accent-tint); color: var(--text); }
+.view-row .view-name  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.view-row .view-count { font-size: var(--fs-2); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.view-row .icon       { color: var(--text-3); }
+.view-row.selected .icon { color: var(--text); }
+
+/* ---------- lane row ---------- */
+.lane-row {
+  display: grid; grid-template-columns: 8px 1fr auto auto;
+  align-items: center; gap: 8px;
+  width: 100%; padding: 6px 10px; border-radius: var(--r-2);
+  color: var(--text-2); text-align: left;
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+  position: relative;
+}
+.lane-row:hover { background: var(--tint); color: var(--text); }
+.lane-row.selected { background: var(--tint); color: var(--text); }
+.lane-row .lane-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-3); }
+.lane-row .lane-count { font-size: var(--fs-2); color: var(--text-3); font-variant-numeric: tabular-nums; }
+.lane-row.dragover { background: var(--accent-tint); color: var(--text); }
+.lane-color {
+  width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0;
+  background: var(--border-strong);
+}
+.lane-edit-btn {
+  width: 18px; height: 18px; padding: 0; border-radius: var(--r-1);
+  color: var(--text-3); opacity: 0; transition: opacity var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.lane-row:hover .lane-edit-btn,
+.lane-row.selected .lane-edit-btn { opacity: 1; }
+.lane-edit-btn:hover { color: var(--text); background: var(--tint-strong); }
+
+/* Task priority chip — small monospace badge after the title */
+.priority-chip {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 16px; min-width: 22px; padding: 0 5px;
+  font: 600 var(--fs-1)/1 var(--font-mono);
+  color: var(--text-3); background: var(--tint);
+  border-radius: var(--r-1); flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.priority-chip.urgent { color: var(--accent-on); background: var(--accent); }
+.priority-chip.high   { color: var(--err);       background: transparent; border: 1px solid var(--err); }
+
+/* Color swatch grid for lane edit modal */
+.color-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 6px; }
+.color-swatch {
+  width: 100%; aspect-ratio: 1; border-radius: var(--r-2);
+  border: 2px solid transparent;
+  cursor: pointer; transition: transform var(--dur-1) var(--ease);
+}
+.color-swatch.selected { border-color: var(--text); }
+.color-swatch:hover { transform: scale(1.1); }
+.color-swatch.clear {
+  background: repeating-linear-gradient(45deg, var(--tint), var(--tint) 4px, var(--bg) 4px, var(--bg) 8px);
+  border-color: var(--border);
+}
+
+/* ---------- task list (inside lane filter) ----------
+   width:100% so the row spans the full sidebar width regardless of how short
+   the task title is — otherwise <button>'s default inline-block sizing makes
+   each row only as wide as its content, leaving the priority chip and
+   hover/active background ragged across the column. */
+.task-row {
+  display: grid; grid-template-columns: 14px 1fr auto;
+  align-items: center; gap: 8px;
+  width: 100%;
+  padding: 4px 8px; border-radius: var(--r-2);
+  color: var(--text-2);
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+  cursor: pointer;
+  text-align: left;
+}
+.task-row:hover { background: var(--tint); color: var(--text); }
+.task-row.active { background: var(--tint); color: var(--text); }
+/* Sidebar task list — default sans (keeps mono reserved for the main view's
+   title + description so the editor area is the visual focus). */
+.task-row .task-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-3); }
+
+/* ---------- status dot + pill ---------- */
+.dot {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: currentColor; flex-shrink: 0;
+}
+.dot-status-open    { color: var(--text-3); }
+.dot-status-review  { color: var(--warn); }
+.dot-status-blocked { color: var(--err); }
+.dot-status-done    { color: var(--ok); }
+
+.status-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 24px; padding: 0 10px; border-radius: var(--r-pill);
+  background: var(--tint); color: var(--text-2);
+  font-size: var(--fs-2); font-weight: 500;
+  transition: background var(--dur-2) var(--ease);
+}
+.status-pill:hover { background: var(--tint-strong); color: var(--text); }
+
+/* ---------- popover ---------- */
+.popover {
+  position: absolute; min-width: 180px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--r-3); box-shadow: var(--shadow-pop);
+  padding: 4px; z-index: 50;
+}
+.popover-row {
+  display: grid; grid-template-columns: 14px 1fr auto;
+  align-items: center; gap: 8px;
+  width: 100%; padding: 6px 10px; border-radius: var(--r-2);
+  font-size: var(--fs-3); color: var(--text-2);
+  transition: background var(--dur-2) var(--ease), color var(--dur-2) var(--ease);
+}
+.popover-row:hover { background: var(--tint); color: var(--text); }
+
+/* ---------- update form ---------- */
+.compose {
+  display: flex; flex-direction: column;
+  border: 1px solid var(--border); border-radius: var(--r-3);
+  background: var(--bg);
+  transition: border-color var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease);
+}
+.compose:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+.compose textarea {
+  border: 0; box-shadow: none; padding: 10px 12px; min-height: 56px;
+  background: transparent; resize: none;
+}
+.compose textarea:focus { outline: none; box-shadow: none; }
+.compose-foot {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px 6px 12px; border-top: 1px solid var(--border);
+}
+.compose-foot input.author {
+  height: 24px; padding: 0 6px; width: 80px; font-size: var(--fs-2);
+  border: 1px solid transparent; background: transparent;
+}
+.compose-foot input.author:hover { border-color: var(--border); }
+.compose-foot input.author:focus { border-color: var(--accent); background: var(--bg); }
+.char-counter { font-size: var(--fs-1); color: var(--text-3); }
+.char-counter.warn { color: var(--err); }
+/* Hotkey hint chip in the compose-foot. Sits inline with the char counter
+   and Post button so it stays visible while typing (placeholders vanish on
+   first keystroke, which is the worst possible time to forget a shortcut). */
+.compose-hint { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-1); }
+
+/* ---------- inbox row ---------- */
+.inbox-header {
+  display: flex; align-items: center; gap: 8px;
+  position: sticky; top: 0; z-index: 1;
+  padding: 16px 16px 12px; background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+.inbox-row {
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  transition: background var(--dur-2) var(--ease);
+}
+.inbox-row:hover { background: var(--tint); }
+.inbox-row .summary { color: var(--text); font: 400 var(--fs-3)/1.5 var(--font-mono); white-space: pre-wrap; word-break: break-word; }
+.inbox-row .meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.avatar {
+  width: 20px; height: 20px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font: 600 var(--fs-1)/1 var(--font-sans); color: var(--accent-on);
+  background: var(--accent); flex-shrink: 0;
+}
+
+/* ---------- empty state ---------- */
+.empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 10px; padding: 48px 24px; color: var(--text-3); text-align: center;
+  flex: 1;
+}
+.empty .icon { width: 32px; height: 32px; color: var(--text-4); }
+.empty .empty-title { color: var(--text-2); font-weight: 500; font-size: var(--fs-4); }
+.empty .empty-sub { color: var(--text-3); font-size: var(--fs-2); }
+
+/* ---------- modal / overlay ---------- */
+.overlay {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 18vh; background: rgba(0,0,0,0.32);
+  animation: fade var(--dur-2) var(--ease);
+}
+.modal {
+  width: 100%; max-width: 480px;
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: var(--r-4); box-shadow: var(--shadow-cmd);
+  padding: 16px; display: flex; flex-direction: column; gap: 12px;
+  animation: pop var(--dur-3) var(--ease);
+}
+.modal h2 { margin: 0; font-size: var(--fs-6); font-weight: 600; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+@keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes pop  { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: none } }
+
+/* ---------- command palette ---------- */
+.modal.palette {
+  max-width: 560px; padding: 0; gap: 0;
+  overflow: hidden;
+}
+.palette-input {
+  border: 0; border-bottom: 1px solid var(--border); border-radius: 0;
+  padding: 14px 16px; font-size: var(--fs-5);
+  background: transparent;
+}
+.palette-input:focus { outline: none; box-shadow: none; border-bottom-color: var(--border); }
+.palette-list {
+  max-height: 360px; overflow: auto; padding: 4px;
+}
+.palette-row {
+  display: grid; grid-template-columns: 14px 1fr auto;
+  align-items: center; gap: 10px;
+  width: 100%; padding: 8px 12px; border-radius: var(--r-2);
+  color: var(--text-2); font-size: var(--fs-4);
+  text-align: left;
+  transition: background var(--dur-1) var(--ease), color var(--dur-1) var(--ease);
+}
+.palette-row.active,
+.palette-row:hover { background: var(--tint); color: var(--text); }
+.palette-row.active { background: var(--accent-tint); color: var(--text); }
+.palette-foot {
+  display: flex; gap: 16px; padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  font-size: var(--fs-1);
+}
+.palette-foot .kbd { margin-right: 4px; }
+.overlay-top { padding-top: 12vh; }
+
+/* ---------- toast / error ---------- */
+.toast {
+  position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+  padding: 10px 14px; border-radius: var(--r-3);
+  background: var(--err); color: #fff; font-size: var(--fs-3);
+  box-shadow: var(--shadow-pop); z-index: 200;
+  animation: pop var(--dur-3) var(--ease);
+}
+
+/* ---------- misc ---------- */
+.row { display: flex; align-items: center; gap: 8px; }
+.col { display: flex; flex-direction: column; gap: 8px; }
+.stack > * + * { margin-top: 12px; }
+.grow { flex: 1; min-width: 0; }
+/* App() wraps panes in a single <div class="contents"> for layout-only.
+   display:contents makes the wrapper transparent so inner panes are direct
+   children of the <main> grid. */
+.contents { display: contents; }
+.hidden { display: none !important; }
+
+.pane-section { padding: 16px; }
+.pane-section + .pane-section { padding-top: 0; }
+
+/* App-level system controls strip at the very top of the left sidebar.
+   Right-aligned bare icon buttons; no eyebrow label — position + treatment
+   already convey "app chrome". A hairline bottom border separates it from
+   domain content (All tasks, Lanes) below without adding visual weight. */
+.pane-system {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.pane-foot {
+  margin-top: auto;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.active-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 24px; border-bottom: 1px solid var(--border);
+}
+.active-body { padding: 20px 24px; flex: 1; min-height: 0; overflow: auto; }
+
+.active-foot {
+  padding: 16px 24px; border-top: 1px solid var(--border); background: var(--panel);
+}
+
+.lane-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 2px 8px; border-radius: var(--r-pill);
+  background: var(--tint); color: var(--text-2); font-size: var(--fs-2);
+}
+.lane-chip .lane-color { width: 6px; height: 6px; border-radius: 50%; }
+
+/* drag & drop visual */
+[draggable="true"] { cursor: grab; }
+[draggable="true"]:active { cursor: grabbing; }
+.status-pill.dragover { background: var(--accent-tint); color: var(--text); }
+
+/* ---------- markdown source highlighting (task body display) ----------
+   We do NOT compile/render the markdown. The user sees the EXACT raw text
+   they typed (#, **, `, [...](...) etc all visible) with token-level color
+   so structure is recognisable at a glance but editing round-trips losslessly.
+   highlight.js (markdown grammar) emits .hljs-* spans inside our .md-source
+   <pre><code> wrapper; this section themes those tokens to the palette. */
+.md-display { font-family: var(--font-mono); }
+.md-source {
+  margin: 0; padding: 0; background: transparent; border: 0;
+  font-family: var(--font-mono); font-size: var(--fs-3); line-height: 1.65;
+  color: var(--text-content);
+  white-space: pre-wrap; word-break: break-word;
+  /* Preserve the user's literal whitespace, but allow long lines to wrap so
+     the description never causes horizontal scroll on a narrow active pane. */
+}
+.md-source .hljs-section,
+.md-source .hljs-strong       { color: var(--text); font-weight: 700; }
+.md-source .hljs-emphasis     { color: var(--text); font-style: italic; }
+.md-source .hljs-bullet,
+.md-source .hljs-symbol       { color: var(--accent); font-weight: 600; }
+.md-source .hljs-code         { color: var(--accent); }
+.md-source .hljs-link,
+.md-source .hljs-link_label,
+.md-source .hljs-string       { color: var(--info); text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
+.md-source .hljs-quote        { color: var(--text-3); font-style: italic; }
+.md-source .hljs-meta,
+.md-source .hljs-attr,
+.md-source .hljs-attribute,
+.md-source .hljs-name         { color: var(--info); }
+.md-source .hljs-number       { color: var(--warn); }
+.md-source .hljs-comment      { color: var(--text-3); font-style: italic; }
+.md-source .hljs-title        { color: var(--text); font-weight: 600; }
+
+/* ---------- autosize textarea (post-update compose only) ----------
+   Companion to autosizeRef in components.js: JS sets `height` to fit content
+   exactly on every input, so the textarea has no internal scroll. Used by
+   the inbox post-update compose box, where growing-with-content feels right
+   because the box is small and lives at the bottom of its pane.
+
+   The EDIT TASK description deliberately does NOT use this — see .edit-body
+   below: in edit mode we need bounded scroll so the form chrome (priority,
+   lane, cancel, save) is always visible. */
+textarea.autosize {
+  min-height: 80px;
+  overflow: hidden;     /* never scroll — JS keeps height = scrollHeight */
+  resize: none;
+}
+
+/* ---------- edit-task-form (the in-place description editor) ----------
+   When .active-body has the --editing modifier, it switches from a normal
+   scroll container to a flex column that hosts the edit form. The form is
+   itself a flex column where the .edit-body textarea is `flex: 1` — so the
+   title input, priority/lane row, and cancel/save row stay at their natural
+   height (always visible) and the textarea is the ONLY thing that scrolls
+   when the description outgrows the available space.
+
+   This replaces the older nested-scroll behaviour where both the textarea
+   and .active-body scrolled, pushing the form chrome (and the .active-foot
+   below it) past the viewport. */
+.active-body--editing {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.edit-task-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;     /* let the textarea actually be constrained by parent */
+  width: 100%;
+  gap: 10px;
+}
+.edit-task-form > .edit-body {
+  flex: 1 1 auto;
+  min-height: 120px;
+  overflow-y: auto;  /* THE only scroll surface in edit mode */
+  resize: none;
+  /* matched scrollbar styling so the only visible scrollbar in edit mode
+     looks deliberate, not like a browser default. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.edit-task-form > .edit-body::-webkit-scrollbar         { width: 8px; }
+.edit-task-form > .edit-body::-webkit-scrollbar-track   { background: transparent; }
+.edit-task-form > .edit-body::-webkit-scrollbar-thumb   { background: var(--border-strong); border-radius: 4px; }
+.edit-task-form > .edit-body::-webkit-scrollbar-thumb:hover { background: var(--text-3); }

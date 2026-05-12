@@ -61,8 +61,8 @@ describe("Store: tasks", () => {
     const moved2 = s.moveTask(t.id, "new-lane");
     expect(moved2.lane).toBe("new-lane");
     const lane = s.listLanes().find((l) => l.name === "new-lane");
-    expect(lane?.wip_limit).toBe(3);
     expect(lane?.color).toBeNull();
+    expect(lane?.sort).toBe(0);
     s.close();
   });
 
@@ -111,14 +111,33 @@ describe("Store: updates", () => {
   });
 });
 
+describe("Store: migrate", () => {
+  test("migrate is idempotent — reopening preserves data and schema", () => {
+    // Re-open the same on-disk DB twice; second open's migrate() must be a no-op.
+    const tmp = `${process.env.TMPDIR ?? "/tmp"}/cortex-migrate-${Date.now()}.db`;
+    let s = Store.open(tmp);
+    const t = s.addTask({ title: "persisted", body: "keep me", priority: 2 });
+    s.close();
+    s = Store.open(tmp);
+    const reopened = s.getTask(t.id);
+    expect(reopened?.title).toBe("persisted");
+    expect(reopened?.body).toBe("keep me");
+    expect(reopened?.priority).toBe(2);
+    s.close();
+    for (const ext of ["", "-wal", "-shm"]) {
+      try { require("node:fs").rmSync(tmp + ext, { force: true }); } catch {}
+    }
+  });
+});
+
 describe("Store: lanes", () => {
   test("add/list/edit/remove lifecycle", () => {
     const s = open();
     expect(s.listLanes().map((l) => l.name)).toEqual(["now"]);
-    s.addLane({ name: "later", color: "#abc", wip_limit: 5 });
+    s.addLane({ name: "later", color: "#abc", sort: 5 });
     expect(s.listLanes().length).toBe(2);
-    const edited = s.editLane("later", { wip_limit: 7 });
-    expect(edited.wip_limit).toBe(7);
+    const edited = s.editLane("later", { color: "#def" });
+    expect(edited.color).toBe("#def");
     s.removeLane("later");
     expect(s.listLanes().length).toBe(1);
     s.close();
