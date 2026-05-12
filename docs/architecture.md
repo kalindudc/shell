@@ -85,7 +85,6 @@ The `custom:` backend calls Ruby methods for packages needing special logic:
 ERB template generation unchanged:
 - `generate_zshrc.rb` — generates `.zshrc`
 - `generate_tempate.rb` — generates `.gitconfig` from template
-- `generate_opencode_config.rb` — generates opencode config
 
 ## Dotfile Symlinking
 

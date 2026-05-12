@@ -44,26 +44,7 @@ home/.claude/*
 !.claude/skills/
 !.claude/scripts/
 
-# ignore opencode files, with some exceptions
-home/.config/opencode/*
-!home/.config/opencode/tui.json
-!home/.config/opencode/commands/
-!home/.config/opencode/concepts/
-!home/.config/opencode/templates/
-!home/.config/opencode/agents/
-!home/.config/opencode/skills/
-!home/.config/opencode/scripts/
-!home/.config/opencode/tools/
-!home/.config/opencode/prompts/
-!home/.config/opencode/plugins/
-!home/.config/opencode/session-recorder.json
-!home/.config/opencode/plugins.json
-home/.config/opencode/**/*interview*
 home/.agents/**/*interview*
-
-# SKILL_NOTES.md files are local observations, bootstrapped by src/scripts/bootstrap-skill-notes.sh
-home/.config/opencode/skills/*/SKILL_NOTES.md
-
 
 # ignore home/.pi files, with some exceptions
 # NOTE: use home/.pi/* (not home/.pi/) so git recurses into the directory

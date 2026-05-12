@@ -1,6 +1,6 @@
 # Building Skills and Agentic Workflows
 
-Standards for building OpenCode skills, agents, commands, and custom tools.
+Standards for building Agentic skills, agents, commands, and custom tools.
 
 ## Core Philosophy
 
@@ -67,7 +67,7 @@ Aim for under 150 lines. But don't count lines -- ask "is every line earning its
 
 ### Repo-specific skills
 
-Local `.opencode/skills/` should be **better than global** for that repo. Carry repo-specific commands, URLs, patterns, and conventions. If a local skill is just a copy of the global one, delete it.
+Local `.agents/skills/` should be **better than global** for that repo. Carry repo-specific commands, URLs, patterns, and conventions. If a local skill is just a copy of the global one, delete it.
 
 ---
 
@@ -133,40 +133,6 @@ Load the `<skill-name>` skill and follow its instructions to <verb>: $ARGUMENTS
 - Shell output injection (`!`command``) pre-loads context to save tool calls.
 - `agent:` inherits permissions. Don't duplicate permission logic.
 - `subtask: true` for isolated sessions (exploration). Skip it for inline work (debugging).
-
----
-
-## Custom Tool Design
-
-### When to build
-
-Build when the agent consistently chains 3+ bash commands for one answer, output parsing is error-prone, or structural analysis is needed. Don't build for one-off tasks or simple single commands.
-
-### Structure
-
-```typescript
-import { tool } from "@opencode-ai/plugin"
-
-export default tool({
-  description: "What this does and when to use it (not just what)",
-  args: {
-    param: tool.schema.string().describe("What this parameter is"),
-  },
-  async execute(args, context) {
-    // Shell out to CLI tools, parse structured output
-    // Return structured JSON, not raw text
-    // Limit output (20 matches, not 2000)
-    // Degrade gracefully if dependencies missing
-  },
-})
-```
-
-### Principles
-
-- **Description matters** -- it's the prompt context the agent sees.
-- **Return structured data**, not raw text.
-- **Limit output** to protect the context window.
-- **Reference tools in skills** -- undiscoverable tools don't get used.
 
 ---
 

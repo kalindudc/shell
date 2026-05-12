@@ -1,7 +1,7 @@
 /**
  * Custom Tools Extension
  *
- * Migrated from OpenCode custom tools. Registers 5 tools:
+ * Registers 5 tools:
  * - ast_query: Structural AST pattern search via ast-grep
  * - git_blame: Blame context for a code region
  * - git_diff_summary: Structured diff summary with categorization
@@ -685,14 +685,14 @@ export default function (pi: ExtensionAPI) {
 
   function detectFramework(command: string): Framework {
     const trimmed = command.trim();
-    
+
     // Detect task runner commands by looking at the task name
     // These need to match common task names in Taskfile.yml
     if (/^task test/.test(trimmed)) return "vitest";  // pi-minions uses vitest
     if (/^task jest/.test(trimmed)) return "jest";
     if (/^task pytest/.test(trimmed)) return "pytest";
     if (/^task rspec/.test(trimmed)) return "rspec";
-    
+
     // Direct framework commands
     if (/\bvitest\b/.test(command)) return "vitest";
     if (/\bjest\b/.test(command) || /\breact-scripts test\b/.test(command)) return "jest";
@@ -705,7 +705,7 @@ export default function (pi: ExtensionAPI) {
   function appendJsonFlag(command: string, framework: Framework): string {
     // Check if using task runner
     const isTask = command.trim().startsWith("task ");
-    
+
     switch (framework) {
       case "jest":
         return isTask ? `${command} json=true` : `${command} --json`;
@@ -791,10 +791,10 @@ export default function (pi: ExtensionAPI) {
       const data = JSON.parse(raw);
       // Vitest uses Jest-compatible format: testResults[].assertionResults[]
       const failures: TestResult["failures"] = [];
-      
+
       for (const result of data.testResults || []) {
         const testFilePath = result.name;
-        
+
         for (const test of result.assertionResults || []) {
           if (test.status === "failed") {
             failures.push({
@@ -806,7 +806,7 @@ export default function (pi: ExtensionAPI) {
           }
         }
       }
-      
+
       return {
         summary: {
           passed: data.numPassedTests || 0,

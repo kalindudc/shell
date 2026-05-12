@@ -1,6 +1,6 @@
 # Shared Agents Base
 
-Canonical base directory for agent-agnostic agentic workflows. Consumed by both Pi and OpenCode (and any future coding agent harness).
+Canonical base directory for agent-agnostic agentic workflows. Consumed by Pi (and any future coding agent harness).
 
 ## Directory Structure
 
@@ -18,12 +18,11 @@ Canonical base directory for agent-agnostic agentic workflows. Consumed by both 
 
 ## What Does NOT Live Here
 
-- Commands/prompts -- these are runtime-specific and live in each harness's config directory (`~/.pi/agent/prompts/`, `~/.config/opencode/commands/`)
-- Extensions/tools -- these are harness-specific implementations (`~/.pi/agent/extensions/`, `~/.config/opencode/tools/`)
+- Commands/prompts -- these are runtime-specific and live in each harness's config directory (`~/.pi/agent/prompts/`)
+- Extensions/tools -- these are harness-specific implementations (`~/.pi/agent/extensions/`)
 - Provider configuration -- handled by each harness's settings
 
 ## Harness Integration
 
 - Pi: discovers skills from `~/.agents/skills/` natively. AGENTS.md loaded via the `agents-context` extension.
-- OpenCode: reads AGENTS.md from `~/.config/opencode/AGENTS.md` (separate copy, kept in sync). Skills in `~/.config/opencode/skills/`.
 

@@ -627,3 +627,6 @@ if [[ -n "$GHOSTTY_RESOURCES_DIR" ]]; then
 fi
 
 printf 'Start time %.4fs\n' $(echo "($ENDTIME - $STARTTIME)/1000" | bc -l)
+
+# Added by tec agent
+[[ -x /Users/kalindu/.local/state/tec/profiles/base/current/global/init ]] && eval "$(/Users/kalindu/.local/state/tec/profiles/base/current/global/init zsh)"
