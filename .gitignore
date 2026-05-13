@@ -23,7 +23,6 @@ vendor/
 tmp/
 test-manual.sh
 node_modules/
-src/cortex/node_modules
 home/bin/cortex
 
 home/.claude/settings.json

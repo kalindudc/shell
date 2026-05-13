@@ -29,12 +29,15 @@ symbol = " "
 style  = 'bold green'
 
 [git_status]
-format     = '([$stashed$staged$modified$untracked$conflicted$ahead_behind]($style) )'
-stashed    = '[*$count ](bold purple)'
-staged     = '[+$count ](bold green)'
-modified   = '[!$count ](bold yellow)'
-untracked  = '[?$count ](bold blue)'
-conflicted = '[x$count ](bold red)'
+format      = '([$stashed$staged$deleted$renamed$modified$typechanged$untracked$conflicted$ahead_behind]($style) )'
+stashed     = '[*$count ](bold purple)'
+staged      = '[+$count ](bold green)'
+deleted     = '[-$count ](bold red)'
+renamed     = '[»$count ](bold cyan)'
+modified    = '[!$count ](bold yellow)'
+typechanged = '[±$count ](bold magenta)'
+untracked   = '[?$count ](bold blue)'
+conflicted  = '[x$count ](bold red)'
 
 [time]
 disabled    = false
