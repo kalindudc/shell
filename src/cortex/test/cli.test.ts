@@ -9,10 +9,14 @@ const CLI = path.join(ROOT, "cli.ts");
 
 let tmpDir: string;
 let dbPath: string;
+let skillDir: string;
 
 beforeAll(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "cortex-cli-"));
   dbPath = path.join(tmpDir, "cortex.db");
+  // Plan 3: init/reset write+wipe the cortex skill at ~/.agents/skills/cortex.
+  // Redirect to a tmp dir so the test never touches the user's real skill.
+  skillDir = path.join(tmpDir, "skill");
 });
 
 afterAll(() => {
@@ -25,7 +29,12 @@ async function run(...args: string[]): Promise<{
   stderr: string;
 }> {
   const proc = Bun.spawn([BUN, CLI, ...args], {
-    env: { ...process.env, CORTEX_DB: dbPath, NO_COLOR: "1" },
+    env: {
+      ...process.env,
+      CORTEX_DB: dbPath,
+      CORTEX_SKILL_DIR: skillDir,
+      NO_COLOR: "1",
+    },
     cwd: ROOT,
     stdout: "pipe",
     stderr: "pipe",
@@ -44,7 +53,12 @@ async function runWithInput(
   ...args: string[]
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   const proc = Bun.spawn([BUN, CLI, ...args], {
-    env: { ...process.env, CORTEX_DB: dbPath, NO_COLOR: "1" },
+    env: {
+      ...process.env,
+      CORTEX_DB: dbPath,
+      CORTEX_SKILL_DIR: skillDir,
+      NO_COLOR: "1",
+    },
     cwd: ROOT,
     stdin: "pipe",
     stdout: "pipe",
@@ -110,8 +124,19 @@ test("CLI round-trip: init → add → ls → update → edit → mv → rm", as
   expect(Array.isArray(list1)).toBe(true);
   expect(list1.length).toBe(2);
 
-  // update with status change
-  r = await run("update", "1", "-m", "in review now", "-s", "review");
+  // update with status change.
+  // Plan 3: --as is REQUIRED on `cortex update` (single source of truth
+  // for author attribution; the dashboard cascade does not apply to CLI).
+  r = await run(
+    "update",
+    "1",
+    "-m",
+    "in review now",
+    "-s",
+    "review",
+    "--as",
+    "cli-roundtrip",
+  );
   expect(r.code).toBe(0);
   expect(r.stdout).toContain("update");
   expect(r.stdout).toContain("status");
@@ -134,13 +159,20 @@ test("CLI round-trip: init → add → ls → update → edit → mv → rm", as
   expect(r.code).toBe(0);
   expect(r.stdout).toContain("later");
 
-  // show task 1 as JSON
+  // show task 1 as JSON.
+  // Plan 3: setStatus writes an audit-trail row alongside the message row,
+  // so the prior `update -m "..." -s review` produces 2 rows on this task
+  // (message row + `status → review` audit row), not 1.
   r = await run("show", "1", "--json");
   expect(r.code).toBe(0);
   const show = JSON.parse(r.stdout);
   expect(show.task.title).toBe("task one renamed");
   expect(show.task.status).toBe("review");
-  expect(show.updates.length).toBe(1);
+  expect(show.updates.length).toBe(2);
+  expect(show.updates.some((u: { summary: string }) => u.summary === "in review now"))
+    .toBe(true);
+  expect(show.updates.some((u: { summary: string }) => u.summary === "status \u2192 review"))
+    .toBe(true);
 
   // rm both with -f
   r = await run("rm", "1", "-f");

@@ -27,6 +27,12 @@ export const modal         = signal(null);
 export const errorMsg      = signal(null);
 // Resolved on boot from /api/me (gh hosts.yml -> git user.name -> hostname -> "me").
 export const meAuthor      = signal("me");
+// Inbox tab: "updates" (default, shows the active task's update thread) or
+// "authors" (shows recent author activity from /api/authors).
+export const tab           = signal("updates");
+// Author rollups loaded lazily when the Authors tab is opened. Each entry
+// is { author, last_seen, posts } from /api/authors.
+export const authors       = signal([]);
 
 // ---------- platform-aware keyboard hint ----------
 // macOS gets the ⌘ glyph; everyone else gets the literal word "Ctrl". Used by
@@ -104,6 +110,9 @@ export const inboxList = computed(() => {
   if (!at) return [];
   return [...(updates.value[at.id] ?? [])].reverse();
 });
+// Tasks currently in the blocked status. Drives the sticky red top-bar in
+// App() and the click-to-jump behaviour (selects the first one).
+export const blockedTasks = computed(() => tasks.value.filter(t => t.status === "blocked"));
 
 // ---------- API ----------
 const j = (p, init) => fetch(p, init).then(async r => {
@@ -137,6 +146,16 @@ export const showError = (e) => {
 };
 export const tryApi = async (fn) => {
   try { return await fn(); } catch (e) { showError(e); throw e; }
+};
+
+// Lazy load of the author rollup. Called when the user opens the Authors
+// tab in the inbox pane. Errors surface via the standard toast.
+export const fetchAuthors = async () => {
+  try {
+    authors.value = await fetch("/api/authors").then(r => r.json());
+  } catch (e) {
+    showError(e);
+  }
 };
 
 // ---------- refresh ----------

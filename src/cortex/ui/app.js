@@ -32,6 +32,14 @@ fetch("/api/me")
   .then(d => { if (d?.author) meAuthor.value = d.author; })
   .catch(() => { /* fall back to "me" — non-fatal */ });
 
+// Ask for browser-notification permission once on first load if the user
+// hasn't decided yet. We *only* prompt on "default" — never re-prompt after
+// the user has explicitly denied. Notifications are used downstream to
+// surface task transitions into blocked status.
+if (typeof Notification !== "undefined" && Notification.permission === "default") {
+  Notification.requestPermission().catch(() => { /* user dismissed — fine */ });
+}
+
 // Initial state load. The SSE handler below will keep us in sync after this.
 refresh();
 
@@ -47,6 +55,30 @@ const debounceRefresh = () => {
 const ev = new EventSource("/events");
 ["task.added","task.updated","task.removed","update.posted","lane.changed"]
   .forEach(k => ev.addEventListener(k, debounceRefresh));
+
+// Separate listener (does NOT replace the debounceRefresh above) that fires
+// a browser Notification when a task transitions INTO blocked. Wrapped in
+// the typeof-Notification guard so non-supporting environments don't crash.
+// The `tag` field dedupes if the same task transitions blocked → other →
+// blocked: only the latest notification for that task ID stays visible.
+if (typeof Notification !== "undefined") {
+  ev.addEventListener("task.updated", (e) => {
+    let payload;
+    try { payload = JSON.parse(e.data); } catch { return; }
+    if (!payload || payload.status !== "blocked") return;
+    if (Notification.permission === "granted") {
+      try {
+        new Notification("cortex: task blocked", {
+          body: payload.title,
+          tag: `task-${payload.id}`,
+        });
+      } catch { /* some browsers throw if the page is not focused / secure */ }
+    } else if (Notification.permission === "default") {
+      // Try once more in case the user hasn't seen the prompt yet.
+      Notification.requestPermission().catch(() => {});
+    }
+  });
+}
 
 // ---------- outside-click closes any open popover ----------
 // Elements that are *part of* a popover (or its trigger) carry data-pop, so a

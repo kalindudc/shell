@@ -42,11 +42,11 @@ const autosizeRef = (el) => {
 import {
   // signals
   tasks, lanes, selectedLane, selectedId, editing, statusPopover, newLaneOpen,
-  paletteOpen, modal, errorMsg, meAuthor,
+  paletteOpen, modal, errorMsg, meAuthor, tab, authors,
   // computed
-  tasksInLane, activeTask, inboxList,
+  tasksInLane, activeTask, inboxList, blockedTasks,
   // api + error helpers
-  api, showError, tryApi,
+  api, showError, tryApi, fetchAuthors,
   // platform / hint helpers
   kbd,
   // pure helpers
@@ -434,6 +434,7 @@ function PostUpdateForm({ task }) {
     onKeyDown=${onSubmitKeys(submit)}>
     <textarea id="post-update-input" class="autosize" ref=${autosizeRef}
       placeholder="Post an update\u2026" rows="2"
+      maxlength="1024"
       value=${summary.value}
       onInput=${e => summary.value = e.target.value}
       onKeyDown=${onSubmitKeys(submit)}/>
@@ -441,7 +442,7 @@ function PostUpdateForm({ task }) {
       <input class="author" title="Author (default from gh / git / hostname)"
         value=${author.value} onInput=${e => author.value = e.target.value}/>
       <span class="grow"></span>
-      <span class=${"char-counter num" + (len > 180 ? " warn" : "")}>${len}/200</span>
+      <span class=${"char-counter num" + (len > 1000 ? " warn" : "")}>${len}/1024</span>
       ${/* Hotkey hints live in the foot strip so they stay visible while the
            user is typing (placeholder hints disappear the moment text is
            entered — useless when discoverability matters most). */ ""}
@@ -457,11 +458,27 @@ function PostUpdateForm({ task }) {
 }
 
 // ---------- inbox pane ----------
+// Two-tab layout: "Updates" (the active task's update thread, the original
+// behaviour) and "Authors" (a roll-up of recent author activity loaded
+// lazily from /api/authors when the tab is first opened).
 function InboxPane() {
   const at = activeTask.value;
   const list = inboxList.value;
+  const current = tab.value;
+  const selectTab = (t) => {
+    tab.value = t;
+    // Lazy-load the author roll-up the first time (and on every subsequent
+    // click — keeps the table fresh without polling).
+    if (t === "authors") fetchAuthors();
+  };
   return html`<aside class="pane pane-inbox">
-    <div class="inbox-header">
+    <div class="tabs">
+      <button class=${current === "updates" ? "active" : ""}
+        onClick=${() => selectTab("updates")}>Updates</button>
+      <button class=${current === "authors" ? "active" : ""}
+        onClick=${() => selectTab("authors")}>Authors</button>
+    </div>
+    ${current === "updates" ? html`<div class="inbox-header">
       <h1 class="eyebrow grow">Inbox</h1>
       ${at ? html`<span class="meta num">${list.length}</span>` : null}
     </div>
@@ -483,8 +500,37 @@ function InboxPane() {
           </div>
         </div>
       </div>
-    </div>`)}
+    </div>`)}` : authors.value.length === 0 ? html`<div class="empty">
+      <${Icon} name="inbox" size=${32}/>
+      <div class="empty-title">No author activity in the last 24h.</div>
+    </div>` : html`<table class="authors-table">
+      <thead>
+        <tr><th>Author</th><th>Last seen</th><th>Posts</th></tr>
+      </thead>
+      <tbody>
+        ${authors.value.map(a => html`<tr>
+          <td>${a.author}</td>
+          <td class="num">${fmtTime(a.last_seen)}</td>
+          <td class="num">${a.posts}</td>
+        </tr>`)}
+      </tbody>
+    </table>`}
   </aside>`;
+}
+
+// ---------- top bar ----------
+// Sticky red banner that surfaces blocked tasks at app level. Renders only
+// when there is at least one blocked task; clicking jumps the active
+// selection to the first blocked task so the user can review it.
+function TopBar() {
+  const blocked = blockedTasks.value;
+  if (blocked.length === 0) return null;
+  const n = blocked.length;
+  return html`<div class="topbar blocked"
+    onClick=${() => { selectedId.value = blocked[0].id; }}
+    title="Jump to the first blocked task">
+    <span>\u26a0 ${n} task${n === 1 ? "" : "s"} blocked \u2014 click to review</span>
+  </div>`;
 }
 
 // ---------- command palette ----------
@@ -787,6 +833,7 @@ function App() {
   // useEffect-based autofocus would only fire on the very first open. See
   // the comment above CommandPalette for the full failure mode.
   return html`<div class="contents">
+    <${TopBar}/>
     <${LanesPane}/>
     <${ActiveTaskPane}/>
     <${InboxPane}/>

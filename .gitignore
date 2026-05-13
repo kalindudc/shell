@@ -80,5 +80,6 @@ home/.pi/agent/extensions/data-portal
 home/.pi/agents/skills/*/SKILL_NOTES.md
 home/.agents/skills/*/SKILL_NOTES.md
 home/.agents/skills/quick/
+home/.agents/skills/cortex/
 
 home/.config/ghostty/config-os

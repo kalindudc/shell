@@ -627,6 +627,78 @@ input:disabled { opacity: 0.5; cursor: not-allowed; }
 .palette-foot .kbd { margin-right: 4px; }
 .overlay-top { padding-top: 12vh; }
 
+/* ---------- top bar (blocked tasks banner) ----------
+   Sticky red strip pinned to the top of the viewport. Renders only when at
+   least one task has status='blocked' (gated in App()). Click anywhere on
+   the strip to jump the active selection to the first blocked task. The
+   high z-index keeps it above panes, popovers, and the modal overlay
+   underlay so a blocked task is never hidden behind an open dialog. */
+.topbar.blocked {
+  position: sticky;
+  top: 0;
+  width: 100%;
+  background: var(--err);
+  color: #fff;
+  padding: var(--s-2) var(--s-3);
+  font-size: var(--fs-3);
+  cursor: pointer;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+/* ---------- inbox tabs ----------
+   Horizontal tab strip at the top of the inbox pane. Two tabs today
+   (Updates, Authors); flexible enough to take more later without restyling. */
+.tabs {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.tabs button {
+  background: none;
+  border: none;
+  padding: var(--s-2) var(--s-3);
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: var(--fs-3);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease);
+}
+.tabs button:hover { color: var(--text); }
+.tabs button.active {
+  color: var(--text);
+  border-bottom: 2px solid var(--accent);
+}
+
+/* ---------- authors table ----------
+   Compact roll-up rendered when the inbox is in the Authors tab. The
+   last-seen column is mono so timestamps line up vertically. */
+.authors-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.authors-table th,
+.authors-table td {
+  text-align: left;
+  padding: var(--s-1) var(--s-2);
+  font-size: var(--fs-2);
+}
+.authors-table thead tr {
+  border-bottom: 1px solid var(--border);
+}
+.authors-table th {
+  color: var(--text-3);
+  font-weight: 600;
+}
+.authors-table td.num {
+  font-family: var(--font-mono);
+}
+
 /* ---------- toast / error ---------- */
 .toast {
   position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);

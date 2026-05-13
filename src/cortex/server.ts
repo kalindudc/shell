@@ -3,7 +3,7 @@ import { streamSSE } from "hono/streaming";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { Store, type TaskStatus } from "./store.ts";
+import { Store, validateAuthorTag, type TaskStatus } from "./store.ts";
 import { emit, subscribe, type CortexEvent } from "./events.ts";
 import pkg from "./package.json" with { type: "json" };
 // `with { type: "file" }` returns a string PATH (not file contents) that
@@ -148,12 +148,28 @@ export function buildApp(store: Store): Hono {
 
   app.patch("/api/tasks/:id/status", async (c) => {
     const id = Number(c.req.param("id"));
-    const body = (await c.req.json().catch(() => ({}))) as { status?: string };
+    const body = (await c.req.json().catch(() => ({}))) as {
+      status?: string;
+      author?: string;
+    };
     if (!body.status || !isStatus(body.status)) {
       return c.json({ error: "invalid status" }, 400);
     }
+    // Author attribution for the audit-trail row written inside setStatus.
+    // HTTP path is OPTIONAL (humans on the dashboard never type their name);
+    // fall back to the existing resolveAuthor() cascade.
+    let author: string;
+    if (body.author !== undefined) {
+      try {
+        author = validateAuthorTag(body.author);
+      } catch (e) {
+        return c.json({ error: (e as Error).message }, 400);
+      }
+    } else {
+      author = resolveAuthor();
+    }
     try {
-      const task = store.setStatus(id, body.status);
+      const task = store.setStatus(id, body.status, { author });
       emit({ kind: "task.updated", payload: task, ts: Date.now() });
       return c.json(task);
     } catch (err) {
@@ -203,6 +219,14 @@ export function buildApp(store: Store): Hono {
     if (!body.summary || !body.author) {
       return c.json({ error: "author and summary are required" }, 400);
     }
+    // Early HTTP rejection: validate the author tag here so a malformed
+    // dashboard payload never reaches Store.addUpdate (which would also
+    // throw, but a 400 from the route is the user-facing contract).
+    try {
+      body.author = validateAuthorTag(body.author);
+    } catch (e) {
+      return c.json({ error: (e as Error).message }, 400);
+    }
     try {
       const update = store.addUpdate({
         task_id: id,
@@ -216,6 +240,11 @@ export function buildApp(store: Store): Hono {
       return c.json({ error: (err as Error).message }, 400);
     }
   });
+
+  // ---------- authors (derived view from updates table) ----------
+  // Powers the dashboard's Authors tab. No new schema, no new column — just
+  // a GROUP BY over the last 24h of updates. See Store.listAuthorsLast24h.
+  app.get("/api/authors", (c) => c.json(store.listAuthorsLast24h()));
 
   // ---------- lanes ----------
   app.get("/api/lanes", (c) => c.json(store.listLanes()));

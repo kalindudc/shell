@@ -98,14 +98,17 @@ describe("Store: tasks", () => {
 });
 
 describe("Store: updates", () => {
-  test("addUpdate accepts 200-char summary, throws on 201", () => {
+  // Plan 3 raised the CHECK cap from 200 → 1024: cortex summaries are
+  // notifications, not diffs (the original SmartBear LOC argument doesn't
+  // transfer). 1024 lets agents write a useful one-paragraph status.
+  test("addUpdate accepts 1024-char summary, throws on 1025", () => {
     const s = open();
     const t = s.addTask({ title: "x" });
     expect(() =>
-      s.addUpdate({ task_id: t.id, author: "me", summary: "x".repeat(200) }),
+      s.addUpdate({ task_id: t.id, author: "me", summary: "x".repeat(1024) }),
     ).not.toThrow();
     expect(() =>
-      s.addUpdate({ task_id: t.id, author: "me", summary: "x".repeat(201) }),
+      s.addUpdate({ task_id: t.id, author: "me", summary: "x".repeat(1025) }),
     ).toThrow("summary too long");
     s.close();
   });

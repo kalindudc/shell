@@ -61,8 +61,9 @@ export const Client = {
   addTask: (url: string, b: unknown) => request(url, "POST", "/api/tasks", b),
   editTask: (url: string, id: number, b: unknown) =>
     request(url, "PATCH", `/api/tasks/${id}`, b),
-  setStatus: (url: string, id: number, status: string) =>
-    request(url, "PATCH", `/api/tasks/${id}/status`, { status }),
+  setStatus: (url: string, id: number, status: string, author?: string) =>
+    request(url, "PATCH", `/api/tasks/${id}/status`,
+      author ? { status, author } : { status }),
   moveTask: (url: string, id: number, lane: string) =>
     request(url, "PATCH", `/api/tasks/${id}/lane`, { lane }),
   removeTask: (url: string, id: number) =>
