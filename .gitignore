@@ -74,11 +74,14 @@ home/.pi/agent/extensions/guard
 home/.pi/agent/extensions/pi-sieve
 home/.pi/agent/extensions/rtk-rewrite
 home/.pi/agent/extensions/data-portal
+home/.pi/agent/extensions/cortex
+home/.pi/agent/extensions/pi-tool-gateway-extension
 
 # SKILL_NOTES.md files are local observations, bootstrapped by src/scripts/bootstrap-skill-notes.sh
 home/.pi/agents/skills/*/SKILL_NOTES.md
 home/.agents/skills/*/SKILL_NOTES.md
 home/.agents/skills/quick/
 home/.agents/skills/cortex/
+home/.agents/skills/cortex-*/
 
 home/.config/ghostty/config-os
