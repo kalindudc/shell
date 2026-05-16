@@ -6,6 +6,8 @@ description: Multi-model critic consensus PR reviews -- bugs only, false-positiv
 
 # PR Reviewer Skill
 
+CRITICAL: before using this skill, load the `cortex` skill — PR reviews are persisted as cortex tasks, and the persistence/linking steps below assume the cortex CLI vocabulary (`cortex_update`, lanes, tags, statuses).
+
 ## Purpose
 
 Review PRs for code health. Output a minimal, actionable review -- not inline PR comments. The user decides what to post. Uses a multi-model critic consensus to aggressively filter false positives before reporting.
@@ -137,7 +139,7 @@ Verdict system:
 - NEEDS REVIEW: Moderate issues needing human attention before merge.
 - BLOCK: Critical bugs. Do NOT merge until fixed.
 
-Write to `./tmp/pr-review/<pr-number>-review.md`:
+Render the review using this template:
 
 ```markdown
 # PR #<number> - <title>
@@ -178,7 +180,72 @@ e.g., "2 critical, 1 medium findings survived critic review (5 of 8 initial find
 (only dimensions evaluated: x = good, ~ = n/a, - = concern noted in findings)
 ```
 
-Omit empty finding subsections (except for PASS verdict where all sections are empty by design). Copy to clipboard if `pbcopy`/`xclip` available.
+Omit empty finding subsections (except for PASS verdict where all sections are empty by design). Persist this rendered markdown via the Cortex persistence section below. Copy the body to clipboard if `pbcopy`/`xclip` available.
+
+## Cortex persistence
+
+PR reviews live in cortex — not as files. The flow mirrors the `pr-description-generator` skill so reviews coexist with plans and PR descriptions in the same lane.
+
+1. ALWAYS use the `cortex_update` tool, call that tool for every update. If the tool does not exist follow the Fallback Strategy.
+    Fallback strategy: generate ONE session id at the start of your agent session, hold in working memory, and reuse it for the lifetime of the session:
+    ```bash
+    SESSION_ID="pr-review-$(openssl rand -hex 4)"   # e.g. pr-review-7f3a9201
+    ```
+    Format `<role>-<8 hex>`, max 80 chars, no newlines. NEVER store in env vars (sandboxed sub-shells throw them away) or in repo files (two agents collapse into one identity in the audit trail). The `cortex update <id> --as "$SESSION_ID" -m "..."` examples below are the fallback path — keep using them when the tool is unavailable.
+
+2. LANE = current repository directory name (same as the planner and pr-desc skills):
+    ```bash
+    LANE=$(git rev-parse --show-toplevel 2>/dev/null | xargs basename || basename "$PWD")
+    ```
+    Override only when the user explicitly names a different lane.
+
+3. PLAN LINKING (USER-SPECIFIED ONLY). Do NOT auto-discover plans for reviews. Inspect `$ARGUMENTS` for an explicit plan reference — patterns like `plan #42`, `--plan 42`, `for plan 42`, or a bare `#42` token paired with the word `plan`. Extract the integer id into `PLAN_ID`. If the user did not specify a plan, leave `PLAN_ID` empty and skip every plan-related step below.
+
+    If a `PLAN_ID` was supplied, validate it and capture its tags (so the review task can inherit them, EXCEPT the reserved `plan` tag):
+    ```bash
+    cortex show "$PLAN_ID" --json | jq -r .task.title    # confirm it exists; abort if not
+    ```
+
+4. PERSIST THE PR REVIEW. Draft the rendered review markdown into a tmpfile and persist as a cortex task:
+    ```bash
+    REVIEW_BODY=$(mktemp -t cortex-pr-review.XXXXXX.md)
+    # write the rendered review markdown to "$REVIEW_BODY" using the template above
+
+    # Tags: ALWAYS include `pr-review`. If the user named a plan, ALSO inherit every tag from that
+    # plan EXCEPT `plan` itself (that tag is reserved for plans and would mis-classify the review).
+    TAGS="pr-review"
+    if [ -n "$PLAN_ID" ]; then
+      PLAN_TAGS=$(cortex show "$PLAN_ID" --json \
+        | jq -r '.task.tags | map(select(. != "plan")) | join(",")')
+      [ -n "$PLAN_TAGS" ] && TAGS="pr-review,$PLAN_TAGS"
+    fi
+
+    cortex add "PR Review #<pr-number>: <pr-title>" \
+      --lane "$LANE" \
+      --priority 1 \
+      --status draft \
+      --body-file "$REVIEW_BODY" \
+      -t "$TAGS"
+    ```
+    ALWAYS use `--body-file`; NEVER inline `-b "..."` (shell escaping is a footgun for KB-scale markdown).
+
+5. ATTRIBUTE. `cortex add` is anonymous — record WHO drafted the review immediately using the `cortex_update` tool if available, or the fallback strategy if not:
+    Fallback strategy:
+    ```bash
+    cortex update <review-id> --as "$SESSION_ID" -m "pr review drafted: <verdict>"
+    ```
+    Include the verdict (PASS / GO WITH FIXES / NEEDS REVIEW / BLOCK) in the message so it surfaces in `cortex ls`.
+
+6. LINK TO THE PLAN (only if the user supplied a plan id). Post one update on the review task whose body contains `@<PLAN_ID>` so the cross-reference is recorded in the audit trail using our update strategy from above.
+    Use the literal `@<id>` token (no brackets) so it is greppable from `cortex show` output. Skip this step entirely when no plan was specified. For example: `@114`.
+
+7. REVISIONS. To update an existing review task body, prefer anchor-based edits for surgical changes and `--body-file` for full rewrites — see the `cortex` skill's `cli/edit.md` for tradeoffs. NEVER edit a task whose status is `review` without explicit user confirmation.
+
+## Output Format
+
+- Persist the rendered review as a cortex task per the recipe above (lane = repo dir, status = `draft`, tags = `pr-review` + every tag of the user-specified plan if one was provided, EXCEPT the reserved `plan` tag).
+- Inform the user of the cortex task id; the body is viewable via `cortex show <review-id>`.
+- Copy the rendered review markdown body to clipboard if available (`pbcopy` on macOS, `xclip -selection clipboard` on Linux). Skip if neither is present.
 
 ## Self-Improvement
 
@@ -186,6 +253,13 @@ After execution, use `skill-improver` to capture observations. Before execution,
 
 ## Rules
 
+- ALWAYS load the `cortex` skill first for CLI vocabulary, lane / priority / status / tag semantics, and the `--as` session-id requirement
+- ALWAYS persist the PR review via `cortex add --body-file`; NEVER inline `-b "..."` for KB-scale markdown
+- ALWAYS attribute the new review task immediately after `cortex add` with `cortex_update` (include the verdict in the message)
+- ALWAYS tag the review task with `pr-review`; ALSO inherit every tag from the user-specified plan when one was provided, EXCEPT the reserved `plan` tag
+- NEVER auto-discover plans for reviews — only link to a plan when the user explicitly names a plan id in `$ARGUMENTS`
+- ALWAYS post a `@<PLAN_ID>` linking update on the review task when the user supplied a plan id; SKIP the linking update otherwise
+- NEVER edit a `review`-status cortex task without explicit user confirmation
 - NEVER post comments directly on the PR
 - NEVER report style, formatting, or theoretical concerns -- bugs only
 - ALWAYS read changed files in full context, not just diff hunks
