@@ -8,10 +8,11 @@
 # Requires: icalBuddy (brew install ical-buddy)
 #
 # Usage:
-#   gcal-alert               Check for upcoming events and alert (called by cron)
+#   gcal-alert               Check for upcoming events and alert (run by launchd)
+#   gcal-alert init          Install/replace the launchd LaunchAgent that runs `check` every 60s
 #   gcal-alert silence [N]   Silence alerts for N days (default: 5)
 #   gcal-alert resume        Resume alerts (cancel silence)
-#   gcal-alert status        Show current status
+#   gcal-alert status        Show current status (incl. scheduler health)
 #   gcal-alert test          Fire a test alert
 #   gcal-alert calendars     List all available calendars and subscription state
 #   gcal-alert subscribe     Interactively toggle calendar subscriptions (fzf)
@@ -29,6 +30,9 @@ SILENCE_FILE="$CONFIG_DIR/silenced_until"
 NOTIFIED_FILE="$CONFIG_DIR/notified_today"
 SUBSCRIBED_FILE="$CONFIG_DIR/subscribed_calendars"
 LOGFILE="$CONFIG_DIR/gcal-alert.log"
+
+LAUNCHD_LABEL="com.kalindu.gcal-alert"
+LAUNCHD_PLIST="$HOME/Library/LaunchAgents/$LAUNCHD_LABEL.plist"
 
 ALERT_WINDOW_MINUTES=2
 WORK_START_HOUR=9   # 9 AM EST
@@ -222,6 +226,97 @@ cmd_subscribe() {
     fi
 }
 
+# --- Scheduler (launchd) ---
+
+scheduler_loaded() {
+    launchctl print "gui/$UID/$LAUNCHD_LABEL" >/dev/null 2>&1
+}
+
+# Resolve symlinks to the real script path so launchd points at the real file
+# (lets edits made through the symlink take effect without re-running init).
+resolve_symlink() {
+    local target="$1"
+    while [[ -L "$target" ]]; do
+        local link
+        link=$(readlink "$target")
+        if [[ "$link" = /* ]]; then
+            target="$link"
+        else
+            target="$(cd "$(dirname "$target")" && pwd)/$link"
+        fi
+    done
+    # Normalize (collapse any `..` / `.` segments) via `pwd -P`.
+    echo "$(cd "$(dirname "$target")" && pwd -P)/$(basename "$target")"
+}
+
+cmd_init() {
+    local invoked
+    invoked=$(command -v gcal-alert 2>/dev/null || true)
+    if [[ -z "$invoked" ]]; then
+        echo "Error: gcal-alert is not on PATH; cannot determine install path." >&2
+        return 1
+    fi
+    local script_path
+    script_path=$(resolve_symlink "$invoked")
+
+    mkdir -p "$(dirname "$LAUNCHD_PLIST")"
+
+    # Replace any existing LaunchAgent with this label. bootout errors if
+    # nothing is loaded -- we ignore that case.
+    if scheduler_loaded; then
+        echo "↺ Unloading existing $LAUNCHD_LABEL"
+    fi
+    launchctl bootout "gui/$UID/$LAUNCHD_LABEL" 2>/dev/null || true
+    rm -f "$LAUNCHD_PLIST"
+
+    cat > "$LAUNCHD_PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>$LAUNCHD_LABEL</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>$script_path</string>
+        <string>check</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>60</integer>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>$CONFIG_DIR/launchd.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>$CONFIG_DIR/launchd.err.log</string>
+</dict>
+</plist>
+PLIST
+
+    launchctl bootstrap "gui/$UID" "$LAUNCHD_PLIST"
+    launchctl enable "gui/$UID/$LAUNCHD_LABEL" 2>/dev/null || true
+
+    log "init: installed LaunchAgent $LAUNCHD_LABEL -> $script_path"
+
+    echo "✅ LaunchAgent installed: $LAUNCHD_LABEL"
+    echo "   Plist:    $LAUNCHD_PLIST"
+    echo "   Runs:     $script_path check"
+    echo "   Interval: every 60s"
+    echo
+    echo "Run 'gcal-alert status' to verify."
+}
+
 cmd_status() {
     if is_silenced; then
         local until
@@ -231,6 +326,22 @@ cmd_status() {
         echo "🔇 Silenced until $until_human"
     else
         echo "🔔 Active"
+    fi
+
+    if scheduler_loaded; then
+        echo "⚙️  Scheduler: loaded ($LAUNCHD_LABEL)"
+    else
+        echo "⚠️  Scheduler: NOT LOADED — run 'gcal-alert init' to install"
+    fi
+
+    if [[ -f "$LOGFILE" ]]; then
+        local last_check
+        last_check=$(grep -E 'Starting event check' "$LOGFILE" | tail -1 | awk '{print $1, $2}')
+        if [[ -n "$last_check" ]]; then
+            echo "🕒 Last check: $last_check"
+        else
+            echo "🕒 Last check: never"
+        fi
     fi
 
     local now_hour
@@ -434,6 +545,7 @@ cmd_test() {
 
 case "${1:-check}" in
     check)      cmd_check ;;
+    init)       cmd_init ;;
     silence)    cmd_silence "${2:-5}" ;;
     resume)     cmd_resume ;;
     status)     cmd_status ;;
@@ -441,7 +553,7 @@ case "${1:-check}" in
     calendars)  cmd_calendars ;;
     subscribe)  cmd_subscribe ;;
     *)
-        echo "Usage: gcal-alert [check|silence [N]|resume|status|test|calendars|subscribe]"
+        echo "Usage: gcal-alert [check|init|silence [N]|resume|status|test|calendars|subscribe]"
         exit 1
         ;;
 esac
