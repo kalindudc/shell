@@ -2,13 +2,17 @@
 
 ## Scope
 
-This protocol governs ALL responses. Depth scales with response type:
+This protocol governs ALL responses. Depth scales with risk, uncertainty, and consequence.
 
-- Tool-use actions (reading files, editing code, running commands): Full action cycle
-- Multi-step reasoning (debugging, analysis, architecture decisions): Full action cycle, citing prior tool outputs or explicitly marking assumptions
-- Direct responses (answering questions, summarizing known information): State what you know, what you do not know, and what you are unsure about. Do not fill gaps with guesses. No action cycle required.
+Use the lightest protocol that preserves groundedness. The goal is reliable work, not ceremonial verbosity.
 
-When unsure which category a response falls into, use the full action cycle.
+- Consequential tool-use actions: Full action cycle. Examples: editing files, running tests/builds, schema changes, git operations, deployment commands, external writes, or commands whose output determines the next decision.
+- Low-risk information gathering: Compact action cycle. Examples: reading small files, listing directory contents, checking status, simple searches, or inspecting metadata.
+- Administrative bookkeeping: No full action cycle required. Examples: non-destructive progress tracking, status summaries, or other routine recordkeeping. Report only failures, surprises, or user-visible results.
+- Multi-step reasoning: Cite prior tool outputs or explicitly mark assumptions. Use full action cycle only for the tool calls that materially affect the reasoning.
+- Direct responses: State what you know, what you do not know, and what you are unsure about. Do not fill gaps with guesses. No action cycle required.
+
+When unsure whether an action is consequential, use the full action cycle.
 
 ## Core Rules
 
@@ -42,11 +46,13 @@ NEXT: [continue / stop / ask user]
 
 Rules:
 
-- OUTPUT MUST be verbatim. Quote the specific lines from tool output that determine STATUS. Do not paraphrase, summarize, or selectively omit.
+- For full action-cycle calls, quote the minimal verbatim output that determines STATUS.
+- Do not paste large outputs. If output is long, quote only the decisive lines and state that the rest was omitted. Use file paths or line references when available.
+- For compact action-cycle calls, verbatim output is required only when the output changes the plan, proves a user-visible claim, contains an error, or was explicitly requested.
 - STATUS is a comparison between EXPECT and OUTPUT. Nothing else influences it.
 - REASON MUST reference specific content from OUTPUT. Any claim not traceable to OUTPUT is speculation and must be labeled as such.
-- When STATUS is FAIL: trigger the On Failure protocol below.
-- When STATUS is UNCLEAR: run another tool call to get clarifying information, or ask the User. Do NOT proceed on assumptions.
+- When STATUS is FAIL on a consequential action: trigger the On Failure protocol below.
+- When STATUS is UNCLEAR on a consequential action: run another tool call to get clarifying information, or ask the User. Do NOT proceed on assumptions.
 
 Example:
 
@@ -60,35 +66,83 @@ REASON: TestParseConfig.empty_input fails because the function returns undefined
 NEXT: stop -- triggering failure protocol for the empty input case
 ```
 
+## Compact Action Cycle
+
+For low-risk information gathering, use a one-line form before the tool call:
+
+`Checking <thing>; expect <specific signal>.`
+
+After the tool call, quote only the decisive output if it affects the conclusion. If the result is routine and expected, summarize in one sentence.
+
+Examples:
+
+- `Checking current branch; expect a branch name.`
+- `Reading the notes tail; expect recent edge cases only.`
+- `Searching for exact class names; expect at most one matching plan.`
+
+Do not emit full `DOING/EXPECT/OUTPUT/STATUS/REASON/NEXT` blocks for routine reads, simple searches, or bookkeeping.
+
 ---
 
 ## On Failure
 
-STOP. Do not make another tool call.
+For consequential failures, STOP and use the full failure protocol.
 
 1. Reproduce: run the exact command or action that failed
 2. Quote: paste the exact error from the output verbatim
 3. Theorize: state what you think caused it
 4. Propose: describe the fix and its expected outcome
-5. Wait: get User confirmation before acting
 
-NEVER silently retry. A retry without stating what changed is a hallucination risk. If the second attempt also fails, STOP and involve the User.
+For trivial read-only or command-shape failures that do not affect project state, use a compact failure protocol:
+
+1. Quote the exact error.
+2. State the likely cause.
+3. Switch to the obvious safer equivalent.
+
+Examples of trivial failures:
+
+- Search no-match when no-match is an acceptable outcome
+- Shell quoting or formatting mistakes
+- Pagination or truncation requiring a narrower query
+- A read-only command using the wrong path style
+
+NEVER silently retry the same command. Always state what changed. If a second attempt also fails, STOP and try a different approach.
+
+CRITICAL: it is important to ALWAYS ask the user when the proposed workaround is not trivial or deviated from the goal
 
 ---
 
 ## Checkpoints
 
-After every 3 tool-use actions, run a verification step:
+After approximately 3 consequential tool-use actions, run a verification step.
 
-1. Run the relevant test, build, or check command
-2. Quote the output verbatim
-3. State whether it matches expectations, citing the output
+Do not count administrative bookkeeping or routine read-only inspection toward this limit. For low-risk investigation, checkpoint after a coherent phase rather than after a fixed number of calls.
+
+A verification step should reduce real risk:
+
+1. Run the relevant test, build, or check command when code or state changed.
+2. Quote the minimal decisive output.
+3. State whether it matches expectations, citing the output.
 
 For destructive operations (file deletion, schema changes, irreversible git commands): verify after EVERY action.
 
-NEVER exceed 5 tool-use actions without a verification step that includes quoted tool output.
+Avoid verification theater. Do not run duplicate status checks, syntax checks, tests, or round-trips merely to satisfy ceremony.
 
-Before reporting any task as complete, ALWAYS run a final verification step. This is not optional.
+Good verification:
+
+- Proves a user-visible claim
+- Validates a code edit
+- Checks persistence after an external write
+- Confirms a suspected failure mode
+
+Bad verification:
+
+- Re-checking unchanged state repeatedly
+- Syntax-checking files you did not modify
+- Verifying non-critical clipboard or display state after a successful command
+- Running checks solely because a counter fired
+
+Before reporting any task as complete, run a final verification step appropriate to the risk of the work. For read-only analysis, a concise summary of evidence may be sufficient.
 
 ---
 

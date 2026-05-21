@@ -15,7 +15,18 @@ alias klog="stern $@"
 alias kcls="kubectl config get-contexts -o name | grep -e "
 
 kdebug() {
-  cluster=$1
+  local host_net=false
+  local positional=()
+
+  # Parse flags
+  for arg in "$@"; do
+    case $arg in
+      --host-network) host_net=true ;;
+      *) positional+=("$arg") ;;
+    esac
+  done
+
+  cluster=${positional[1]}
   if [[ -z "$cluster" ]] then
     cluster=$(kubectl config get-contexts -o name | fzf)
     if [[ -z "$cluster" ]] then
@@ -24,7 +35,7 @@ kdebug() {
     fi
   fi
 
-  namespace=$2
+  namespace=${positional[2]}
   if [[ -z $namespace ]] then
     namespace=$(kubectl --context $cluster get ns -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}' | fzf)
     if [[ -z "$namespace" ]] then
@@ -38,11 +49,17 @@ kdebug() {
   image_to_use="gcr.io/shopify-docker-images/cloud/debug-container"
   fallback_image="docker.io/nicolaka/netshoot"
 
+  local overrides=""
+  if [[ "$host_net" == true ]]; then
+    echo "Enabling hostNetwork (pod will use node's network stack incl. IPv6 if available)"
+    overrides='--overrides={"spec":{"hostNetwork":true,"dnsPolicy":"ClusterFirstWithHostNet"}}'
+  fi
+
   kubectl --context "$cluster" -n "$namespace" delete pod "$USER-test" --ignore-not-found
 
-  if ! kubectl --context "$cluster" -n "$namespace" run -ti --rm $USER-test --image "$image_to_use" -- bash; then
+  if ! kubectl --context "$cluster" -n "$namespace" run -ti --rm $USER-test --image "$image_to_use" ${=overrides} -- bash; then
     echo "Falling back to $fallback_image"
-    kubectl --context "$cluster" -n "$namespace" run -ti --rm $USER-test --image "$fallback_image" -- bash
+    kubectl --context "$cluster" -n "$namespace" run -ti --rm $USER-test --image "$fallback_image" ${=overrides} -- bash
   fi
 }
 
