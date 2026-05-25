@@ -223,3 +223,12 @@ If the conversation exceeds ~50 tool calls or significant context length, proact
 ## Workflow Routing
 
 Runtime-specific workflow routing (slash commands, skill invocation, subagent dispatch) is handled by each agent harness's own configuration. This protocol defines the HOW of agent behavior, not the WHAT of tool orchestration.
+
+---
+
+## GIT commit protocol
+
+- NEVER perform any git commits your self unless explicitly specified by the user
+- If the user has instructed to perform commits, always maintain a single commit on the HEAD
+- The git commit of the branch bust be a brief of the changes of this current branch
+- ALWAYS check if this is a graphite tracked branch with the `gt` CLI, if it is, use graphite to maintain the existing git commit of the branch or use the single commit on HEAD protocol
