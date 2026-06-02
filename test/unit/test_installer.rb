@@ -1,9 +1,11 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+require 'bundler/setup'
 require 'minitest/autorun'
 require 'yaml'
 require 'fileutils'
+require 'open3'
 require 'tempfile'
 
 # Load the installer script (in a way that doesn't execute main)
@@ -45,6 +47,7 @@ class TestInstaller < Minitest::Test
     assert_includes packages, 'curl', "pacman should include curl"
     assert_includes packages, 'ruby', "pacman should include ruby"
     assert_includes packages, 'zsh', "pacman should include zsh"
+    assert_includes packages, 'atuin', "pacman should include atuin"
   end
 
   def test_packages_yml_apt_packages
@@ -65,6 +68,7 @@ class TestInstaller < Minitest::Test
     assert packages.is_a?(Array), "brew packages should be an array"
     assert_includes packages, 'git', "brew should include git"
     assert_includes packages, 'starship', "brew should include starship"
+    assert_includes packages, 'atuin', "brew should include atuin"
   end
 
   def test_packages_yml_snap_packages
@@ -95,6 +99,19 @@ class TestInstaller < Minitest::Test
     assert_includes packages, 'install_zsh_plugins', "custom should include install_zsh_plugins"
     assert_includes packages, 'install_pyenv', "custom should include install_pyenv"
     assert_includes packages, 'install_fzf_latest', "custom should include install_fzf_latest"
+    assert_includes packages, 'install_atuin', "custom should include install_atuin"
+  end
+
+  def test_atuin_config_tracks_only_non_secret_settings
+    config_file = File.join(@shell_dir, 'home', '.config', 'atuin', 'config.toml')
+
+    assert File.exist?(config_file), "Atuin config should be tracked"
+
+    config = File.read(config_file)
+    assert_includes config, 'secrets_filter = true', "Atuin config should filter secrets"
+    refute_includes config, 'key_path', "Atuin config should not track key_path"
+    refute_includes config, 'session_path', "Atuin config should not track session_path"
+    refute_includes config, 'db_path', "Atuin config should not track db_path"
   end
 
   def test_install_rb_exists
@@ -213,8 +230,11 @@ class TestInstaller < Minitest::Test
 
   def test_install_sh_help_flag
     install_sh = File.join(@shell_dir, 'install.sh')
-    output = `#{install_sh} --help 2>&1`
+    output, status = Bundler.with_unbundled_env do
+      Open3.capture2e(install_sh, '--help')
+    end
 
+    assert status.success?, "install.sh --help should exit successfully: #{output}"
     assert_includes output, '--trace', "Help should mention --trace"
     assert_includes output, '--stow', "Help should mention --stow"
     assert_includes output, '--help', "Help should mention --help"

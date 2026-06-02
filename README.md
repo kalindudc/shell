@@ -6,11 +6,12 @@
 
 A comprehensive shell environment with:
 
-- **Shell framework**: [oh-my-zsh](https://github.com/ohmyzsh/ohmyzsh) with [starship](https://starship.rs/) prompt
-- **Enhanced navigation**: [enhancd](https://github.com/babarot/enhancd), [zoxide](https://github.com/ajeetdsouza/zoxide), [fzf](https://github.com/junegunn/fzf)
-- **Shell improvements**: [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions), [zsh-syntax-highlighting](https://github.com/zsh-users/zsh-syntax-highlighting)
+- **Shell prompt/plugins**: Direct zsh plugin sourcing with [starship](https://starship.rs/) prompt
+- **Enhanced navigation**: [zoxide](https://github.com/ajeetdsouza/zoxide) directory jumping plus [fzf](https://github.com/junegunn/fzf) completion, file, and command pickers
+- **Shell history**: [Atuin](https://atuin.sh/) history search/sync owns Ctrl-R, while native zsh Up/Down prefix search remains available
+- **Shell improvements**: [zsh-autosuggestions](https://github.com/zsh-users/zsh-autosuggestions), [fast-syntax-highlighting](https://github.com/zdharma-continuum/fast-syntax-highlighting)
 - **Development tools**: neovim, gh (GitHub CLI), gcc, git-delta, [ripgrep](https://github.com/BurntSushi/ripgrep)
-- **Runtime managers**: pyenv, nvm, go
+- **Runtime managers**: pyenv, fnm, go
 - **DevOps tools**: kubectl, helm, docker, docker-compose
 - **Custom utilities**: Aliases, functions, and scripts tailored for productivity
 

@@ -22,43 +22,43 @@ set -euo pipefail
 
 # Ensure Homebrew binaries are on PATH (cron uses /usr/bin:/bin only)
 if [[ -d /opt/homebrew/bin ]]; then
-    export PATH="/opt/homebrew/bin:$PATH"
+    export PATH="/opt/homebrew/bin:${PATH}"
 fi
 
-CONFIG_DIR="$HOME/.config/gcal-alert"
-SILENCE_FILE="$CONFIG_DIR/silenced_until"
-NOTIFIED_FILE="$CONFIG_DIR/notified_today"
-SUBSCRIBED_FILE="$CONFIG_DIR/subscribed_calendars"
-LOGFILE="$CONFIG_DIR/gcal-alert.log"
+CONFIG_DIR="${HOME}/.config/gcal-alert"
+SILENCE_FILE="${CONFIG_DIR}/silenced_until"
+NOTIFIED_FILE="${CONFIG_DIR}/notified_today"
+SUBSCRIBED_FILE="${CONFIG_DIR}/subscribed_calendars"
+LOGFILE="${CONFIG_DIR}/gcal-alert.log"
 
 LAUNCHD_LABEL="com.kalindu.gcal-alert"
-LAUNCHD_PLIST="$HOME/Library/LaunchAgents/$LAUNCHD_LABEL.plist"
+LAUNCHD_PLIST="${HOME}/Library/LaunchAgents/${LAUNCHD_LABEL}.plist"
 
 ALERT_WINDOW_MINUTES=2
 WORK_START_HOUR=9   # 9 AM EST
 WORK_END_HOUR=17    # 5 PM EST
 TZ_NAME="America/New_York"
 
-mkdir -p "$CONFIG_DIR"
+mkdir -p "${CONFIG_DIR}"
 
 log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "$LOGFILE"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') $*" >> "${LOGFILE}"
 }
 
 # --- Silence Management ---
 
 is_silenced() {
-    if [[ ! -f "$SILENCE_FILE" ]]; then
+    if [[ ! -f "${SILENCE_FILE}" ]]; then
         return 1
     fi
     local until
-    until=$(cat "$SILENCE_FILE")
+    until=$(cat "${SILENCE_FILE}")
     local now
     now=$(date +%s)
     if (( now < until )); then
         return 0
     else
-        rm -f "$SILENCE_FILE"
+        rm -f "${SILENCE_FILE}"
         return 1
     fi
 }
@@ -69,13 +69,13 @@ cmd_silence() {
     until=$(date -v+"${days}d" +%s)
     local until_human
     until_human=$(date -v+"${days}d" '+%Y-%m-%d %H:%M %Z')
-    echo "$until" > "$SILENCE_FILE"
-    echo "🔇 Alerts silenced until $until_human ($days days)"
-    log "Silenced for $days days until $until_human"
+    echo "${until}" > "${SILENCE_FILE}"
+    echo "🔇 Alerts silenced until ${until_human} (${days} days)"
+    log "Silenced for ${days} days until ${until_human}"
 }
 
 cmd_resume() {
-    rm -f "$SILENCE_FILE"
+    rm -f "${SILENCE_FILE}"
     echo "🔔 Alerts resumed"
     log "Alerts resumed"
 }
@@ -95,27 +95,27 @@ list_all_calendars() {
 
 # Read subscribed calendar names (one per line). Strips blank lines.
 load_subscribed() {
-    if [[ -f "$SUBSCRIBED_FILE" ]]; then
-        grep -v '^[[:space:]]*$' "$SUBSCRIBED_FILE" || true
+    if [[ -f "${SUBSCRIBED_FILE}" ]]; then
+        grep -v '^[[:space:]]*$' "${SUBSCRIBED_FILE}" || true
     fi
 }
 
 is_subscribed() {
     local name="$1"
-    [[ -f "$SUBSCRIBED_FILE" ]] || return 1
-    grep -qxF "$name" "$SUBSCRIBED_FILE"
+    [[ -f "${SUBSCRIBED_FILE}" ]] || return 1
+    grep -qxF "${name}" "${SUBSCRIBED_FILE}"
 }
 
 cmd_calendars() {
     local all
     all=$(list_all_calendars)
-    if [[ -z "$all" ]]; then
+    if [[ -z "${all}" ]]; then
         echo "No calendars found (is icalBuddy installed and Calendar access granted?)"
         return 1
     fi
 
     local has_file=0
-    [[ -f "$SUBSCRIBED_FILE" ]] && has_file=1
+    [[ -f "${SUBSCRIBED_FILE}" ]] && has_file=1
 
     if (( has_file )); then
         echo "Subscribed calendars (alerts fire for [✓] only):"
@@ -127,13 +127,13 @@ cmd_calendars() {
     fi
 
     while IFS= read -r name; do
-        [[ -z "$name" ]] && continue
-        if (( has_file )) && is_subscribed "$name"; then
-            echo "  [✓] $name"
+        [[ -z "${name}" ]] && continue
+        if (( has_file )) && is_subscribed "${name}"; then
+            echo "  [✓] ${name}"
         else
-            echo "  [ ] $name"
+            echo "  [ ] ${name}"
         fi
-    done <<< "$all"
+    done <<< "${all}"
 }
 
 cmd_subscribe() {
@@ -144,7 +144,7 @@ cmd_subscribe() {
 
     local all
     all=$(list_all_calendars)
-    if [[ -z "$all" ]]; then
+    if [[ -z "${all}" ]]; then
         echo "No calendars found (is icalBuddy installed and Calendar access granted?)" >&2
         return 1
     fi
@@ -154,13 +154,13 @@ cmd_subscribe() {
     #   [ ] Birthdays
     local display=""
     while IFS= read -r name; do
-        [[ -z "$name" ]] && continue
-        if is_subscribed "$name"; then
-            display+="[✓] $name"$'\n'
+        [[ -z "${name}" ]] && continue
+        if is_subscribed "${name}"; then
+            display+="[✓] ${name}"$'\n'
         else
-            display+="[ ] $name"$'\n'
+            display+="[ ] ${name}"$'\n'
         fi
-    done <<< "$all"
+    done <<< "${all}"
 
     local header
     header=$(printf '%s\n%s\n%s' \
@@ -170,12 +170,12 @@ cmd_subscribe() {
 
     local selected
     set +e
-    selected=$(printf '%s' "$display" \
-        | fzf --multi --ansi --header="$header" --prompt='toggle> ' --no-sort)
+    selected=$(printf '%s' "${display}" \
+        | fzf --multi --ansi --header="${header}" --prompt='toggle> ' --no-sort)
     local fzf_rc=$?
     set -e
 
-    if (( fzf_rc != 0 )) || [[ -z "$selected" ]]; then
+    if (( fzf_rc != 0 )) || [[ -z "${selected}" ]]; then
         echo "No changes."
         return 0
     fi
@@ -184,43 +184,43 @@ cmd_subscribe() {
     # Start from current state, then flip for each selected line.
     local -a toggled=()
     while IFS= read -r line; do
-        [[ -z "$line" ]] && continue
+        [[ -z "${line}" ]] && continue
         # Strip the "[✓] " or "[ ] " prefix (4 visible chars + space; ✓ is multi-byte).
         local name="${line#\[*\] }"
-        toggled+=("$name")
-    done <<< "$selected"
+        toggled+=("${name}")
+    done <<< "${selected}"
 
     # Compute new subscribed set: start with currently subscribed, XOR with toggled.
     local tmp
     tmp=$(mktemp)
     while IFS= read -r name; do
-        [[ -z "$name" ]] && continue
+        [[ -z "${name}" ]] && continue
         local should_toggle=0
         local t
         for t in "${toggled[@]}"; do
-            if [[ "$t" == "$name" ]]; then
+            if [[ "${t}" == "${name}" ]]; then
                 should_toggle=1
                 break
             fi
         done
 
         local currently=0
-        is_subscribed "$name" && currently=1
+        is_subscribed "${name}" && currently=1
 
         # XOR
         if (( currently ^ should_toggle )); then
-            echo "$name" >> "$tmp"
+            echo "${name}" >> "${tmp}"
         fi
-    done <<< "$all"
+    done <<< "${all}"
 
-    mv "$tmp" "$SUBSCRIBED_FILE"
+    mv "${tmp}" "${SUBSCRIBED_FILE}"
 
     log "Updated subscriptions: toggled ${#toggled[@]} calendar(s)"
 
     echo
     echo "Updated. Now subscribed to:"
-    if [[ -s "$SUBSCRIBED_FILE" ]]; then
-        sed 's/^/  ✓ /' "$SUBSCRIBED_FILE"
+    if [[ -s "${SUBSCRIBED_FILE}" ]]; then
+        sed 's/^/  ✓ /' "${SUBSCRIBED_FILE}"
     else
         echo "  (none — alerts will not fire)"
     fi
@@ -229,57 +229,57 @@ cmd_subscribe() {
 # --- Scheduler (launchd) ---
 
 scheduler_loaded() {
-    launchctl print "gui/$UID/$LAUNCHD_LABEL" >/dev/null 2>&1
+    launchctl print "gui/${UID}/${LAUNCHD_LABEL}" >/dev/null 2>&1
 }
 
 # Resolve symlinks to the real script path so launchd points at the real file
 # (lets edits made through the symlink take effect without re-running init).
 resolve_symlink() {
     local target="$1"
-    while [[ -L "$target" ]]; do
+    while [[ -L "${target}" ]]; do
         local link
-        link=$(readlink "$target")
-        if [[ "$link" = /* ]]; then
-            target="$link"
+        link=$(readlink "${target}")
+        if [[ "${link}" = /* ]]; then
+            target="${link}"
         else
-            target="$(cd "$(dirname "$target")" && pwd)/$link"
+            target="$(cd "$(dirname "${target}")" && pwd)/${link}"
         fi
     done
     # Normalize (collapse any `..` / `.` segments) via `pwd -P`.
-    echo "$(cd "$(dirname "$target")" && pwd -P)/$(basename "$target")"
+    echo "$(cd "$(dirname "${target}")" && pwd -P)/$(basename "${target}")"
 }
 
 cmd_init() {
     local invoked
     invoked=$(command -v gcal-alert 2>/dev/null || true)
-    if [[ -z "$invoked" ]]; then
+    if [[ -z "${invoked}" ]]; then
         echo "Error: gcal-alert is not on PATH; cannot determine install path." >&2
         return 1
     fi
     local script_path
-    script_path=$(resolve_symlink "$invoked")
+    script_path=$(resolve_symlink "${invoked}")
 
-    mkdir -p "$(dirname "$LAUNCHD_PLIST")"
+    mkdir -p "$(dirname "${LAUNCHD_PLIST}")"
 
     # Replace any existing LaunchAgent with this label. bootout errors if
     # nothing is loaded -- we ignore that case.
     if scheduler_loaded; then
-        echo "↺ Unloading existing $LAUNCHD_LABEL"
+        echo "↺ Unloading existing ${LAUNCHD_LABEL}"
     fi
-    launchctl bootout "gui/$UID/$LAUNCHD_LABEL" 2>/dev/null || true
-    rm -f "$LAUNCHD_PLIST"
+    launchctl bootout "gui/${UID}/${LAUNCHD_LABEL}" 2>/dev/null || true
+    rm -f "${LAUNCHD_PLIST}"
 
-    cat > "$LAUNCHD_PLIST" <<PLIST
+    cat > "${LAUNCHD_PLIST}" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>$LAUNCHD_LABEL</string>
+    <string>${LAUNCHD_LABEL}</string>
 
     <key>ProgramArguments</key>
     <array>
-        <string>$script_path</string>
+        <string>${script_path}</string>
         <string>check</string>
     </array>
 
@@ -296,22 +296,22 @@ cmd_init() {
     </dict>
 
     <key>StandardOutPath</key>
-    <string>$CONFIG_DIR/launchd.out.log</string>
+    <string>${CONFIG_DIR}/launchd.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>$CONFIG_DIR/launchd.err.log</string>
+    <string>${CONFIG_DIR}/launchd.err.log</string>
 </dict>
 </plist>
 PLIST
 
-    launchctl bootstrap "gui/$UID" "$LAUNCHD_PLIST"
-    launchctl enable "gui/$UID/$LAUNCHD_LABEL" 2>/dev/null || true
+    launchctl bootstrap "gui/${UID}" "${LAUNCHD_PLIST}"
+    launchctl enable "gui/${UID}/${LAUNCHD_LABEL}" 2>/dev/null || true
 
-    log "init: installed LaunchAgent $LAUNCHD_LABEL -> $script_path"
+    log "init: installed LaunchAgent ${LAUNCHD_LABEL} -> ${script_path}"
 
-    echo "✅ LaunchAgent installed: $LAUNCHD_LABEL"
-    echo "   Plist:    $LAUNCHD_PLIST"
-    echo "   Runs:     $script_path check"
+    echo "✅ LaunchAgent installed: ${LAUNCHD_LABEL}"
+    echo "   Plist:    ${LAUNCHD_PLIST}"
+    echo "   Runs:     ${script_path} check"
     echo "   Interval: every 60s"
     echo
     echo "Run 'gcal-alert status' to verify."
@@ -320,49 +320,49 @@ PLIST
 cmd_status() {
     if is_silenced; then
         local until
-        until=$(cat "$SILENCE_FILE")
+        until=$(cat "${SILENCE_FILE}")
         local until_human
-        until_human=$(date -r "$until" '+%Y-%m-%d %H:%M %Z')
-        echo "🔇 Silenced until $until_human"
+        until_human=$(date -r "${until}" '+%Y-%m-%d %H:%M %Z')
+        echo "🔇 Silenced until ${until_human}"
     else
         echo "🔔 Active"
     fi
 
     if scheduler_loaded; then
-        echo "⚙️  Scheduler: loaded ($LAUNCHD_LABEL)"
+        echo "⚙️  Scheduler: loaded (${LAUNCHD_LABEL})"
     else
         echo "⚠️  Scheduler: NOT LOADED — run 'gcal-alert init' to install"
     fi
 
-    if [[ -f "$LOGFILE" ]]; then
+    if [[ -f "${LOGFILE}" ]]; then
         local last_check
-        last_check=$(grep -E 'Starting event check' "$LOGFILE" | tail -1 | awk '{print $1, $2}')
-        if [[ -n "$last_check" ]]; then
-            echo "🕒 Last check: $last_check"
+        last_check=$(grep -E 'Starting event check' "${LOGFILE}" | tail -1 | awk '{print $1, $2}')
+        if [[ -n "${last_check}" ]]; then
+            echo "🕒 Last check: ${last_check}"
         else
             echo "🕒 Last check: never"
         fi
     fi
 
     local now_hour
-    now_hour=$(TZ="$TZ_NAME" date +%H)
-    echo "⏰ Current time: $(TZ="$TZ_NAME" date '+%H:%M %Z') (window: ${WORK_START_HOUR}:00-${WORK_END_HOUR}:00)"
+    now_hour=$(TZ="${TZ_NAME}" date +%H)
+    echo "⏰ Current time: $(TZ="${TZ_NAME}" date '+%H:%M %Z') (window: ${WORK_START_HOUR}:00-${WORK_END_HOUR}:00)"
 
-    if (( 10#$now_hour >= WORK_START_HOUR && 10#$now_hour < WORK_END_HOUR )); then
+    if (( 10#${now_hour} >= WORK_START_HOUR && 10#${now_hour} < WORK_END_HOUR )); then
         echo "📅 Within alert window"
     else
         echo "🌙 Outside alert window"
     fi
 
-    if [[ -f "$NOTIFIED_FILE" ]]; then
+    if [[ -f "${NOTIFIED_FILE}" ]]; then
         echo "📋 Already notified today:"
-        cat "$NOTIFIED_FILE"
+        cat "${NOTIFIED_FILE}"
     fi
 
-    if [[ -f "$SUBSCRIBED_FILE" ]]; then
+    if [[ -f "${SUBSCRIBED_FILE}" ]]; then
         local sub_count
-        sub_count=$(grep -cv '^[[:space:]]*$' "$SUBSCRIBED_FILE" 2>/dev/null || echo 0)
-        echo "📚 Subscribed calendars: $sub_count (see 'gcal-alert calendars')"
+        sub_count=$(grep -cv '^[[:space:]]*$' "${SUBSCRIBED_FILE}" 2>/dev/null || echo 0)
+        echo "📚 Subscribed calendars: ${sub_count} (see 'gcal-alert calendars')"
     else
         echo "📚 Subscribed calendars: all (no filter — run 'gcal-alert subscribe' to restrict)"
     fi
@@ -374,7 +374,7 @@ fire_alert() {
     local title="$1"
     local event_time="$2"
 
-    log "ALERT: $title at $event_time"
+    log "ALERT: ${title} at ${event_time}"
 
     # Save current volume
     local orig_vol
@@ -399,46 +399,46 @@ fire_alert() {
     local alarm_pid=$!
 
     # Blocking modal dialog — alarm loops until dismissed
-    osascript -e "display dialog \"📅 $title\" & return & return & \"⏰ Starting at $event_time\" with title \"🚨 UPCOMING EVENT\" with icon stop buttons {\"Dismiss\"} default button \"Dismiss\""
+    osascript -e "display dialog \"📅 ${title}\" & return & return & \"⏰ Starting at ${event_time}\" with title \"🚨 UPCOMING EVENT\" with icon stop buttons {\"Dismiss\"} default button \"Dismiss\""
 
     # Kill alarm and all child afplay processes
-    kill "$alarm_pid" 2>/dev/null
-    wait "$alarm_pid" 2>/dev/null
+    kill "${alarm_pid}" 2>/dev/null
+    wait "${alarm_pid}" 2>/dev/null
     pkill -P $$ afplay 2>/dev/null
 
     # Restore volume
-    osascript -e "set volume output volume $orig_vol"
-    if [[ "$orig_muted" == "true" ]]; then
+    osascript -e "set volume output volume ${orig_vol}"
+    if [[ "${orig_muted}" == "true" ]]; then
         osascript -e 'set volume with output muted'
     fi
 
-    log "Alert dismissed for: $title"
+    log "Alert dismissed for: ${title}"
 }
 
 # --- Event Checking ---
 
 already_notified() {
     local key="$1"
-    if [[ ! -f "$NOTIFIED_FILE" ]]; then
+    if [[ ! -f "${NOTIFIED_FILE}" ]]; then
         return 1
     fi
-    grep -qF "$key" "$NOTIFIED_FILE"
+    grep -qF "${key}" "${NOTIFIED_FILE}"
 }
 
 mark_notified() {
     local key="$1"
-    echo "$key" >> "$NOTIFIED_FILE"
+    echo "${key}" >> "${NOTIFIED_FILE}"
 }
 
 cleanup_notified() {
     # Reset the notified file daily
     local today
     today=$(date +%Y-%m-%d)
-    local marker_file="$CONFIG_DIR/.last_cleanup"
+    local marker_file="${CONFIG_DIR}/.last_cleanup"
 
-    if [[ ! -f "$marker_file" ]] || [[ "$(cat "$marker_file")" != "$today" ]]; then
-        > "$NOTIFIED_FILE"
-        echo "$today" > "$marker_file"
+    if [[ ! -f "${marker_file}" ]] || [[ "$(cat "${marker_file}")" != "${today}" ]]; then
+        : > "${NOTIFIED_FILE}"
+        echo "${today}" > "${marker_file}"
         log "Cleaned up notified list for new day"
     fi
 }
@@ -452,9 +452,9 @@ cmd_check() {
 
     # Check work hours (EST)
     local now_hour
-    now_hour=$(TZ="$TZ_NAME" date +%H)
-    if (( 10#$now_hour < WORK_START_HOUR || 10#$now_hour >= WORK_END_HOUR )); then
-        log "Skipped: outside work hours ($now_hour)"
+    now_hour=$(TZ="${TZ_NAME}" date +%H)
+    if (( 10#${now_hour} < WORK_START_HOUR || 10#${now_hour} >= WORK_END_HOUR )); then
+        log "Skipped: outside work hours (${now_hour})"
         return 0
     fi
 
@@ -474,18 +474,18 @@ cmd_check() {
     #   - file present but empty     -> alert on nothing (user opted out of everything)
     #   - file present with names    -> pass to icalBuddy via -ic
     local -a ic_args=()
-    if [[ -f "$SUBSCRIBED_FILE" ]]; then
+    if [[ -f "${SUBSCRIBED_FILE}" ]]; then
         local subs
         subs=$(load_subscribed)
-        if [[ -z "$subs" ]]; then
+        if [[ -z "${subs}" ]]; then
             log "Skipped: subscription file present but empty (no calendars subscribed)"
             return 0
         fi
         # icalBuddy -ic takes a comma-separated list of calendar names.
         local ic_list
-        ic_list=$(printf '%s\n' "$subs" | paste -sd ',' -)
-        ic_args=(-ic "$ic_list")
-        log "Filtering to subscribed calendars: $ic_list"
+        ic_list=$(printf '%s\n' "${subs}" | paste -sd ',' -)
+        ic_args=(-ic "${ic_list}")
+        log "Filtering to subscribed calendars: ${ic_list}"
     else
         log "No subscription file — alerting on all calendars"
     fi
@@ -498,41 +498,41 @@ cmd_check() {
         "${ic_args[@]}" \
         eventsFrom:today to:today+1 2>/dev/null) || true
 
-    if [[ -z "$events" ]]; then
+    if [[ -z "${events}" ]]; then
         log "No events found"
         return 0
     fi
 
     # Parse events: each line is "YYYY-MM-DDTHH:MM -  Title"
     while IFS= read -r line; do
-        [[ -z "$line" ]] && continue
+        [[ -z "${line}" ]] && continue
 
         # Extract datetime and title
         local event_dt event_title
-        event_dt=$(echo "$line" | sed -n 's/^\([0-9T:-]*\) - .*/\1/p')
-        event_title=$(echo "$line" | sed -n 's/^[0-9T:-]* -  \(.*\)/\1/p')
+        event_dt=$(echo "${line}" | sed -n 's/^\([0-9T:-]*\) - .*/\1/p')
+        event_title=$(echo "${line}" | sed -n 's/^[0-9T:-]* -  \(.*\)/\1/p')
 
-        [[ -z "$event_dt" || -z "$event_title" ]] && continue
+        [[ -z "${event_dt}" || -z "${event_title}" ]] && continue
 
         # Convert event time to epoch
         local event_ts
-        event_ts=$(date -j -f "%Y-%m-%dT%H:%M" "$event_dt" +%s 2>/dev/null) || continue
+        event_ts=$(date -j -f "%Y-%m-%dT%H:%M" "${event_dt}" +%s 2>/dev/null) || continue
 
         # Check if event starts within ±ALERT_WINDOW_MINUTES of now
         if (( event_ts >= earlier_ts && event_ts <= later_ts )); then
             local event_time_human
-            event_time_human=$(date -j -f "%Y-%m-%dT%H:%M" "$event_dt" "+%l:%M %p" 2>/dev/null)
+            event_time_human=$(date -j -f "%Y-%m-%dT%H:%M" "${event_dt}" "+%l:%M %p" 2>/dev/null)
 
             local notify_key="${event_dt}_${event_title}"
 
-            if ! already_notified "$notify_key"; then
-                mark_notified "$notify_key"
-                fire_alert "$event_title" "$event_time_human"
+            if ! already_notified "${notify_key}"; then
+                mark_notified "${notify_key}"
+                fire_alert "${event_title}" "${event_time_human}"
             else
-                log "Already notified: $event_title"
+                log "Already notified: ${event_title}"
             fi
         fi
-    done <<< "$events"
+    done <<< "${events}"
 }
 
 cmd_test() {

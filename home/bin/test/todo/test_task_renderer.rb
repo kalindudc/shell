@@ -305,56 +305,49 @@ class TestTaskRenderer < Minitest::Test
   # ── fzf_desc_max ────────────────────────────────────────────────────
 
   def test_fzf_desc_max_computes_from_terminal_width
-    # Stub terminal_cols to a known value
-    TR.define_singleton_method(:terminal_cols) { 120 }
-    # 120 * 60% = 72 available, minus 44 fixed = 28
-    assert_equal 28, TR.fzf_desc_max
-  ensure
-    # Restore original
-    TR.singleton_class.remove_method(:terminal_cols) if TR.singleton_class.method_defined?(:terminal_cols)
+    TR.stub(:terminal_cols, 120) do
+      # 120 * 60% = 72 available, minus 44 fixed = 28
+      assert_equal 28, TR.fzf_desc_max
+    end
   end
 
   def test_fzf_desc_max_enforces_minimum
-    TR.define_singleton_method(:terminal_cols) { 40 }
-    # 40 * 60% = 24 available, minus 44 fixed = -20, clamped to 16
-    assert_equal TR::FZF_MIN_DESC, TR.fzf_desc_max
-  ensure
-    TR.singleton_class.remove_method(:terminal_cols) if TR.singleton_class.method_defined?(:terminal_cols)
+    TR.stub(:terminal_cols, 40) do
+      # 40 * 60% = 24 available, minus 44 fixed = -20, clamped to 16
+      assert_equal TR::FZF_MIN_DESC, TR.fzf_desc_max
+    end
   end
 
   def test_fzf_desc_max_wide_terminal
-    TR.define_singleton_method(:terminal_cols) { 200 }
-    # 200 * 60% = 120 available, minus 44 fixed = 76
-    assert_equal 76, TR.fzf_desc_max
-  ensure
-    TR.singleton_class.remove_method(:terminal_cols) if TR.singleton_class.method_defined?(:terminal_cols)
+    TR.stub(:terminal_cols, 200) do
+      # 200 * 60% = 120 available, minus 44 fixed = 76
+      assert_equal 76, TR.fzf_desc_max
+    end
   end
 
   def test_fzf_desc_max_custom_preview_pct
-    TR.define_singleton_method(:terminal_cols) { 120 }
-    # 120 * 70% = 84 available, minus 44 fixed = 40
-    assert_equal 40, TR.fzf_desc_max(preview_pct: 30)
-  ensure
-    TR.singleton_class.remove_method(:terminal_cols) if TR.singleton_class.method_defined?(:terminal_cols)
+    TR.stub(:terminal_cols, 120) do
+      # 120 * 70% = 84 available, minus 44 fixed = 40
+      assert_equal 40, TR.fzf_desc_max(preview_pct: 30)
+    end
   end
 
   def test_render_fzf_respects_fzf_desc_max
     # With a narrow fzf desc_max, the visible part should be truncated
-    TR.define_singleton_method(:terminal_cols) { 120 }
-    fzf_dmax = TR.fzf_desc_max # 28
-    long_desc = 'A' * 50
-    config = { 'desc_max' => fzf_dmax }
-    line = TR.render_fzf(make_task('description' => long_desc), config: config)
-    visible = line.split("\t").first
+    TR.stub(:terminal_cols, 120) do
+      fzf_dmax = TR.fzf_desc_max # 28
+      long_desc = 'A' * 50
+      config = { 'desc_max' => fzf_dmax }
+      line = TR.render_fzf(make_task('description' => long_desc), config: config)
+      visible = line.split("\t").first
 
-    # Description should be truncated to fzf_dmax chars (25 chars + "...")
-    assert_includes visible, '...'
-    refute_includes visible, 'A' * 50
+      # Description should be truncated to fzf_dmax chars (25 chars + "...")
+      assert_includes visible, '...'
+      refute_includes visible, 'A' * 50
 
-    # But full description is still searchable after the tab
-    assert_equal long_desc, line.split("\t").last
-  ensure
-    TR.singleton_class.remove_method(:terminal_cols) if TR.singleton_class.method_defined?(:terminal_cols)
+      # But full description is still searchable after the tab
+      assert_equal long_desc, line.split("\t").last
+    end
   end
 
   # ── NO_COLOR ───────────────────────────────────────────────────────

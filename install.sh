@@ -79,4 +79,4 @@ if ! command -v ruby >/dev/null 2>&1; then
 fi
 
 # Execute Ruby orchestrator
-exec ruby "${SHELL_DIR}/src/install.rb" "$@"
+exec bundle exec ruby "${SHELL_DIR}/src/install.rb" "$@"

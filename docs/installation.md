@@ -77,8 +77,9 @@ Packages in the `custom:` section call Ruby methods for complex installations:
 - `install_docker_post` — enable docker service, add user to docker group
 - `install_pyenv` — install pyenv via curl
 - `install_gum` — install charmbracelet/gum via go
-- `install_zsh_plugins` — clone oh-my-zsh plugins
+- `install_zsh_plugins` — clone zsh plugins used by the generated config
 - `install_fzf_latest` — download latest fzf from GitHub
+- `install_atuin` — install Atuin history search/sync via the official installer fallback
 - `install_delta_deb` — download git-delta .deb for Ubuntu
 - `install_zoxide_curl` — install zoxide via curl
 - `install_starship_curl` — install starship via curl
@@ -86,7 +87,7 @@ Packages in the `custom:` section call Ruby methods for complex installations:
 - `install_nerd_fonts_brew` — install all nerd fonts via brew
 - `install_nvm_curl` — install nvm via curl (fallback)
 
-To add a custom installer, add the method name to `custom:` in `packages.yml` and define the method in `src/install.rb`.
+To add a custom installer, add the method name to `custom:` in `packages.yml` and define the method in `src/install/custom.rb`.
 
 ## Environment Configuration
 
@@ -108,8 +109,18 @@ exec zsh  # Restart shell
 # Verify key tools
 starship --version
 fzf --version
+atuin --version
+atuin doctor
 nvim --version
 ```
+
+## Atuin history migration
+
+Atuin replaces the legacy oh-my-zsh history aliases (`h`, `hl`, `hs`, `hsi`) and old Ctrl-R history search. fzf still handles non-history workflows such as completion, Ctrl-T, Alt-C, Kubernetes helpers, and todo tooling; native zsh still handles Up/Down prefix search until Atuin changes directory filtering for those keys.
+
+Migration is manual and safe by default: import existing zsh history with `HISTFILE=$HOME/.zsh_history atuin import zsh`, open interactive search with `atuin search -i`, inspect your encryption key with `atuin key`, then opt into sync with `atuin sync` or force reconciliation with `atuin sync -f` when needed. Before pruning imported history, review `atuin history prune --dry-run`.
+
+Only non-secret Atuin client config is tracked in this repo. Atuin secrets and state, including keys, sessions, and `history.db`, stay in Atuin's default data directory under `~/.local/share/atuin` and should not be committed.
 
 ## Troubleshooting
 

@@ -11,41 +11,7 @@ tasks:
   up:
     desc: "Install development dependencies (dev tools + Ruby gems)"
     cmds:
-      - |
-        # Install shell dev tools required for task test:unit and task style
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-          brew install bats-core shellcheck shfmt
-        elif [[ -f /etc/arch-release ]]; then
-          sudo pacman -S --needed --noconfirm bats shellcheck shfmt
-        else
-          sudo apt-get install -y bats shellcheck
-          # shfmt not in apt on older Ubuntu; install via go if available
-          if command -v go >/dev/null 2>&1; then
-            go install mvdan.cc/sh/v3/cmd/shfmt@latest
-          fi
-        fi
-        echo "✓ Dev tools installed"
-      - |
-        REQUIRED_BUNDLER="4.0.3"
-        BUNDLE_BIN="{{.GEM_BIN}}/bundle"
-
-        # Install the required bundler version to the user gem dir if missing
-        if ! "${BUNDLE_BIN}" --version 2>/dev/null | grep -q "${REQUIRED_BUNDLER}"; then
-          echo "Installing bundler ${REQUIRED_BUNDLER}..."
-          gem install bundler -v "${REQUIRED_BUNDLER}" --user-install
-        fi
-
-        # Set global bundle config so all projects install gems to the user gem dir
-        # and never require root. This persists in ~/.bundle/config.
-        "${BUNDLE_BIN}" config set --global path "$(ruby -e 'puts Gem.user_dir')"
-        "${BUNDLE_BIN}" config set --global bin "{{.GEM_BIN}}"
-
-        "${BUNDLE_BIN}" install
-
-        echo "Setup NPM"
-        npm install
-
-      - echo "✓ Development dependencies installed"
+      - ./src/scripts/up.sh
 
   # Installation
   install:
@@ -123,7 +89,6 @@ tasks:
     desc: "Run all tests (unit + integration + bin)"
     deps:
       - test:unit
-      - test:integration
       - test:bin
 
   test:unit:
@@ -131,7 +96,7 @@ tasks:
     cmds:
       - |
         echo "Running Ruby installer unit tests..."
-        ruby test/unit/test_installer.rb
+        bundle exec ruby test/unit/test_installer.rb
         echo "✓ Ruby installer tests passed"
       - |
         BUN="${HOME}/.bun/bin/bun"

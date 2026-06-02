@@ -16,6 +16,7 @@ export PNPM_HOME="/Users/kalindu/.local/share/pnpm"
 export PATH=\
 $PNPM_HOME:\
 $HOME/.opencode/bin:\
+$HOME/.atuin/bin:\
 /opt/homebrew/bin:/opt/homebrew/sbin:\
 $HOME/bin/:$HOME/.local/bin:$HOME/bin:\
 $HOME/.kube-plugins:\
@@ -117,7 +118,7 @@ bindkey '^[[A'  up-line-or-beginning-search
 bindkey '^[[B'  down-line-or-beginning-search
 if (( ${+terminfo[kcuu1]} )); then bindkey "${terminfo[kcuu1]}" up-line-or-beginning-search; fi
 if (( ${+terminfo[kcud1]} )); then bindkey "${terminfo[kcud1]}" down-line-or-beginning-search; fi
-bindkey '^r'    history-incremental-search-backward
+bindkey '^r'    history-incremental-search-backward  # fallback; Atuin overrides when installed
 bindkey ' '     magic-space
 bindkey '^f'    forward-word
 if (( ${+terminfo[khome]} )); then bindkey "${terminfo[khome]}" beginning-of-line; fi
@@ -161,12 +162,15 @@ export ZSH_AUTOSUGGEST_STRATEGY=(history completion)
 [[ -f "$ZSH_PLUGIN_DIR/ohmyzsh/plugins/colorize/colorize.plugin.zsh" ]] && \
   source "$ZSH_PLUGIN_DIR/ohmyzsh/plugins/colorize/colorize.plugin.zsh"
 
-# history aliases (h, hl, hs, hsi)
-[[ -f "$ZSH_PLUGIN_DIR/ohmyzsh/plugins/history/history.plugin.zsh" ]] && \
-  source "$ZSH_PLUGIN_DIR/ohmyzsh/plugins/history/history.plugin.zsh"
-
-# fzf — key bindings and completion
+# fzf — key bindings and completion; Atuin supersedes only history Ctrl-R.
 [ -f "$HOME/.fzf.zsh" ] && source "$HOME/.fzf.zsh"
+
+# Atuin — shell history sync/search. Keep Up/Down prefix search from zsh-config.
+if command -v atuin &>/dev/null; then
+  export ATUIN_NOBIND="true"
+  eval "$(atuin init zsh)"
+  bindkey '^r' atuin-search
+fi
 
 # kubectl completion
 [[ -f "$ZSH_PLUGIN_DIR/kubectl-autocomplete/kubectl-autocomplete.plugin.zsh" ]] && \

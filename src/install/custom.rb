@@ -66,6 +66,13 @@ module Installer
       system("kubectl completion zsh > #{completion_file}")
     end
 
+    def install_atuin
+      return if Installer::Utils.command?("atuin")
+
+      Installer::Utils.log("Installing Atuin...")
+      system("bash", "-c", "curl --proto '=https' --tlsv1.2 -LsSf https://setup.atuin.sh | sh -s -- --non-interactive")
+    end
+
     def install_fzf_latest
       return if fzf_version_ok?
 

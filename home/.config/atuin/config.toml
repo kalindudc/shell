@@ -1,0 +1,25 @@
+# Managed Atuin client configuration.
+# Secrets and state stay in Atuin's default data directory and are not tracked.
+
+auto_sync = true
+sync_frequency = "1h"
+secrets_filter = true
+
+search_mode = "fuzzy"
+filter_mode = "global"
+workspaces = true
+filter_mode_shell_up_key_binding = "directory"
+
+inline_height = 30
+style = "compact"
+show_preview = true
+show_help = true
+enter_accept = false
+
+history_filter = [
+  "^atuin login",
+  "^atuin register",
+]
+
+[search]
+filters = ["global", "host", "session", "directory", "workspace"]
