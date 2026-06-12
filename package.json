@@ -10,7 +10,7 @@
     "@mariozechner/pi-coding-agent": "^0.63.0",
     "@mariozechner/pi-tui": "^0.63.0",
     "@sinclair/typebox": "^0.34.0",
-    "vitest": "^3.0.0",
+    "vitest": "^4.1.8",
     "typescript": "^5.7.0"
   }
 }
