@@ -88,7 +88,7 @@ class TestInstaller < Minitest::Test
     packages = content['npm']
 
     assert packages.is_a?(Array), "npm packages should be an array"
-    assert_includes packages, '@mariozechner/pi-coding-agent', "npm should include pi-coding-agent"
+    assert_includes packages, '@earendil-works/pi-coding-agent', "npm should include pi-coding-agent"
   end
 
   def test_packages_yml_custom_packages

@@ -46,7 +46,7 @@ brew:
   - neovim
 
 npm:
-  - "@mariozechner/pi-coding-agent"
+  - "@earendil-works/pi-coding-agent"
 
 custom:
   - install_zsh_plugins
