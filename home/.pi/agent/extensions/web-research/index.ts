@@ -6,20 +6,23 @@
  * - web_search: Search the web via Exa AI (free, no API key)
  */
 
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { Type } from "@sinclair/typebox";
+import type { ExtensionAPI, TruncationResult } from "@earendil-works/pi-coding-agent";
+import {
+  DEFAULT_MAX_BYTES,
+  DEFAULT_MAX_LINES,
+  formatSize,
+  truncateHead,
+  withFileMutationQueue,
+} from "@earendil-works/pi-coding-agent";
+import { Type } from "typebox";
 import TurndownService from "turndown";
 import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom";
-import { writeFileSync } from "node:fs";
+import { mkdtemp, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { randomBytes } from "node:crypto";
 
 // Constants
-
-const MAX_CONTENT_BYTES = 50 * 1024; // 50KB
-const MAX_CONTENT_LINES = 2000;
 
 const CHROME_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
@@ -28,37 +31,57 @@ const EXA_MCP_URL = "https://mcp.exa.ai/mcp";
 
 // Helpers
 
-function truncate(text: string, maxBytes: number, maxLines: number): string {
-  const lines = text.split("\n");
-  const totalBytes = Buffer.byteLength(text, "utf-8");
+interface WebFetchDetails {
+  url: string;
+  contentType: string;
+  truncated: boolean;
+  truncation?: TruncationResult;
+  fullOutputPath?: string;
+}
 
-  if (lines.length <= maxLines && totalBytes <= maxBytes) return text;
+async function truncateContent(text: string): Promise<{
+  text: string;
+  details: Pick<WebFetchDetails, "truncated" | "truncation" | "fullOutputPath">;
+}> {
+  const truncation = truncateHead(text);
 
-  // Head-truncate: keep first N lines/bytes
-  const out: string[] = [];
-  let bytes = 0;
-  let hitBytes = false;
-  for (let i = 0; i < lines.length && i < maxLines; i++) {
-    const size = Buffer.byteLength(lines[i], "utf-8") + (i > 0 ? 1 : 0);
-    if (bytes + size > maxBytes) {
-      hitBytes = true;
-      break;
-    }
-    out.push(lines[i]);
-    bytes += size;
+  if (!truncation.truncated) {
+    return {
+      text,
+      details: { truncated: false },
+    };
   }
 
-  const removed = hitBytes ? totalBytes - bytes : lines.length - out.length;
-  const unit = hitBytes ? "bytes" : "lines";
+  // Save full content to a temp file so the LLM can access it if needed.
+  const tempDir = await mkdtemp(join(tmpdir(), "pi-web-fetch-"));
+  const tempFile = join(tempDir, "content.md");
+  await withFileMutationQueue(tempFile, async () => {
+    await writeFile(tempFile, text, "utf-8");
+  });
 
-  // Save full content to temp file
-  const fullPath = join(tmpdir(), `pi-web-fetch-${randomBytes(8).toString("hex")}.md`);
-  writeFileSync(fullPath, text, "utf-8");
+  let resultText: string;
 
-  const preview = out.join("\n");
-  const hint = `The tool call succeeded but the output was truncated. Full output saved to: ${fullPath}\nUse read with offset/limit to view specific sections, or grep to search the full content.`;
+  if (truncation.firstLineExceedsLimit) {
+    resultText = `[First line exceeds ${formatSize(DEFAULT_MAX_BYTES)} limit. Full output saved to: ${tempFile}]`;
+  } else {
+    const truncatedLines = truncation.totalLines - truncation.outputLines;
+    const truncatedBytes = truncation.totalBytes - truncation.outputBytes;
 
-  return `${preview}\n\n...${removed} ${unit} truncated...\n\n${hint}`;
+    resultText = truncation.content;
+    resultText += `\n\n[Output truncated: showing ${truncation.outputLines} of ${truncation.totalLines} lines`;
+    resultText += ` (${formatSize(truncation.outputBytes)} of ${formatSize(truncation.totalBytes)}).`;
+    resultText += ` ${truncatedLines} lines (${formatSize(truncatedBytes)}) omitted.`;
+    resultText += ` Full output saved to: ${tempFile}. Use read with offset/limit to view specific sections, or grep to search the full content.]`;
+  }
+
+  return {
+    text: resultText,
+    details: {
+      truncated: true,
+      truncation,
+      fullOutputPath: tempFile,
+    },
+  };
 }
 
 function isHtml(contentType: string): boolean {
@@ -152,8 +175,7 @@ export default function (pi: ExtensionAPI) {
   pi.registerTool({
     name: "web_fetch",
     label: "Web Fetch",
-    description:
-      "Fetch a URL and return its content as LLM-friendly markdown. Converts HTML pages to clean markdown using Readability + Turndown. JSON and plain text are returned directly.",
+    description: `Fetch a URL and return its content as LLM-friendly markdown. Converts HTML pages to clean markdown using Readability + Turndown. JSON and plain text are returned directly. Output is truncated to ${DEFAULT_MAX_LINES} lines or ${formatSize(DEFAULT_MAX_BYTES)} (whichever is hit first). If truncated, the full output is saved to a temp file.`,
     promptSnippet:
       "web_fetch: Fetch a URL and return its content as LLM-friendly markdown",
     promptGuidelines: [
@@ -245,11 +267,17 @@ export default function (pi: ExtensionAPI) {
           };
         }
 
-        content = truncate(content, MAX_CONTENT_BYTES, MAX_CONTENT_LINES);
+        const { text: truncatedText, details: truncateDetails } = await truncateContent(content);
+
+        const details: WebFetchDetails = {
+          url,
+          contentType,
+          ...truncateDetails,
+        };
 
         return {
-          content: [{ type: "text", text: content }],
-          details: {},
+          content: [{ type: "text", text: truncatedText }],
+          details,
         };
       } catch (e) {
         const message =

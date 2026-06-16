@@ -14,11 +14,11 @@
     "linkedom": "^0.16.0"
   },
   "peerDependencies": {
-    "@mariozechner/pi-coding-agent": "*",
-    "@sinclair/typebox": "*"
+    "@earendil-works/pi-coding-agent": "^0.78.0",
+    "typebox": "*"
   },
   "devDependencies": {
-    "@sinclair/typebox": "~0.34.48",
+    "typebox": "^1.1.0",
     "@types/node": "^25.5.0",
     "@types/turndown": "^5.0.5"
   }
