@@ -1,6 +1,6 @@
 ---
 name: web-researcher
-description: Conduct thorough web-based research using web_fetch and web_search tools with delegation. Use when you need external info not in the local codebase -- docs, API references, current practices, error resolution.
+description: Conduct thorough web-based research using fetch_content and web_search tools with delegation. Use when you need external info not in the local codebase -- docs, API references, current practices, error resolution.
 ---
 
 # Web Research
@@ -13,7 +13,7 @@ description: Conduct thorough web-based research using web_fetch and web_search 
 
 ## Tool Selection
 
-`web_fetch` is the primary research tool. Use it when you know or can construct the URL:
+`fetch_content` is the primary research tool. Use it when you know or can construct the URL:
 - Official docs: `https://docs.example.com/api/...`
 - GitHub raw content: `https://raw.githubusercontent.com/...`
 - Package registries, changelogs, API references
@@ -25,8 +25,8 @@ description: Conduct thorough web-based research using web_fetch and web_search 
 
 ## Quick Research
 
-1. Construct the URL if possible → `web_fetch` directly
-2. Cannot construct URL → single `web_search` → `web_fetch` top 1-2 results
+1. Construct the URL if possible → `fetch_content` directly
+2. Cannot construct URL → single `web_search` → `fetch_content` top 1-2 results
 3. Summarize with source URLs
 
 ## Thorough Research
