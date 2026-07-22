@@ -99,6 +99,7 @@ Scan all tab text (and sheet rows, if any) and produce:
 Action-item extraction rules (generous mode):
 
 - Include clear commitments with an owner + commitment verb (e.g., "@alice will write the RFC by Monday").
+- When a Notes tab contains a `Next steps` entry shaped `[Owner1, Owner2] Title: details`, preserve the bracketed owners and title as the authoritative mapping; use Transcript text only to enrich or verify the details.
 - ALSO include tentative commitments ("I'll probably take a look", "let me explore X"), tagged `[low]` before the item text.
 - For each item, try to capture: owner (handle, name, or `Unassigned`), the action, and a due date if mentioned. Use `—` when missing.
 - Dedupe items that appear in both Notes and Transcript — prefer the more specific phrasing.
@@ -184,6 +185,10 @@ Warnings: <count>
 - `./tmp/meetings/<date>-<slug>/raw-doc.json` — raw Docs API response
 - `./tmp/meetings/<date>-<slug>/raw-sheet-<id>.json` — raw Sheets API responses per linked sheet (if any)
 
+## Self-Improvement
+
+After execution, use the `skill-improver` agent to capture observations in `SKILL_NOTES.md`. Before execution, read `SKILL_NOTES.md` for known edge cases.
+
 ## Rules
 
 - NEVER issue non-GET API calls to Google services
@@ -196,7 +201,3 @@ Warnings: <count>
 - ALWAYS surface bundle warnings verbatim in the report
 - ALWAYS prefer Notes-tab headings for topic names when both Notes and Transcript are present
 - ALWAYS tag tentative items with `[low]` (generous extraction mode)
-
-## Self-Improvement
-
-After execution, use the `skill-improver` agent to capture observations in `SKILL_NOTES.md`. Before execution, read `SKILL_NOTES.md` for known edge cases.

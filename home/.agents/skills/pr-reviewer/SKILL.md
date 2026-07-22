@@ -129,7 +129,7 @@ When uncertain, mark as duplicate. Better to skip a duplicate than repeat one.
 
 ### Stage 5: Output
 
-Run the project's test suite and any relevant build/lint commands. Read repo guidelines for test execution. Record each command and its outcome.
+Attempt the project's relevant test suite and build/lint commands. Read repo guidelines for test execution. Record each command and its outcome. If validation cannot run because the required environment or dependencies are unavailable, record the exact command and blocker, continue with static verification, and do not claim that validation passed.
 
 For Terraform workspaces: `terraform validate` confirms schema conformance but does NOT validate semantic correctness of attribute interactions. Cross-reference provider documentation for resource types in the diff to verify behavioral intent matches configuration.
 
@@ -263,7 +263,7 @@ After execution, use `skill-improver` to capture observations. Before execution,
 - NEVER post comments directly on the PR
 - NEVER report style, formatting, or theoretical concerns -- bugs only
 - ALWAYS read changed files in full context, not just diff hunks
-- ALWAYS run tests/build as validation
+- ALWAYS attempt relevant tests/builds as validation and report either their outcomes or the exact environmental blocker
 - No finding survives without majority critic votes
 - If no real issues found, output PASS with empty sections
 - Keep findings terse -- one line each, explain "why" not "what"

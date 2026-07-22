@@ -35,6 +35,7 @@ The entire PR description MUST be readable in under 5 minutes. A description nob
 
 - Check if a GitHub issue URL or number was provided in `$ARGUMENTS`
 - If not provided and the change is self-explanatory from the diff alone (small config/CI changes, docs-only), skip the prompt. Otherwise, prompt the user for a relevant GitHub issue (URL or number).
+- For a `github.com` issue URL or number, use `gh issue view <number> --repo <owner>/<repo> --json title,body,labels,state,url` as the primary lookup. Reserve web fetching for non-GitHub issue sources.
 - Use the issue to extract context for the Why and Related sections of the PR description
 
 ### 3. Get the git diff

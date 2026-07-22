@@ -3,6 +3,8 @@ name: critique
 description: On-demand multi-model critic consensus for arbitrary concerns
 ---
 
+# Critique Skill
+
 ## Purpose
 
 Evaluate user-provided concerns through multi-model critic consensus. Takes one or more concerns (about code, architecture, design, process, or any artifact), investigates each via the researcher agent, then filters through multi-model critic consensus to separate real issues from speculative or unfounded worries.
@@ -53,12 +55,16 @@ Invoke multi-model critic consensus:
 1. Read `~/.agents/skills/critique/critics.yml` to get the available critic models
 2. Read `~/.agents/skills/critique/critic-prompt.md` to get the shared evaluation prompt
 3. For each investigated concern, construct a `spawn` call with `tasks` array -- one task per critic model.
-  ALWAYS spawn all critics in parallel
-  ALWAYS explicitly specify the model for each critic
-  Each task's `task` field = the critic prompt + concern + evidence + evaluation criteria below.
-  Each task's `model` field = the model identifier from critics.yml.
-4. Collect results, extract KEEP/REJECT/ABSTAIN votes from each critic's response
+   - ALWAYS spawn all critics in parallel
+   - ALWAYS explicitly specify the model for each critic
+   - Each task's `task` field = the critic prompt + concern + evidence + evaluation criteria below.
+   - Each task's `model` field = the model identifier from critics.yml.
+   - Bound source scope and tool-call budgets to the evidence required.
+   - Require `KEEP`, `REJECT`, or `ABSTAIN` as the first response line.
+   - When references are dynamic, provide immutable revisions or snapshots where available.
+4. Collect results and extract KEEP/REJECT/ABSTAIN votes. Classify each REJECT rationale as contradiction, insufficient verification, or tool failure without changing the vote.
 5. Apply dynamic consensus: majority KEEP = validated. Adjust threshold when critics abstain/timeout (e.g., 2/3 KEEP when one critic abstains).
+6. Immediately before final output, recheck dynamic references. If they changed, refresh the evidence and rerun the affected critic tasks.
 
 #### Evaluation Criteria
 

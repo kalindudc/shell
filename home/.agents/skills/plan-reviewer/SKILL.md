@@ -62,7 +62,7 @@ If the researcher fails or times out, fall back to inline verification:
 - Do referenced files, functions, classes exist? (Use Read, ast_query, Glob). Always read the actual pattern files being referenced and at least one real data file -- plans frequently describe idealized schemas rather than actual data shapes.
 - Do referenced libraries/APIs exist and support described usage? Check installed source/type definitions as ground truth (docs omit signature details). For claims depending on external platform documentation (cloud provider behavior, runtime limitations), always webfetch the cited URLs -- these are load-bearing and unverifiable from codebase alone.
 - Are code snippets syntactically valid?
-- For quantitative claims (element counts, line counts, test counts), verify directly against the source rather than trusting listed enumerations.
+- For quantitative claims (element counts, line counts, test counts), verify directly against the source or a real generated output rather than trusting listed enumerations. When a plan hardcodes emitted/generated paths, compare the list and count against that output; if recommending a fix, prefer dynamic discovery over replacing one hardcoded enumeration with another.
 - Verify negative capability claims ("does not support X", "cannot do Y") with the same rigor as positive claims -- trace transitive call chains, check resource lists. Self-assessment sections (Known Gaps, Known Limitations, Caveats) contain falsifiable negative claims that must be included as researcher verification targets with HIGHER priority than specification sections, because they are harder to verify by casual reading and more likely to be stale.
 
 Feasibility ("show proposed design meets requirements"):

@@ -34,7 +34,7 @@ If any tasks are marked completed or in progress, this is a resume:
 ## Pre-Implementation Setup
 
 1. Branch check: Verify you are NOT on `main`. If on `main`, propose a branch name and create it with `gt create` (if available) or `git checkout -b` with the provided branch name template without prompting the user for confirmation.
-2. Baseline check: Run the project's build/test command. If NOT green, STOP and inform the user.
+2. Baseline check: Run the project's build/test command. If NOT green, STOP and report the exact failing gates or tests. Continue only after the user explicitly accepts them as the baseline; record the exact failure set as the baseline regression contract.
 3. Context loading: Read all files in "Beginning context". Verify each exists (or note as expected-missing for CREATE tasks).
 
 BRANCH NAME TEMPLATE: `<github-username>/<feat|fix|chore>_<short-description>`
@@ -134,7 +134,7 @@ Critical: NEVER silently retry -- state what changed and why. NEVER modify tests
 After all tasks are completed:
 
 1. Run ALL Validation Gates from the plan
-2. Run the full build + test + lint cycle
+2. Run the full build + test + lint cycle. If a baseline regression contract exists, compare the final failure set against it: any new failure is a regression, while unchanged accepted failures remain reported as pre-existing.
 3. Report final status: tasks completed (N/N), validation gates (pass/fail), files touched, deviations. Use the `git_diff_summary` tool for the final changeset summary -- it provides structured file categorization and counts instead of raw diff output. Supplement with `git status` when the plan creates new files, since `git_diff_summary` only covers tracked changes and will miss untracked files.
 4. Update the plan with `## Implementation Status: COMPLETED` at the top
 

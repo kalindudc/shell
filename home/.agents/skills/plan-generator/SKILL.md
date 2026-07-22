@@ -235,7 +235,11 @@ STOP. Before writing the plan, complete every item. Do NOT skip this.
 Before saving the plan file, scan every task block:
 - [ ] No UPDATE task contains a full file -- only changed lines
 - [ ] No CREATE task contains a full implementation -- only signatures, decisions, low level implementation details for ambiguous code
-- [ ] No task block exceeds 25 lines -- if it does, split it into multiple tasks or move details to Implementation Notes
+- [ ] Run this check against the draft; it prints fenced task blocks over the 25-line review threshold:
+  ````sh
+  awk '/^```/{if(open){n=NR-start-1; if(n>25) printf "REVIEW lines %d-%d (%d content lines)\\n",start,NR,n; open=0}else{open=1; start=NR}} END{if(open){print "ERROR: unclosed code block" > "/dev/stderr"; exit 1}}' <plan-file>
+  ````
+  Review every hit. Split the task or move inferable detail to Implementation Notes; no task block may exceed the 35-line hard limit.
 - [ ] No test task contains full test function bodies -- describe what to assert, not how to write it
 
 ---
