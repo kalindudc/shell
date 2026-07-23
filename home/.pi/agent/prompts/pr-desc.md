@@ -6,8 +6,8 @@ Load the `pr-description-generator` skill and follow its instructions to generat
 
 ## Context gathering
 
-- Detect parent branch: check if graphite CLI is available (`which gt`), use `gt log` for stacked branches. Fall back to git-based parent detection otherwise.
-- Gather the diff: `git diff <parent>...HEAD` and `git log --oneline <parent>...HEAD`
+- Detect the parent and diff base: if the `gh-stack` extension is available, run `gh stack view --json` (never the interactive form). For a tracked layer, use the nearest preceding non-merged branch or `.trunk` as its parent. Use the layer's `.base` SHA only when `needsRebase` is false and `git merge-base --is-ancestor <base_sha> HEAD` succeeds. Fall back to a user-specified or git-derived parent for non-stacked branches.
+- Gather the diff: for a linear GitHub stack layer, use `git diff <base_sha>..HEAD` and `git log --oneline <base_sha>..HEAD`. If the layer needs rebasing or lacks a usable base SHA, report that state and use the parent's triple-dot diff/log. For non-stacked branches, use `git diff <parent>...HEAD` and `git log --oneline <parent>...HEAD`.
 - Use `git_diff_summary` for a structured overview of changes with file categorization
 - Discover related plans in cortex (same lane = repo dir name, tag = `plan`):
   ```bash

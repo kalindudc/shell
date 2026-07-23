@@ -33,7 +33,7 @@ If any tasks are marked completed or in progress, this is a resume:
 
 ## Pre-Implementation Setup
 
-1. Branch check: Verify you are NOT on `main`. If on `main`, propose a branch name and create it with `gt create` (if available) or `git checkout -b` with the provided branch name template without prompting the user for confirmation.
+1. Branch check: Verify you are NOT on `main`. If on `main`, propose a branch name without prompting for confirmation. If the GitHub stack extension is available (`command -v gh >/dev/null 2>&1 && gh stack --version >/dev/null 2>&1`), preconfigure `git config rerere.enabled true` to avoid an interactive prompt, then create the bottom stack layer with `gh stack init --base main <branch_name>`. Otherwise, create the branch with `git checkout -b <branch_name>`. ALWAYS pass the branch name to `gh stack init`; never invoke its interactive form.
 2. Baseline check: Run the project's build/test command. If NOT green, STOP and report the exact failing gates or tests. Continue only after the user explicitly accepts them as the baseline; record the exact failure set as the baseline regression contract.
 3. Context loading: Read all files in "Beginning context". Verify each exists (or note as expected-missing for CREATE tasks).
 

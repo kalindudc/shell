@@ -25,11 +25,13 @@ The entire PR description MUST be readable in under 5 minutes. A description nob
 
 ### 1. Determine the parent branch
 
-- Check if graphite CLI is available by running `which gt`
-- If available, run `gt log` to determine the parent branch from the stack
-- If not available, determine if the user specified a parent branch in the arguments
-- If unclear, prompt the user for more information on the parent branch
-- Ensure the parent branch is in its latest state from remote before diffing
+- Check whether the GitHub stack extension is available with `command -v gh >/dev/null 2>&1 && gh stack --version >/dev/null 2>&1`
+- If available, run `gh stack view --json` to inspect the current stack. NEVER run `gh stack view` without `--json` because it launches an interactive TUI.
+- If the current branch is a stack layer, treat `.branches` as bottom-to-top: its parent is the nearest preceding non-merged branch, or `.trunk` for the bottom active layer.
+- Capture the current layer's `.base` commit SHA as a candidate diff base. Use it only when `needsRebase` is false and `git merge-base --is-ancestor <base_sha> HEAD` succeeds. If either guard fails, the layer is not linear with its recorded parent; use the parent branch's triple-dot diff and report that the stack needs restacking.
+- If `gh stack view --json` reports that the branch is not in a stack, determine whether the user specified a parent branch in the arguments.
+- If the parent is still unclear, prompt the user for more information.
+- Fetch relevant remote refs before diffing, but do NOT run `gh stack sync` solely to generate a description because it rebases and pushes.
 
 ### 2. Gather the related GitHub issue
 
@@ -40,10 +42,11 @@ The entire PR description MUST be readable in under 5 minutes. A description nob
 
 ### 3. Get the git diff
 
-- For stacked branches (Graphite, ghstack), ALWAYS use `git diff-tree -p <commit>` (or `git diff COMMIT^..COMMIT` for single-commit branches) as the PRIMARY diff method -- branch-based diffs over-report when local parent refs are stale. Fall back to `git diff <parent_branch>...HEAD` only for non-stacked branches or when diff-tree output is empty.
+- For a linear GitHub stack layer (`needsRebase` is false and `<base_sha>` is an ancestor of `HEAD`), run `git diff <base_sha>..HEAD` as the PRIMARY diff. This captures every commit in that layer; GitHub stacks allow multiple cohesive commits per branch.
+- If the stack metadata lacks a usable base SHA or the layer needs rebasing, run `git diff <parent_branch>...HEAD` instead and state the fallback. The triple-dot form uses the merge base and avoids treating a newer, non-ancestor parent tip as part of the layer.
 - For non-stacked branches, run `git diff <parent_branch>...HEAD` to get all changes.
-- Use the `git_diff_summary` tool for a structured overview of changes with file categorization (source/test/config/docs/migration) and insertion/deletion counts. This replaces the need to chain `git diff --stat` and `git diff --numstat` manually.
-- Run `git log --oneline <parent_branch>...HEAD` to understand the commit narrative. Use commit messages to inform the Summary and Technical Details.
+- Use the `git_diff_summary` tool for a structured overview of changes with file categorization (source/test/config/docs/migration) and insertion/deletion counts. For a linear stack layer, pass `<base_sha>` as the base. For a triple-dot fallback, compute `git merge-base <parent_branch> HEAD` and pass that merge-base SHA so the summary covers the same layer. This replaces the need to chain `git diff --stat` and `git diff --numstat` manually.
+- Run `git log --oneline <base_sha>..HEAD` for a linear stack layer, or `git log --oneline <parent_branch>...HEAD` for a triple-dot fallback or non-stacked branch, to understand the commit narrative. Use commit messages to inform the Summary and Technical Details.
 
 ### 4. Analyze the changes
 

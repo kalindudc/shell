@@ -231,4 +231,6 @@ Runtime-specific workflow routing (slash commands, skill invocation, subagent di
 - NEVER perform any git commits your self unless explicitly specified by the user
 - If the user has instructed to perform commits, always maintain a single commit on the HEAD
 - The git commit of the branch bust be a brief of the changes of this current branch
-- ALWAYS check if this is a graphite tracked branch with the `gt` CLI, if it is, use graphite to maintain the existing git commit of the branch or use the single commit on HEAD protocol
+- ALWAYS check whether the current branch is a GitHub stack layer with `gh stack view --json` when the `gh-stack` extension is available; NEVER invoke interactive `gh stack view`
+- On a GitHub stack layer, create the layer's first commit normally and amend that commit for subsequent changes so the one-commit policy is preserved. After rewriting a layer, run `gh stack rebase --upstack --no-trunk` to cascade the local change through every descendant without fetching or opening a remote picker. Run `gh stack push` only when the user explicitly requests a push.
+- On a branch that is not in a GitHub stack, use the single-commit-on-HEAD protocol
