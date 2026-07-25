@@ -87,3 +87,6 @@ home/.agents/skills/cortex/
 home/.agents/skills/cortex-*/
 
 home/.config/ghostty/config-os
+
+home/.gnupg/
+!home/.gnupg/gpg-agent.conf
