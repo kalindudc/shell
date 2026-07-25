@@ -149,17 +149,7 @@ tasks:
   generate:gitconfig:
     desc: "Re-generate .gitconfig"
     cmds:
-      - |
-        if [[ -z "${GIT_EMAIL:-}" ]]; then
-          export GIT_EMAIL=$(git config --global user.email 2>/dev/null || echo "")
-        fi
-        if [[ -z "${GIT_NAME:-}" ]]; then
-          export GIT_NAME=$(git config --global user.name 2>/dev/null || echo "")
-        fi
-        if [[ -z "${GIT_SIGNING_KEY:-}" ]]; then
-          export GIT_SIGNING_KEY=$(git config --global user.signingkey 2>/dev/null || echo "")
-        fi
-      - $HOME/src/github.com/kalindudc/shell/src/generate_tempate.rb -i $HOME/src/github.com/kalindudc/shell/src/templates/.gitconfig.erb -o $HOME/src/github.com/kalindudc/shell/home/.gitconfig
+      - ruby $HOME/src/github.com/kalindudc/shell/src/generate_gitconfig.rb
 
   generate:ghostty:
     desc: "Generate OS-specific ghostty font-size override config"

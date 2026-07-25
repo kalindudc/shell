@@ -8,6 +8,9 @@ require 'fileutils'
 require 'open3'
 require 'tempfile'
 
+require_relative '../../src/install/utils'
+require_relative '../../src/install/post_setup'
+
 # Load the installer script (in a way that doesn't execute main)
 # We need to be careful since install.rb has executable code at the bottom
 
@@ -123,6 +126,43 @@ class TestInstaller < Minitest::Test
     install_rb = File.join(@shell_dir, 'src', 'install.rb')
     result = system("ruby -c #{install_rb} > /dev/null 2>&1")
     assert result, "src/install.rb should have valid Ruby syntax"
+  end
+
+  def test_generate_gitconfig_rb_syntax
+    script = File.join(@shell_dir, 'src', 'generate_gitconfig.rb')
+    result = system("ruby -c #{script} > /dev/null 2>&1")
+    assert result, "src/generate_gitconfig.rb should have valid Ruby syntax"
+  end
+
+  def test_extract_signing_fingerprint_from_primary_secret_key
+    fingerprint = '1234567890ABCDEF1234567890ABCDEF12345678'
+    gpg_output = <<~GPG
+      sec:u:4096:1:90ABCDEF12345678:1720000000:0:::::scSC
+      fpr:::::::::#{fingerprint}
+    GPG
+
+    assert_equal fingerprint, Installer::PostSetup.extract_signing_fingerprint(gpg_output)
+  end
+
+  def test_extract_signing_fingerprint_from_signing_subkey
+    fingerprint = 'ABCDEF1234567890ABCDEF1234567890ABCDEF12'
+    gpg_output = <<~GPG
+      sec:u:4096:1:1111111111111111:1720000000:0:::::cC
+      fpr:::::::::1111111111111111111111111111111111111111
+      ssb:u:4096:1:90ABCDEF12345678:1720000000:0:::::s
+      fpr:::::::::#{fingerprint}
+    GPG
+
+    assert_equal fingerprint, Installer::PostSetup.extract_signing_fingerprint(gpg_output)
+  end
+
+  def test_gpg_user_id_uses_git_name_when_present
+    old_name = ENV['GIT_NAME']
+    ENV['GIT_NAME'] = 'Example User'
+
+    assert_equal 'Example User <user@example.com>', Installer::PostSetup.gpg_user_id('user@example.com')
+  ensure
+    ENV['GIT_NAME'] = old_name
   end
 
   # os_detection

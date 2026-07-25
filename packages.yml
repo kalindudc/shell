@@ -41,6 +41,7 @@ yay:
 
 apt:
   - git
+  - gh
   - curl
   - wget
   - stow
