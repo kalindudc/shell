@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
+require "fileutils"
 require "json"
 require "open3"
+require "shellwords"
 require "socket"
 require "tempfile"
 
@@ -36,13 +38,13 @@ module Installer
       end
     end
 
-    def setup_go_task_symlink
+    def setup_go_task_symlink!
       return unless Installer::Utils.command?("go-task") && !Installer::Utils.command?("task")
 
       go_task_path = `command -v go-task`.strip
       return if go_task_path.empty?
 
-      Installer::Utils.sudo("ln", "-sf", go_task_path, "/usr/local/bin/task")
+      Installer::Utils.sudo!("ln", "-sf", go_task_path, "/usr/local/bin/task")
     end
 
     def setup_gpg_key
@@ -52,7 +54,14 @@ module Installer
         return
       end
 
+      ensure_gpg_home_permissions!
+
       signing_key = ENV["GIT_SIGNING_KEY"].to_s.strip
+      unless signing_key.empty? || signing_key_available?(signing_key)
+        Installer::Utils.warn("Configured Git signing key #{short_key(signing_key)} is not available locally; finding or creating a usable key")
+        signing_key = ""
+      end
+
       signing_key = ensure_gpg_signing_key(email) if signing_key.empty?
       return if signing_key.empty?
 
@@ -61,14 +70,14 @@ module Installer
       upload_gpg_key_to_github(signing_key)
     end
 
-    def stow_dotfiles
-      return unless Installer::Utils.command?("stow")
+    def stow_dotfiles!
+      raise Installer::CommandFailed, "stow is required to install dotfiles" unless Installer::Utils.command?("stow")
 
       Installer::Utils.log("Stowing dotfiles...")
-      Installer::Utils.run("stow", "home", "-d", SHELL_DIR, "-t", HOME, "--adopt")
+      Installer::Utils.run!("stow", "home", "-d", SHELL_DIR, "-t", HOME, "--adopt")
     end
 
-    def bootstrap_pi_extensions
+    def bootstrap_pi_extensions!
       ext_pattern = File.join(HOME, ".pi", "agent", "extensions", "*", "package.json")
       Dir.glob(ext_pattern).each do |package_json|
         ext_dir = File.dirname(package_json)
@@ -78,41 +87,42 @@ module Installer
         next unless json["dependencies"] || json["devDependencies"]
 
         Installer::Utils.log("Installing dependencies for #{File.basename(ext_dir)}...")
-        Installer::Utils.run("npm", "install", chdir: ext_dir)
+        Installer::Utils.run!("npm", "install", chdir: ext_dir)
       end
     end
 
-    def bootstrap_skill_notes
+    def bootstrap_skill_notes!
       script = File.join(SHELL_DIR, "src", "scripts", "bootstrap-skill-notes.sh")
       return unless File.exist?(script)
 
       Installer::Utils.log("Bootstrapping skill notes...")
-      system("bash", script)
+      Installer::Utils.run!("bash", script)
     end
 
-    def set_default_shell
+    def set_default_shell!
       return if ENV["SHELL"] && ENV["SHELL"].end_with?("zsh")
 
       zsh_path = `command -v zsh`.strip
       return if zsh_path.empty?
 
       unless File.readlines("/etc/shells").any? { |line| line.strip == zsh_path }
-        system("echo '#{zsh_path}' | sudo tee -a /etc/shells")
+        Installer::Utils.sudo!("sh", "-c", "printf '%s\\n' #{Shellwords.escape(zsh_path)} >> /etc/shells")
       end
 
-      Installer::Utils.sudo("chsh", "-s", zsh_path, ENV["USER"])
+      Installer::Utils.sudo!("chsh", "-s", zsh_path, ENV.fetch("USER"))
+      Installer::Utils.reboot_required!("Default shell change requires a new login session")
     end
 
-    def generate_configs
+    def generate_configs!
       Installer::Utils.log("Generating configuration files...")
 
       zshrc_script = File.join(SHELL_DIR, "src", "generate_zshrc.rb")
-      system("ruby", zshrc_script) if File.exist?(zshrc_script)
+      Installer::Utils.run!("ruby", zshrc_script) if File.exist?(zshrc_script)
 
       generate_git_config
 
       ghostty_script = File.join(SHELL_DIR, "src", "generate_ghostty_config.rb")
-      system("ruby", ghostty_script) if File.exist?(ghostty_script)
+      Installer::Utils.run!("ruby", ghostty_script) if File.exist?(ghostty_script)
     end
 
     def generate_git_config
@@ -120,8 +130,8 @@ module Installer
       gitconfig_output = File.join(SHELL_DIR, "home", ".gitconfig")
       return unless File.exist?(gitconfig_template)
 
-      system("ruby", File.join(SHELL_DIR, "src", "generate_tempate.rb"),
-             "-i", gitconfig_template, "-o", gitconfig_output)
+      Installer::Utils.run!("ruby", File.join(SHELL_DIR, "src", "generate_tempate.rb"),
+                            "-i", gitconfig_template, "-o", gitconfig_output)
     end
 
     def ensure_gpg_signing_key(email)
@@ -130,15 +140,16 @@ module Installer
         return ""
       end
 
+      ensure_gpg_home_permissions!
+
       signing_key = find_gpg_signing_key(email)
       return signing_key unless signing_key.empty?
 
       user_id = gpg_user_id(email)
       Installer::Utils.log("Generating RSA4096 GPG signing key for #{user_id}...")
-      generated = Installer::Utils.run("gpg", "--batch", "--pinentry-mode", "loopback",
-                                       "--passphrase", "", "--quick-generate-key",
-                                       user_id, "rsa4096", "sign", "0")
-      return "" unless generated
+      Installer::Utils.run!("gpg", "--batch", "--pinentry-mode", "loopback",
+                             "--passphrase", "", "--quick-generate-key",
+                             user_id, "rsa4096", "sign", "0")
 
       signing_key = find_gpg_signing_key(email)
       Installer::Utils.warn("GPG key generation did not produce a signing key for #{email}") if signing_key.empty?
@@ -151,6 +162,32 @@ module Installer
       return "" unless status.success?
 
       extract_signing_fingerprint(stdout)
+    end
+
+    def signing_key_available?(signing_key)
+      ensure_gpg_home_permissions!
+
+      _stdout, _stderr, status = capture_command("gpg", "--batch", "--list-secret-keys", signing_key)
+      status.success?
+    end
+
+    def ensure_gpg_home_permissions!
+      [
+        gpg_home,
+        File.join(gpg_home, "private-keys-v1.d"),
+        File.join(gpg_home, "openpgp-revocs.d")
+      ].each do |path|
+        next unless File.directory?(path)
+
+        FileUtils.chmod(0o700, path)
+      end
+    end
+
+    def gpg_home
+      configured_home = ENV["GNUPGHOME"].to_s.strip
+      return File.expand_path(configured_home) unless configured_home.empty?
+
+      File.expand_path("~/.gnupg")
     end
 
     def extract_signing_fingerprint(gpg_colon_output)
@@ -179,8 +216,8 @@ module Installer
     def configure_git_signing(signing_key)
       return unless Installer::Utils.command?("git")
 
-      Installer::Utils.run("git", "config", "--global", "user.signingkey", signing_key)
-      Installer::Utils.run("git", "config", "--global", "commit.gpgsign", "true")
+      Installer::Utils.run!("git", "config", "--global", "user.signingkey", signing_key)
+      Installer::Utils.run!("git", "config", "--global", "commit.gpgsign", "true")
     end
 
     def upload_gpg_key_to_github(signing_key)

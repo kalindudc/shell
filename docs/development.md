@@ -22,11 +22,11 @@ task --list
 |------|-------------|
 | `task install` | Run installation |
 | `task stow` | Re-stow dotfiles |
-| `task clean` | Clean state and temp files |
-| `task style` | Run ShellCheck |
-| `task test` | Run all tests |
-| `task test:unit` | Run unit tests |
-| `task test:integration` | Run integration tests (requires Docker) |
+| `task clean` | Clean integration containers/images and temp logs |
+| `task style` | Run ShellCheck and RuboCop |
+| `task test` | Run default local tests (unit + bin) |
+| `task test:unit` | Run Ruby installer tests and pi extension tests when bun is available |
+| `task test:integration` | Run integration tests separately (requires Docker and `task build`) |
 | `task build` | Build Docker images |
 | `task generate` | Generate configs |
 
@@ -38,7 +38,7 @@ task --list
 task test:unit
 ```
 
-Tests use BATS. Add tests in `test/unit/`.
+Ruby installer tests use Minitest in `test/unit/test_installer.rb`. Bin tests use BATS and Ruby under `home/bin/test/`.
 
 ### Integration Tests
 
@@ -48,28 +48,34 @@ task test:integration         # All platforms
 task test:integration -- ubuntu-22  # Single platform
 ```
 
-Platforms: `ubuntu-22`, `ubuntu-24`, `debian`, `arch`
+Platforms: `ubuntu-22`, `ubuntu-24`, `debian`, `arch`, `ubuntu-minimal`. The minimal Ubuntu image starts without Ruby or Bundler so `install.sh` bootstrap assumptions stay covered.
 
 ## Debugging
 
 ```bash
-TRACE=1 ./install.sh         # Debug output
-./install.sh --show-state    # View state
-cat ~/.shell_install_state   # Raw state file
+TRACE=1 ./install.sh 2>&1 | tee install.log
+cat "${XDG_STATE_HOME:-$HOME/.local/state}/shell/install.json"   # Reboot continuation state
 ```
 
 ## Adding Packages
 
-Edit `src/lib/packages.sh`:
+Edit `packages.yml`:
 
-```bash
-# Add to appropriate PACKAGES_* array
-readonly PACKAGES_DEV=(
-  "neovim"
-  "gh"
-  "new-package"
-)
+```yaml
+apt:
+  - new-package
+
+custom_bootstrap:
+  - install_runtime_before_npm
+
+machine_profiles:
+  default:
+    bootstrap:
+      apt:
+        - curl
 ```
+
+Use `package_managers` for required package-manager bootstrap and `machine_profiles` for host/profile-specific prerequisites. Profile selection order is `SHELL_MACHINE_PROFILE`, hostname, then `default`.
 
 ## Code Standards
 

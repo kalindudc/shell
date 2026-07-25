@@ -10,20 +10,44 @@ if [[ "${TRACE-0}" == "1" ]]; then
   set -x
 fi
 
-# Install git if missing
-if ! command -v git >/dev/null 2>&1; then
-  echo "===> Installing git..."
-  if command -v apt-get >/dev/null 2>&1; then
-    sudo apt-get update -qq && sudo apt-get install -y git
-  elif command -v pacman >/dev/null 2>&1; then
-    sudo pacman -Sy --noconfirm git
-  elif command -v brew >/dev/null 2>&1; then
-    brew install git
+run_as_root() {
+  local manual_command="$1"
+  shift
+
+  if [[ "${EUID}" -eq 0 ]]; then
+    "$@"
+  elif command -v sudo >/dev/null 2>&1; then
+    sudo "$@"
   else
-    echo "Error: Unable to install git. Please install git manually."
+    echo "Error: sudo is required to install dependencies automatically."
+    echo "Install sudo or run this command as root, then retry: ${manual_command}"
     exit 1
   fi
-fi
+}
+
+install_bootstrap_package() {
+  local package="$1"
+
+  if command -v "${package}" >/dev/null 2>&1; then
+    return 0
+  fi
+
+  echo "===> Installing ${package}..."
+  if command -v apt-get >/dev/null 2>&1; then
+    run_as_root "apt-get update && apt-get install -y ${package}" apt-get update -qq
+    run_as_root "apt-get install -y ${package}" apt-get install -y "${package}"
+  elif command -v pacman >/dev/null 2>&1; then
+    run_as_root "pacman -Sy --noconfirm ${package}" pacman -Sy --noconfirm "${package}"
+  elif command -v brew >/dev/null 2>&1; then
+    brew install "${package}"
+  else
+    echo "Error: Unable to install ${package}; no supported package manager was found."
+    echo "Install one of apt-get, pacman, or Homebrew, then run: ./install.sh"
+    exit 1
+  fi
+}
+
+install_bootstrap_package git
 
 # bootstrap
 
@@ -63,20 +87,10 @@ fi
 
 SHELL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Install ruby if missing
-if ! command -v ruby >/dev/null 2>&1; then
-  echo "===> Installing ruby..."
-  if command -v apt-get >/dev/null 2>&1; then
-    sudo apt-get update -qq && sudo apt-get install -y ruby
-  elif command -v pacman >/dev/null 2>&1; then
-    sudo pacman -Sy --noconfirm ruby
-  elif command -v brew >/dev/null 2>&1; then
-    brew install ruby
-  else
-    echo "Error: Unable to install ruby. Please install ruby manually."
-    exit 1
-  fi
-fi
+# Ensure ruby is available using the detected platform package manager.
+# Do not use Bundler for installer runtime; Gemfile remains dev/test-only.
+# If sudo/package manager is unavailable, install_bootstrap_package prints the exact next step.
+install_bootstrap_package ruby
 
 # Execute Ruby orchestrator
-exec bundle exec ruby "${SHELL_DIR}/src/install.rb" "$@"
+exec ruby "${SHELL_DIR}/src/install.rb" "$@"

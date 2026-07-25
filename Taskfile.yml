@@ -79,14 +79,14 @@ tasks:
         fi
       - echo "Removing existing images..."
       - docker compose -f test/integration/docker-compose.yml down --rmi all -v 2>/dev/null || true
-      - docker image rm -f shell-test:ubuntu-22 shell-test:ubuntu-24 shell-test:arch shell-test:debian 2>/dev/null || true
+      - docker image rm -f shell-test:ubuntu-22 shell-test:ubuntu-24 shell-test:arch shell-test:debian shell-test:ubuntu-minimal 2>/dev/null || true
       - echo "Rebuilding all images from scratch..."
       - docker compose -f test/integration/docker-compose.yml build --no-cache --parallel
       - echo "✓ All integration test images rebuilt successfully"
 
   # Testing
   test:
-    desc: "Run all tests (unit + integration + bin)"
+    desc: "Run default local tests (unit + bin); integration is task test:integration"
     deps:
       - test:unit
       - test:bin

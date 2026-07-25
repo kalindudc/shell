@@ -9,6 +9,11 @@ require 'open3'
 require 'tempfile'
 
 require_relative '../../src/install/utils'
+require_relative '../../src/install/errors'
+require_relative '../../src/install/state'
+require_relative '../../src/install/os'
+require_relative '../../src/install/backends'
+require_relative '../../src/install/dependencies'
 require_relative '../../src/install/post_setup'
 
 # Load the installer script (in a way that doesn't execute main)
@@ -165,6 +170,70 @@ class TestInstaller < Minitest::Test
     ENV['GIT_NAME'] = old_name
   end
 
+  def test_signing_key_available_requires_secret_key
+    success = Struct.new(:success?).new(true)
+    failure = Struct.new(:success?).new(false)
+
+    Installer::PostSetup.stub(:ensure_gpg_home_permissions!, nil) do
+      Installer::PostSetup.stub(:capture_command, ['', '', success]) do
+        assert Installer::PostSetup.signing_key_available?('ABC123')
+      end
+
+      Installer::PostSetup.stub(:capture_command, ['', 'No secret key', failure]) do
+        refute Installer::PostSetup.signing_key_available?('ABC123')
+      end
+    end
+  end
+
+  def test_ensure_gpg_home_permissions_repairs_private_key_directories
+    Dir.mktmpdir do |dir|
+      private_dir = File.join(dir, 'private-keys-v1.d')
+      revocation_dir = File.join(dir, 'openpgp-revocs.d')
+      FileUtils.mkdir_p(private_dir)
+      FileUtils.mkdir_p(revocation_dir)
+      FileUtils.chmod(0o600, private_dir)
+      FileUtils.chmod(0o600, revocation_dir)
+
+      Installer::PostSetup.stub(:gpg_home, dir) do
+        Installer::PostSetup.ensure_gpg_home_permissions!
+      end
+
+      assert_equal 0o700, File.stat(dir).mode & 0o777
+      assert_equal 0o700, File.stat(private_dir).mode & 0o777
+      assert_equal 0o700, File.stat(revocation_dir).mode & 0o777
+    end
+  end
+
+  def test_setup_gpg_key_ignores_stale_configured_key
+    old_email = ENV['GIT_EMAIL']
+    old_name = ENV['GIT_NAME']
+    old_signing_key = ENV['GIT_SIGNING_KEY']
+    ENV['GIT_EMAIL'] = 'user@example.com'
+    ENV['GIT_NAME'] = 'Example User'
+    ENV['GIT_SIGNING_KEY'] = 'STALEKEY'
+    configured = []
+
+    Installer::Utils.stub(:command?, true) do
+      Installer::PostSetup.stub(:signing_key_available?, ->(key) { key == 'VALIDKEY' }) do
+        Installer::PostSetup.stub(:find_gpg_signing_key, 'VALIDKEY') do
+          Installer::PostSetup.stub(:configure_git_signing, ->(key) { configured << key }) do
+            Installer::PostSetup.stub(:upload_gpg_key_to_github, nil) do
+              _out, err = capture_io { Installer::PostSetup.setup_gpg_key }
+              assert_empty err
+            end
+          end
+        end
+      end
+    end
+
+    assert_equal ['VALIDKEY'], configured
+    assert_equal 'VALIDKEY', ENV['GIT_SIGNING_KEY']
+  ensure
+    ENV['GIT_EMAIL'] = old_email
+    ENV['GIT_NAME'] = old_name
+    ENV['GIT_SIGNING_KEY'] = old_signing_key
+  end
+
   # os_detection
 
   def test_os_backends_constant
@@ -189,6 +258,22 @@ class TestInstaller < Minitest::Test
     assert_includes shared, 'custom'
   end
 
+  def test_unknown_os_is_not_supported_and_has_no_shared_backends
+    refute Installer::OS.supported?('unknown_distro')
+
+    error = assert_raises(Installer::Error) do
+      Installer::OS.backends_for('unknown_distro')
+    end
+    assert_includes error.message, 'Unsupported operating system'
+  end
+
+  def test_backend_order_bootstraps_runtime_before_npm
+    backends = Installer::OS.backends_for('ubuntu')
+
+    assert_operator backends.index('custom_bootstrap'), :<, backends.index('npm')
+    assert_operator backends.index('apt'), :<, backends.index('custom_bootstrap')
+  end
+
   # bash_bootstrap
 
   def test_install_sh_exists
@@ -205,6 +290,12 @@ class TestInstaller < Minitest::Test
   def test_install_sh_is_executable
     install_sh = File.join(@shell_dir, 'install.sh')
     assert File.executable?(install_sh), "install.sh should be executable"
+  end
+
+  def test_install_sh_does_not_use_bundler_for_runtime
+    install_sh = File.join(@shell_dir, 'install.sh')
+
+    refute_includes File.read(install_sh), 'bundle exec ruby'
   end
 
   # helper_methods
@@ -264,6 +355,109 @@ class TestInstaller < Minitest::Test
   def test_skip_backends_empty_env
     skip_backends = ''.split(',').map(&:strip)
     assert_empty skip_backends
+  end
+
+  def test_run_bang_raises_when_command_fails
+    error = assert_raises(Installer::CommandFailed) do
+      Installer::Utils.run!('ruby', '-e', 'exit false')
+    end
+
+    assert_includes error.message, 'ruby -e'
+  end
+
+  def test_try_run_records_optional_failure_without_raising
+    output, = capture_io do
+      result = Installer::Utils.try_run('ruby', '-e', 'exit false')
+      assert_equal false, result
+    end
+
+    assert_includes output, 'Optional command failed'
+  end
+
+  def test_package_manager_bootstrap_runs_before_system_update
+    calls = []
+    dependencies = Minitest::Mock.new
+    dependencies.expect(:package_managers, [{ 'name' => 'apt', 'command' => 'apt-get', 'required' => true }])
+    dependencies.expect(:bootstrap_packages, {})
+
+    Installer::Backends.stub(:ensure_package_managers!, ->(_os, _managers) { calls << :package_managers }) do
+      Installer::Backends.stub(:install_bootstrap_dependencies!, ->(_packages) { calls << :bootstrap_dependencies }) do
+        Installer::Backends.stub(:system_update!, ->(_os) { calls << :system_update }) do
+          Installer::Backends.ensure_package_managers!('ubuntu', dependencies.package_managers)
+          Installer::Backends.install_bootstrap_dependencies!(dependencies.bootstrap_packages)
+          Installer::Backends.system_update!('ubuntu')
+        end
+      end
+    end
+
+    assert_equal %i[package_managers bootstrap_dependencies system_update], calls
+    dependencies.verify
+  end
+
+  def test_macos_homebrew_bootstrap_runs_before_brew_update
+    calls = []
+    managers = [
+      {
+        'name' => 'Homebrew',
+        'command' => 'brew',
+        'required' => true,
+        'install' => ['echo', 'install-homebrew']
+      }
+    ]
+    brew_checks = [false, true]
+
+    Installer::Utils.stub(:command?, ->(command) { command == 'brew' ? brew_checks.shift : true }) do
+      Installer::Utils.stub(:run!, ->(*cmd) { calls << cmd }) do
+        Installer::Backends.stub(:system_update!, ->(_os) { calls << ['brew', 'update'] }) do
+          Installer::Backends.ensure_package_managers!('macos', managers)
+          Installer::Backends.system_update!('macos')
+        end
+      end
+    end
+
+    assert_equal [['echo', 'install-homebrew'], ['brew', 'update']], calls
+  end
+
+  def test_machine_profile_selection_prefers_env_then_hostname_then_default
+    packages = {
+      'machine_profiles' => {
+        'default' => { 'bootstrap' => { 'apt' => ['default-tool'] } },
+        'workstation' => { 'bootstrap' => { 'apt' => ['env-tool'] } },
+        'host-a' => { 'bootstrap' => { 'apt' => ['host-tool'] } }
+      }
+    }
+
+    assert_equal 'workstation', Installer::Dependencies.new(
+      packages, 'ubuntu', env: { 'SHELL_MACHINE_PROFILE' => 'workstation' }, hostname: 'host-a'
+    ).profile_name
+    assert_equal 'host-a', Installer::Dependencies.new(packages, 'ubuntu', env: {}, hostname: 'host-a').profile_name
+    assert_equal 'default', Installer::Dependencies.new(packages, 'ubuntu', env: {}, hostname: 'other').profile_name
+  end
+
+  def test_dependencies_returns_bootstrap_packages_for_selected_os_backend
+    packages = {
+      'machine_profiles' => {
+        'default' => { 'bootstrap' => { 'apt' => ['curl', 'git'], 'brew' => ['curl'] } }
+      }
+    }
+
+    dependencies = Installer::Dependencies.new(packages, 'ubuntu', env: {}, hostname: 'other')
+
+    assert_equal({ 'apt' => ['curl', 'git'] }, dependencies.bootstrap_packages)
+  end
+
+  def test_state_file_records_and_clears_reboot_required_reasons
+    Dir.mktmpdir do |dir|
+      state = Installer::State.new(File.join(dir, 'install.json'))
+
+      state.require_reboot('Docker group membership requires a new login session')
+      assert state.reboot_required?
+      assert_includes state.data['reboot_required'], 'Docker group membership requires a new login session'
+
+      state.clear_reboot!
+      refute state.reboot_required?
+      assert_empty state.data['reboot_required']
+    end
   end
 
   # smoke_tests

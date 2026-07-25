@@ -12,6 +12,9 @@ options = Installer::CLI.parse_args(ARGV)
 $VERBOSE = options[:verbose]
 
 require 'yaml'
+require_relative 'install/errors'
+require_relative 'install/state'
+require_relative 'install/dependencies'
 require_relative 'install/main'
 
 # Run installer

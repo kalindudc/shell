@@ -1,3 +1,35 @@
+package_managers:
+  arch:
+    - name: pacman
+      command: pacman
+      required: true
+  ubuntu:
+    - name: apt
+      command: apt-get
+      required: true
+  debian:
+    - name: apt
+      command: apt-get
+      required: true
+  macos:
+    - name: Homebrew
+      command: brew
+      required: true
+      install:
+        - /bin/bash
+        - -c
+        - $(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)
+
+machine_profiles:
+  default:
+    bootstrap:
+      apt:
+        - curl
+      pacman:
+        - curl
+      brew:
+        - curl
+
 pacman:
   - git
   - curl
@@ -125,6 +157,9 @@ flatpak:
   - com.discordapp.Discord
   - com.spotify.Client
 
+custom_bootstrap:
+  - install_fnm_curl
+
 npm:
   - "@earendil-works/pi-coding-agent"
 
@@ -141,6 +176,5 @@ custom:
   - install_delta_deb
   - install_zoxide_curl
   - install_starship_curl
-  - install_fnm_curl
   - install_nerd_fonts_brew
   - install_nvm_curl

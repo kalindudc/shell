@@ -19,7 +19,7 @@ See [`home/.zshrc`](home/.zshrc) for aliases and [`home/bin/`](home/bin/) for sc
 
 ## Quick Start
 
-**Prerequisites**: Only `curl` required. The script auto-installs `git` if needed.
+**Prerequisites**: For the curl installer, `curl` is required to download the script. After the repository is available, `install.sh` bootstraps missing `git` and `ruby` with the platform package manager and runs without Bundler.
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install.sh)"
@@ -28,7 +28,8 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/ins
 This automatically:
 1. Downloads the installation script
 2. Clones the repository to `~/src/github.com/kalindudc/shell`
-3. Installs and configures your shell environment
+3. Installs missing bootstrap tools and package managers
+4. Installs packages, generates configs, stows dotfiles, and records any reboot/login-session requirement in `~/.local/state/shell/install.json`
 
 **Supported platforms**: macOS (Intel & Apple Silicon), Ubuntu/Debian, Arch Linux
 
@@ -43,8 +44,8 @@ Shell startup times on modern hardware:
 
 ## Documentation
 
-- **[Installation Guide](docs/installation.md)** - Installation options, package categories, and customization
-- **[Architecture](docs/architecture.md)** - System design, state management, and directory structure
+- **[Installation Guide](docs/installation.md)** - Installation options, package categories, reboot continuation, and customization
+- **[Architecture](docs/architecture.md)** - System design, package-manager bootstrap, state management, and directory structure
 - **[Development](docs/development.md)** - Development setup, testing, and available tasks
 - **[Contributing](docs/contributing.md)** - Code standards and testing requirements
 - **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions

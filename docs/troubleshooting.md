@@ -3,19 +3,14 @@
 ## Installation Fails
 
 ```bash
-# Remove stale locks
-rm -f ./tmp/shell_install.lock ~/.shell_install.lock
-
-# View state
-./install.sh --show-state
-
-# Continue or reset
-./install.sh --continue
-./install.sh --reset-state
-
 # Debug
 TRACE=1 ./install.sh 2>&1 | tee install.log
+
+# Re-run after fixing the reported command or dependency
+./install.sh
 ```
+
+The installer has no lock file and no `--continue`, `--reset-state`, or `--show-state` flags. Required command failures stop the run with the failing command. Optional work is reported as a warning.
 
 ## Package Fails
 
@@ -56,20 +51,23 @@ echo $PATH
 which command-name
 ```
 
-## State Issues
+## Reboot Continuation State
 
 ```bash
-# View state
-cat ~/.shell_install_state
+# View reboot/session continuation state
+cat "${XDG_STATE_HOME:-$HOME/.local/state}/shell/install.json"
 
-# Reset
-./install.sh --reset-state
-rm -f ~/.shell_install_state
+# Remove only if you deliberately want to discard a saved reboot prompt
+rm -f "${XDG_STATE_HOME:-$HOME/.local/state}/shell/install.json"
 ```
+
+Docker group membership and default shell changes require a new login session. When that happens, the installer saves the reason, exits 0, and asks you to reboot or log out/in. Run `./install.sh` again afterward; the marker is cleared after post-setup continues successfully.
 
 ## Platform-Specific
 
 ### macOS: Homebrew Not Found
+
+The Ruby installer bootstraps Homebrew when `brew` is missing. If Homebrew is installed but not on PATH, load it manually and rerun:
 
 ```bash
 eval "$(/opt/homebrew/bin/brew shellenv)"  # Apple Silicon
@@ -80,7 +78,7 @@ eval "$(/usr/local/bin/brew shellenv)"     # Intel
 
 ```bash
 sudo apt-get install gnupg
-./install.sh --continue
+./install.sh
 ```
 
 ### Arch: AUR Issues

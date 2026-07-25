@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require "shellwords"
+require_relative "errors"
+
 module Installer
   module Utils
     COLORS = {
@@ -41,12 +44,48 @@ module Installer
       ENV["CI"] || ENV["NONINTERACTIVE"]
     end
 
-    def run(*cmd, **opts)
-      puts "  $ #{cmd.join(" ")}" if $VERBOSE
+    def state=(state)
+      @state = state
+    end
+
+    def run!(*cmd, **opts)
+      puts "  $ #{command_line(cmd)}" if $VERBOSE
       return true if system(*cmd, **opts)
 
-      error("Command failed: #{cmd.join(" ")}")
+      raise Installer::CommandFailed, "Command failed: #{command_line(cmd)}"
+    end
+
+    def try_run(*cmd, **opts)
+      puts "  $ #{command_line(cmd)}" if $VERBOSE
+      return true if system(*cmd, **opts)
+
+      warn("Optional command failed: #{command_line(cmd)}")
       false
+    end
+
+    def sudo!(*cmd)
+      return run!(*cmd) if root?
+
+      run!("sudo", *cmd)
+    end
+
+    def try_sudo(*cmd)
+      return try_run(*cmd) if root?
+
+      try_run("sudo", *cmd)
+    end
+
+    def reboot_required!(reason)
+      @state&.require_reboot(reason)
+      raise Installer::RebootRequired, reason
+    end
+
+    def command_line(cmd)
+      Shellwords.join(Array(cmd).map(&:to_s))
+    end
+
+    def run(*cmd, **opts)
+      try_run(*cmd, **opts)
     end
 
     def sudo(*cmd)

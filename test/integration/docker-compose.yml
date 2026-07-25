@@ -13,7 +13,8 @@ services:
       bash -c "
         cp -r . /tmp/shell-install &&
         cd /tmp/shell-install &&
-        NONINTERACTIVE=1 ./install.sh
+        NONINTERACTIVE=1 ./install.sh &&
+        NONINTERACTIVE=1 ./install.sh --stow
       "
     environment:
       - NONINTERACTIVE=1
@@ -39,7 +40,35 @@ services:
       bash -c "
         cp -r . /tmp/shell-install &&
         cd /tmp/shell-install &&
-        NONINTERACTIVE=1 ./install.sh
+        NONINTERACTIVE=1 ./install.sh &&
+        NONINTERACTIVE=1 ./install.sh --stow
+      "
+    environment:
+      - NONINTERACTIVE=1
+      - DEBIAN_FRONTEND=noninteractive
+      - TZ=America/New_York
+      - TRACE=0
+      - SKIP_BACKENDS=snap,npm
+      - GIT_EMAIL=test@example.com
+      - GIT_NAME=Test User
+      - GIT_SIGNING_KEY=AAAA1111BBBB2222
+
+  ubuntu-minimal:
+    build:
+      context: ./dockerfiles
+      dockerfile: Dockerfile.ubuntu-minimal
+    image: shell-test:ubuntu-minimal
+    container_name: shell-test-ubuntu-minimal
+    volumes:
+      - ../..:/workspace
+      - test-home-ubuntu-minimal:/root
+    working_dir: /workspace
+    command: >
+      bash -c "
+        cp -r . /tmp/shell-install &&
+        cd /tmp/shell-install &&
+        NONINTERACTIVE=1 ./install.sh &&
+        NONINTERACTIVE=1 ./install.sh --stow
       "
     environment:
       - NONINTERACTIVE=1
@@ -65,7 +94,8 @@ services:
       bash -c "
         cp -r . /tmp/shell-install &&
         cd /tmp/shell-install &&
-        NONINTERACTIVE=1 ./install.sh
+        NONINTERACTIVE=1 ./install.sh &&
+        NONINTERACTIVE=1 ./install.sh --stow
       "
     environment:
       - NONINTERACTIVE=1
@@ -89,7 +119,8 @@ services:
       bash -c "
         cp -r . /tmp/shell-install &&
         cd /tmp/shell-install &&
-        NONINTERACTIVE=1 ./install.sh
+        NONINTERACTIVE=1 ./install.sh &&
+        NONINTERACTIVE=1 ./install.sh --stow
       "
     environment:
       - NONINTERACTIVE=1
@@ -104,5 +135,6 @@ services:
 volumes:
   test-home-ubuntu-22:
   test-home-ubuntu-24:
+  test-home-ubuntu-minimal:
   test-home-arch:
   test-home-debian:

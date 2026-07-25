@@ -6,23 +6,24 @@
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install.sh)"
 ```
 
-Requires: `curl` (git and ruby are auto-installed if missing)
+Requires: `curl` for the one-line download path. Once the repository is available, `install.sh` bootstraps missing `git` and `ruby` using `apt-get`, `pacman`, or Homebrew, then runs `ruby src/install.rb` without Bundler.
 
 ## Architecture
 
 The installer uses a two-stage design:
 
-1. **Bash Bootstrap** (`install.sh` ~60 lines)
+1. **Bash Bootstrap** (`install.sh`)
    - If run via curl: clones repo, re-executes from clone
-   - Installs git if missing
-   - Installs ruby if missing
-   - Hands off to Ruby orchestrator
+   - Installs missing git/ruby with the detected platform package manager
+   - Fails with the exact manual next step when sudo or a package manager is unavailable
+   - Hands off with `ruby src/install.rb` (no Bundler at installer runtime)
 
-2. **Ruby Orchestrator** (`src/install.rb` ~300 lines)
-   - Detects OS (Arch, Ubuntu, Debian, macOS)
-   - Reads `packages.yml` for package list
-   - Installs packages via detected backends
-   - Generates configs, stows dotfiles, sets up shell
+2. **Ruby Orchestrator** (`src/install.rb`)
+   - Detects only supported OSes (Arch, Ubuntu, Debian, macOS)
+   - Bootstraps required package managers first, including Homebrew on macOS when `brew` is missing
+   - Applies the selected `machine_profiles` bootstrap dependencies from `packages.yml`
+   - Installs packages via detected backends with required/optional command semantics
+   - Generates configs, stows dotfiles, sets up shell, and records reboot/login-session continuation state
 
 ## Options
 
@@ -66,13 +67,14 @@ Backends are organized by package manager, not by OS:
 | `flatpak` | Flatpak apps | Linux |
 | `brew` | Homebrew formulas | macOS |
 | `brew_cask` | Homebrew casks | macOS |
+| `custom_bootstrap` | Runtime bootstrap installers such as fnm | All |
 | `npm` | Global npm packages | All |
 | `pipx` | Python CLI tools | All |
 | `custom` | Special installers | All |
 
 ## Custom Installers
 
-Packages in the `custom:` section call Ruby methods for complex installations:
+Packages in `custom_bootstrap:` run before npm/pipx so runtime managers exist first. Packages in the `custom:` section run after shared package backends and call Ruby methods for complex installations:
 
 - `install_docker_post` — enable docker service, add user to docker group
 - `install_pyenv` — install pyenv via curl
@@ -83,7 +85,7 @@ Packages in the `custom:` section call Ruby methods for complex installations:
 - `install_delta_deb` — download git-delta .deb for Ubuntu
 - `install_zoxide_curl` — install zoxide via curl
 - `install_starship_curl` — install starship via curl
-- `install_fnm_curl` — install fnm via curl
+- `install_fnm_curl` — install fnm via curl (listed in `custom_bootstrap`)
 - `install_nerd_fonts_brew` — install all nerd fonts via brew
 - `install_nvm_curl` — install nvm via curl (fallback)
 
@@ -124,7 +126,9 @@ Only non-secret Atuin client config is tracked in this repo. Atuin secrets and s
 
 ## Troubleshooting
 
-**Installation interrupted?** Just re-run `./install.sh` — it's idempotent.
+**Installation interrupted?** Just re-run `./install.sh` — phases are designed to be idempotent.
+
+**Reboot or new login required?** The installer records reasons in `~/.local/state/shell/install.json`, exits 0, and asks you to reboot or log out/in. Run `./install.sh` again after that; the marker is cleared after post-setup continues successfully.
 
 **Need to skip slow backends?** Set `SKIP_BACKENDS`:
 ```bash

@@ -24,7 +24,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Available platforms
-ALL_PLATFORMS=("ubuntu-22" "ubuntu-24" "arch" "debian")
+ALL_PLATFORMS=("ubuntu-22" "ubuntu-24" "arch" "debian" "ubuntu-minimal")
 
 # Ensure log directory exists
 mkdir -p "${LOG_DIR}"

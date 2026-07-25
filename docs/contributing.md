@@ -40,7 +40,7 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
 ## Adding Platforms
 
-1. Update `src/lib/os_detect.sh` - detection logic
-2. Update `src/lib/packages.sh` - package mapping
-3. Add `test/integration/Dockerfile.{platform}`
+1. Update `src/install/os.rb` - detection and backend mapping
+2. Update `packages.yml` - package-manager, machine-profile, and backend declarations
+3. Add `test/integration/dockerfiles/Dockerfile.{platform}` and compose service wiring
 4. Test: `task build && task test:integration -- platform`

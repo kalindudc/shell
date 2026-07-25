@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "errors"
+
 module Installer
   module OS
     BACKENDS = {
@@ -9,6 +11,7 @@ module Installer
       "macos" => %w[brew brew_cask]
     }.freeze
 
+    BOOTSTRAP_BACKENDS = %w[custom_bootstrap].freeze
     SHARED_BACKENDS = %w[npm pipx custom].freeze
 
     module_function
@@ -31,8 +34,14 @@ module Installer
       end
     end
 
+    def supported?(os)
+      BACKENDS.key?(os)
+    end
+
     def backends_for(os)
-      BACKENDS.fetch(os, []) + SHARED_BACKENDS
+      raise Installer::Error, "Unsupported operating system: #{os}" unless supported?(os)
+
+      BACKENDS.fetch(os) + BOOTSTRAP_BACKENDS + SHARED_BACKENDS
     end
 
     def parse_os_release(file, key)
