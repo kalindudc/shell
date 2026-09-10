@@ -1,9 +1,15 @@
 ---
 name: delegation
-description: Strategy for delegating work to minions for parallel execution and context isolation. Use at the start of every session and before any multi-step task.
+description: Strategy for delegating substantial work to minions when independent subtasks or context isolation justify the overhead.
 ---
 
 # Delegation
+
+## Activation and Reuse
+
+Use this skill for substantial work where independent subtasks or context isolation justify delegation. Do not load it merely because a session began or a task has multiple steps. Direct replies and bounded work need no automatic delegation setup.
+
+Reuse guidance already in context; reload only if it has changed or is no longer in context.
 
 ## When to Spawn
 
