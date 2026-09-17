@@ -1,6 +1,7 @@
 ---
 name: handover
-description: Two-way conversation handoff for pi. GIVING (/handover) summarizes the CURRENT conversation into a self-contained brief, copies it to the clipboard, and persists a durable, resumable cortex task whose body is that brief. RECEIVING (/pickup <task-id>) pulls a handover cortex task, consumes the brief, orients in the repo, and continues where the previous session left off. Use when the user runs /handover or /pickup, or asks to hand off, checkpoint, transfer, resume, or pick up a conversation. A deliberate step above generic /compact: self-contained (zero-context reader), preserves the verbatim request, includes a resume runbook, captures rejected paths + mental model + gotchas, recovers pre-compaction history from the session file, and is model-synthesized rather than mechanically truncated.
+description: >-
+  Two-way conversation handoff for pi. GIVING (/handover) summarizes the CURRENT conversation into a self-contained brief, copies it to the clipboard, and persists a durable, resumable cortex task whose body is that brief. RECEIVING (/pickup <task-id>) pulls a handover cortex task, consumes the brief, orients in the repo, and continues where the previous session left off. Use when the user runs /handover or /pickup, or asks to hand off, checkpoint, transfer, resume, or pick up a conversation. A deliberate step above generic /compact: self-contained (zero-context reader), preserves the verbatim request, includes a resume runbook, captures rejected paths + mental model + gotchas, recovers pre-compaction history from the session file, and is model-synthesized rather than mechanically truncated.
 ---
 
 # Handover

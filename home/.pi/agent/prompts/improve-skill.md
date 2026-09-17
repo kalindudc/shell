@@ -2,17 +2,19 @@
 description: Review and improve a skill based on accumulated usage observations
 ---
 
-Load the `skill-improver` skill and follow its instructions to improve: $ARGUMENTS
+Load the `improve-skills` skill and follow its instructions to improve: $ARGUMENTS
 
-If no skill name is provided, run in **batch mode**:
-1. Scan ALL skills under `~/.agents/skills/` that have SKILL_NOTES.md with entries
-2. For each skill, run the slow loop silently -- collect all proposed changes (promotions, cleanups, removals) without prompting
-3. Group proposals by type: promotions, cleanups (collapse/delete promoted entries), removals (stale/project-specific)
-4. Present the full batch to the user as a numbered list with skill name, change type, and one-line summary
-5. The user accepts, rejects, or modifies each item -- then apply all accepted changes in one pass
+Use a provided skill target directly. If no target or explicit batch/all request is supplied, ask which skill or batch once; do not start a fleet-wide scan by default.
+
+## Explicit batch mode
+
+1. For a user-requested batch, inspect only the requested skill set and its relevant observations/evaluation evidence.
+2. Collect the skill's slow-loop proposals before presenting them; do not apply changes while collecting.
+3. Present a grouped list with the skill, proposed change, evidence, and rationale.
+4. The user accepts, rejects, or modifies each proposal; apply only approved changes.
 
 ## Rules
 
-- ALWAYS load the `skill-improver` skill first for detailed instructions
-- Follow the skill's Rules section -- do not duplicate them here
-- In batch mode, collect ALL proposals before prompting -- never interrupt the scan to ask about individual changes
+- Load `improve-skills`; only run the all-skills batch when the user requests batch/all.
+- Follow the selected skill's approval and ownership rules rather than duplicating its workflow.
+- In an explicit batch, collect proposals before asking for decisions; do not interrupt once per skill.

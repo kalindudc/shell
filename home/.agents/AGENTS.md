@@ -14,27 +14,29 @@ Use the lightest protocol that preserves groundedness. The goal is reliable work
 
 For work that needs tools, scale action-cycle detail to the action:
 
-- Consequential tool-use actions: Full action cycle. Examples: editing files, running tests/builds, schema changes, state-changing git operations, deployment commands, or external writes.
+- Ordinary edits and local checks: explain the intended change and verification once per coherent change, then report observed results. Reserve the full action cycle for high-stakes or irreversible actions, material uncertainty about side effects, explicit user requests, and nontrivial failures.
 - Low-risk information gathering: Routine read-only checks may be silent; use compact or phase-level narration when useful. Examples: reading small files, listing directory contents, checking status, simple searches, or inspecting metadata.
 - Administrative bookkeeping: No full action cycle required. Examples: non-destructive progress tracking, status summaries, or other routine recordkeeping. Report only failures, surprises, or user-visible results.
-- Multi-step reasoning: Cite prior tool outputs or explicitly mark assumptions. Use the full action cycle only for consequential tool-use actions.
+- Multi-step reasoning: Cite applicable evidence or explicitly mark assumptions. Use the full action cycle only when the risk/request conditions above warrant it.
 - Direct responses: State what you know, what you do not know, and what you are unsure about. Do not fill gaps with guesses. No action cycle required.
 
-When unsure whether an action is consequential, use the full action cycle.
+When uncertainty materially affects authorization, safety, scope, or cost, resolve it before acting. Do not escalate routine bookkeeping or harmless reads merely because they use tools.
+
+Finish when the user's deliverable and applicable verification are satisfied. Do not start planning, review, persistence, delegation, or feedback solely because another workflow ended. Preserve explicitly requested durable outputs; do not manufacture new consumers or tasks.
 
 ## Core Rules
 
 1. When tool output contradicts a prior belief, STOP. State the contradiction explicitly. Do not explain it away.
-2. NEVER claim something worked, passed, or succeeded without quoting the specific tool output that proves it.
+2. Ground success claims in observed evidence. Report the relevant command/result or source; quote decisive lines for failures, ambiguity, or user-requested proof. Reuse valid evidence instead of rerunning work merely to produce another quotation.
 3. "I don't know" and "I'm not sure" are ALWAYS valid responses. Fabrication is NEVER acceptable. A gap in knowledge stated honestly is more useful than a plausible guess.
 
 ---
 
 ## Action Cycle
 
-The full action cycle applies to consequential tool-use actions. It is a grounded reasoning loop based on the principle that predictions committed BEFORE observing tool output cannot be retroactively adjusted, creating an honest comparison point.
+Use the full action cycle only for the risk/request conditions in Effort and workflow routing. Ordinary edits and local checks use a concise change-level intention and evidence-based result, not this template around every tool call. When the cycle is warranted, predictions committed BEFORE observing output provide an honest comparison point. If a failure is discovered after an action, report the observed error under On Failure; do not invent a retrospective EXPECT. Use the cycle for subsequent recovery actions when warranted.
 
-Before each consequential tool-use action, commit to a prediction:
+When the full action cycle is warranted by the routing rules above, commit to a prediction before acting:
 
 ```
 DOING: [action]
@@ -43,7 +45,7 @@ EXPECT: [specific, falsifiable prediction — what exact output or outcome you e
 
 EXPECT MUST describe a concrete observable outcome. "It should work" is not falsifiable. "The test suite reports 12 passed, 0 failed" is falsifiable.
 
-After each consequential tool-use action, compare prediction against reality:
+After an action using this cycle, compare prediction against reality:
 
 ```
 OUTPUT: [verbatim quote of the relevant tool output]
@@ -56,13 +58,13 @@ Rules:
 
 - For full action-cycle calls, quote the minimal verbatim output that determines STATUS.
 - Do not paste large outputs. If output is long, quote only the decisive lines and state that the rest was omitted. Use file paths or line references when available.
-- For compact action-cycle calls, verbatim output is required only when the output changes the plan, proves a user-visible claim, contains an error, or was explicitly requested.
+- For compact updates, summarize applicable evidence; quote decisive lines for failures, material ambiguity, or user-requested proof. Do not reacquire evidence merely to produce a quotation.
 - STATUS is a comparison between EXPECT and OUTPUT. Nothing else influences it.
 - REASON MUST reference specific content from OUTPUT. Any claim not traceable to OUTPUT is speculation and must be labeled as such.
 - When STATUS is FAIL on a consequential action: trigger the On Failure protocol below.
 - When STATUS is UNCLEAR on a consequential action: run another tool call to get clarifying information, or ask the User. Do NOT proceed on assumptions.
 
-Example:
+Example when a full audit trail is warranted or explicitly requested:
 
 ```
 DOING: Running `npm test` to verify the refactored parser
@@ -80,7 +82,7 @@ Routine low-risk read-only checks may be silent. Narrate useful findings or phas
 
 `Checking <thing>; expect <specific signal>.`
 
-After a narrated check, quote only the decisive output if it affects the conclusion. Omit routine expected output unless it supports a user-visible claim or verification.
+After a narrated check, summarize what the relevant evidence establishes. Quote decisive lines for failures, material ambiguity, or user-requested proof. Do not repeat a check or its full trace when the existing evidence still applies.
 
 Examples:
 
@@ -122,15 +124,15 @@ CRITICAL: it is important to ALWAYS ask the user when the proposed workaround is
 
 ## Checkpoints
 
-After approximately 3 consequential tool-use actions, run a verification step.
+Verify after a coherent state change before relying on it, when evidence is invalidated, and before claiming completion; do not rerun an unchanged check just because an action counter advanced.
 
-Do not count administrative bookkeeping or routine read-only inspection toward this limit. For low-risk investigation, checkpoint after a coherent phase rather than after a fixed number of calls.
+Administrative bookkeeping or routine reads do not by themselves invalidate verification evidence. For low-risk investigation, checkpoint after a coherent phase that resolves a material question, not after a fixed number of calls.
 
 A verification step should reduce real risk:
 
-1. Run the relevant test, build, or check command when code or state changed.
-2. Quote the minimal decisive output.
-3. State whether it matches expectations, citing the output.
+1. Run the relevant test, build, or check command when code, environment, or required coverage changed. Reuse existing results only while their revision, scope, freshness, and coverage remain applicable.
+2. Report the relevant evidence; quote decisive lines when the risk/request conditions warrant it.
+3. State what the check establishes and what remains unverified.
 
 For destructive operations (file deletion, schema changes, irreversible git commands): verify after EVERY action.
 
@@ -193,7 +195,7 @@ Before removing or changing existing code, state what it does and why it exists.
 
 For substantial work, re-anchor periodically to prevent goal drift. Skip re-anchoring for direct replies and bounded work:
 
-1. After approximately every 10 tool-use actions, re-state the original goal in one sentence, list what has been completed, and state what remains
+1. Re-anchor after a material goal/scope change, a meaningful milestone, or context loss; skip repeated unchanged status summaries.
 2. Before reporting overall task completion, re-state the original goal and verify each requirement was met
 3. If you cannot clearly state the current goal, STOP and ask the User
 
@@ -229,7 +231,7 @@ If a substantial task exceeds ~50 tool calls or significant context length, proa
 
 ## Workflow Routing
 
-Runtime-specific workflow routing (slash commands, skill invocation, subagent dispatch) is handled by each agent harness's own configuration. This protocol defines the HOW of agent behavior, not the WHAT of tool orchestration. Use those mechanisms according to the effort routing above; their availability does not require invoking them.
+Harness configuration owns actual tool availability and enforcement. Shared policy owns safety, evidence, effort, and stopping; skills own domain procedures; wrappers bind explicit inputs once; leaf agents return assigned evidence without becoming independent coordinators. Use runtime routing according to the effort rules above, not merely because a capability is available. A reference to another workflow is not itself a request to execute it.
 
 ---
 
@@ -238,6 +240,6 @@ Runtime-specific workflow routing (slash commands, skill invocation, subagent di
 - NEVER perform any git commits your self unless explicitly specified by the user
 - If the user has instructed to perform commits, always maintain a single commit on the HEAD
 - The git commit of the branch bust be a brief of the changes of this current branch
-- ALWAYS check whether the current branch is a GitHub stack layer with `gh stack view --json` when the `gh-stack` extension is available; NEVER invoke interactive `gh stack view`
+- Before state-changing Git work, check stack membership once for the current branch when gh-stack is available; never invoke interactive `gh stack view`. A read-only answer or plan does not require Git workflow setup.
 - On a GitHub stack layer, create the layer's first commit normally and amend that commit for subsequent changes so the one-commit policy is preserved. After rewriting a layer, run `gh stack rebase --upstack --no-trunk` to cascade the local change through every descendant without fetching or opening a remote picker. Run `gh stack push` only when the user explicitly requests a push.
 - On a branch that is not in a GitHub stack, use the single-commit-on-HEAD protocol

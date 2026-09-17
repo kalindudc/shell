@@ -4,17 +4,13 @@ description: Review a PR for bugs, security issues, and logic errors with multi-
 
 Load the `pr-reviewer` skill and follow its instructions to review: $ARGUMENTS
 
-## PR context gathering
+## PR context
 
-- Auto-detect the current PR number: `gh pr view --json number -q .number`
-- If no PR is found and no number was provided in `$ARGUMENTS`, prompt the user
-- Checkout the PR branch: `gh pr checkout <number>`
-- Fetch the PR diff, metadata, and existing comments as described in the skill's Stage 1
+Use an explicit PR URL/number or supplied pinned context before inferring the current PR. If no unique source is available, ask once. The skill owns metadata/diff/comment retrieval and revision checks; do not duplicate them or change the user's checkout to begin review.
 
 ## Subagent wiring
 
-- For deep investigation of potential findings (Stage 2), use the `researcher` agent via the subagent tool
-- For finding filtering (Stage 3 consensus), use the `consensus` agent via the subagent tool. If the consensus agent is not available, the skill handles graceful degradation -- retain researcher-verified findings and note the skip in the output.
+The skill owns bounded investigation and registered `spawn` task-array batching. Do not dispatch to a separate consensus agent or repeat its verification stages. Preserve fixed distinct-model quorum and degraded-output rules.
 
 ## Plan linking
 
@@ -23,16 +19,14 @@ Load the `pr-reviewer` skill and follow its instructions to review: $ARGUMENTS
 
 ## Output
 
-- Persist the structured review as a cortex task in the repo lane with status `draft`, tagged `pr-review` plus every tag carried by the user-specified plan (if one was provided) EXCEPT the reserved `plan` tag. See the skill for the exact `cortex add --body-file` recipe and the post-create attribution + plan-linking updates.
-- Copy the review body to clipboard via `pbcopy` if available
-- NEVER post comments directly on the PR -- the user decides what to post
+- Retain the configured Cortex draft product when authorized, with `pr-review` and supplied-plan tags except reserved `plan`; the skill owns persistence, attribution, and linking.
+- Honor an explicit answer-only/no-external-records request with an inline review and no Cortex or clipboard writes.
+- Never post comments directly on the PR; the user decides what to post.
 
 ## Rules
 
-- ALWAYS load the `pr-reviewer` skill first for detailed instructions
-- ALWAYS read changed files in full context, not just diff hunks
-- ALWAYS run tests/build as validation
-- NEVER report style, formatting, or theoretical concerns -- bugs only
-- NEVER post comments directly on the PR
-- NEVER auto-discover plans -- only link to a plan when the user explicitly names one
-- ALWAYS use `skill-improver` to capture observations after skill execution completes
+- Load the `pr-reviewer` skill and pass the explicit source through once.
+- Verify findings against relevant source/callers/contracts and tests; do not invent behavior or assume the active checkout is the PR revision.
+- Use applicable validation evidence or relevant authorized non-modifying checks. Do not mandate checkout, installation, or a build/test/lint cycle; report unperformed validation and blockers.
+- Report bugs, security issues, and logic errors, not style or theoretical redesign.
+- Never auto-discover plans; link only an explicitly named plan.

@@ -28,4 +28,3 @@ Load the `pr-description-generator` skill and follow its instructions to generat
 - NEVER invent or hallucinate code behavior
 - NEVER over-reference related issues/PRs -- omit if unsure
 - ALWAYS follow the brevity constraint -- readable in under 5 minutes
-- ALWAYS use `skill-improver` to capture observations after skill execution completes

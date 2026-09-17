@@ -21,7 +21,7 @@ function exec(
   cmd: string,
   args: string[],
   options: { cwd?: string; timeout?: number } = {},
-): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
   return new Promise((resolve) => {
     const proc = spawn(cmd, args, {
       cwd: options.cwd,
@@ -40,11 +40,12 @@ function exec(
     });
 
     proc.on("close", (code) => {
-      resolve({ stdout, stderr, exitCode: code ?? 1 });
+      // Signals and failed spawns do not supply a numeric process exit code.
+      resolve({ stdout, stderr, exitCode: code ?? null });
     });
 
     proc.on("error", (err) => {
-      resolve({ stdout, stderr: err.message, exitCode: 1 });
+      resolve({ stdout, stderr: err.message, exitCode: null });
     });
   });
 }
@@ -52,7 +53,7 @@ function exec(
 function execShell(
   command: string,
   options: { cwd?: string; timeout?: number } = {},
-): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
   return exec("bash", ["-c", command], options);
 }
 
@@ -686,12 +687,8 @@ export default function (pi: ExtensionAPI) {
   function detectFramework(command: string): Framework {
     const trimmed = command.trim();
 
-    // Detect task runner commands by looking at the task name
-    // These need to match common task names in Taskfile.yml
-    if (/^task test/.test(trimmed)) return "vitest";  // pi-minions uses vitest
-    if (/^task jest/.test(trimmed)) return "jest";
-    if (/^task pytest/.test(trimmed)) return "pytest";
-    if (/^task rspec/.test(trimmed)) return "rspec";
+    // A task name is not a framework contract. Preserve opaque task commands.
+    if (/^task(?:\s|$)/.test(trimmed)) return "unknown";
 
     // Direct framework commands
     if (/\bvitest\b/.test(command)) return "vitest";
@@ -703,24 +700,17 @@ export default function (pi: ExtensionAPI) {
   }
 
   function appendJsonFlag(command: string, framework: Framework): string {
-    // Check if using task runner
-    const isTask = command.trim().startsWith("task ");
-
     switch (framework) {
       case "jest":
-        return isTask ? `${command} json=true` : `${command} --json`;
+        return `${command} --json`;
       case "vitest":
-        // Use json=true variable for task, --reporter=json for direct vitest
-        return isTask ? `${command} json=true` : `${command} --reporter=json`;
+        return `${command} --reporter=json`;
       case "go":
-        if (isTask) {
-          return `${command} -- -json`;
-        }
         return command.replace("go test", "go test -json");
       case "rspec":
-        return isTask ? `${command} json=true` : `${command} --format json`;
+        return `${command} --format json`;
       case "pytest":
-        return isTask ? `${command} -- -q --tb=short` : `${command} -q --tb=short`;
+        return `${command} -q --tb=short`;
       default:
         return command;
     }
@@ -741,11 +731,58 @@ export default function (pi: ExtensionAPI) {
     error?: string;
   }
 
+  function validCounts(...values: unknown[]): boolean {
+    return values.every(value => typeof value === "number" && Number.isSafeInteger(value) && value >= 0);
+  }
+
+  function resultObject(value: unknown): value is Record<string, unknown> {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+  }
+
+  function optionalString(value: unknown): boolean {
+    return value === undefined || typeof value === "string";
+  }
+
+  function optionalDuration(value: unknown): boolean {
+    return value === undefined || (typeof value === "number" && Number.isFinite(value) && value >= 0);
+  }
+
+  function validSuiteResults(value: unknown, framework: "jest" | "vitest"): boolean {
+    if (value === undefined) return true; // Deliberate summary-only reports.
+    return Array.isArray(value) && value.every(suite => {
+      if (!resultObject(suite) || !optionalString(suite.name) || !optionalString(suite.testFilePath)) return false;
+      if (suite.perfStats !== undefined
+        && (!resultObject(suite.perfStats) || !optionalDuration(suite.perfStats.runtime))) return false;
+      if (suite.assertionResults === undefined) return true;
+      return Array.isArray(suite.assertionResults) && suite.assertionResults.every(assertion => {
+        if (!resultObject(assertion) || typeof assertion.status !== "string"
+          || !optionalString(assertion.fullName) || !optionalString(assertion.title)
+          || (assertion.line !== undefined && !validCounts(assertion.line))) return false;
+        if (framework === "jest" && assertion.status === "failed" && typeof assertion.fullName !== "string") return false;
+        return assertion.failureMessages === undefined || (Array.isArray(assertion.failureMessages)
+          && assertion.failureMessages.every(message => typeof message === "string"));
+      });
+    });
+  }
+
+  function validRspecExamples(value: unknown): boolean {
+    if (value === undefined) return true; // Deliberate summary-only reports.
+    return Array.isArray(value) && value.every(example => resultObject(example)
+      && typeof example.status === "string" && typeof example.full_description === "string"
+      && optionalString(example.file_path)
+      && (example.line_number === undefined || validCounts(example.line_number))
+      && (example.exception === undefined || example.exception === null
+        || (resultObject(example.exception) && optionalString(example.exception.message))));
+  }
+
   function parseJestJson(raw: string): TestResult | null {
     try {
       const data = JSON.parse(raw);
-      // Jest format: data.testResults[] with assertionResults[]
-      const failures = (data.testResults || []).flatMap(
+      if (!data || !validCounts(data.numPassedTests, data.numFailedTests, data.numPendingTests)
+        || !validSuiteResults(data.testResults, "jest")) return null;
+      // Counts are required; per-test details are optional in summary-only reports.
+      const suites = data.testResults ?? [];
+      const failures = suites.flatMap(
         (suite: {
           testFilePath?: string;
           assertionResults?: Array<{
@@ -754,30 +791,26 @@ export default function (pi: ExtensionAPI) {
             failureMessages?: string[];
           }>;
         }) =>
-          (suite.assertionResults || [])
+          (suite.assertionResults ?? [])
             .filter((t: { status: string }) => t.status === "failed")
             .map((t: { fullName: string; failureMessages?: string[] }) => ({
               testName: t.fullName,
               file: suite.testFilePath,
-              error: (t.failureMessages || []).join("\n").slice(0, 500),
+              error: (t.failureMessages ?? []).join("\n").slice(0, 500),
             })),
       );
+      const runtimes = suites.map((suite: { perfStats?: { runtime?: number } }) => suite.perfStats?.runtime);
+      const totalRuntime = runtimes.length > 0
+        && runtimes.every((value: unknown) => typeof value === "number" && Number.isFinite(value) && value >= 0)
+        ? runtimes.reduce((sum: number, value: number) => sum + value, 0)
+        : undefined;
       return {
         summary: {
-          passed: data.numPassedTests || 0,
-          failed: data.numFailedTests || 0,
-          skipped: data.numPendingTests || 0,
-          duration: data.testResults
-            ? `${(
-                (
-                  data.testResults as Array<{ perfStats?: { runtime?: number } }>
-                ).reduce(
-                  (a: number, r: { perfStats?: { runtime?: number } }) =>
-                    a + (r.perfStats?.runtime || 0),
-                  0,
-                ) / 1000
-              ).toFixed(1)}s`
-            : undefined,
+          passed: data.numPassedTests,
+          failed: data.numFailedTests,
+          skipped: data.numPendingTests,
+          duration: totalRuntime !== undefined && Number.isFinite(totalRuntime)
+            ? `${(totalRuntime / 1000).toFixed(1)}s` : undefined,
         },
         failures,
       };
@@ -789,29 +822,27 @@ export default function (pi: ExtensionAPI) {
   function parseVitestJson(raw: string): TestResult | null {
     try {
       const data = JSON.parse(raw);
-      // Vitest uses Jest-compatible format: testResults[].assertionResults[]
+      if (!data || !validCounts(data.numPassedTests, data.numFailedTests, data.numPendingTests)
+        || !validSuiteResults(data.testResults, "vitest")) return null;
+      // Vitest uses Jest-compatible counts and optional per-test details.
       const failures: TestResult["failures"] = [];
-
-      for (const result of data.testResults || []) {
-        const testFilePath = result.name;
-
-        for (const test of result.assertionResults || []) {
+      for (const result of data.testResults ?? []) {
+        for (const test of result.assertionResults ?? []) {
           if (test.status === "failed") {
             failures.push({
               testName: test.fullName || test.title || "unnamed test",
-              file: testFilePath,
+              file: result.name,
               line: test.line,
-              error: (test.failureMessages || []).join("\n").slice(0, 500),
+              error: (test.failureMessages ?? []).join("\n").slice(0, 500),
             });
           }
         }
       }
-
       return {
         summary: {
-          passed: data.numPassedTests || 0,
-          failed: data.numFailedTests || 0,
-          skipped: data.numPendingTests || 0,
+          passed: data.numPassedTests,
+          failed: data.numFailedTests,
+          skipped: data.numPendingTests,
         },
         failures,
       };
@@ -822,25 +853,18 @@ export default function (pi: ExtensionAPI) {
 
   function parseGoTest(raw: string): TestResult | null {
     try {
-      const lines = raw
-        .trim()
-        .split("\n")
-        .map((l) => {
-          try {
-            return JSON.parse(l);
-          } catch {
-            return null;
-          }
-        })
-        .filter(Boolean);
-
-      if (lines.length === 0) return null;
+      // Reject an invalid stream instead of silently dropping malformed events.
+      const lines = raw.trim().split("\n").map(line => JSON.parse(line));
+      const actions = ["start", "run", "pause", "cont", "pass", "bench", "fail", "output", "skip"];
+      if (lines.some(ev => !ev || Array.isArray(ev) || !actions.includes(ev.Action)
+        || typeof ev.Package !== "string"
+        || (ev.Test !== undefined && typeof ev.Test !== "string")
+        || (ev.Output !== undefined && typeof ev.Output !== "string"))) return null;
 
       let passed = 0;
       let failed = 0;
       let skipped = 0;
       const failures: TestResult["failures"] = [];
-
       for (const ev of lines) {
         if (ev.Action === "pass" && ev.Test) passed++;
         if (ev.Action === "skip" && ev.Test) skipped++;
@@ -853,8 +877,41 @@ export default function (pi: ExtensionAPI) {
           });
         }
       }
-
       return { summary: { passed, failed, skipped }, failures };
+    } catch {
+      return null;
+    }
+  }
+
+  function parseRspecJson(raw: string): TestResult | null {
+    try {
+      const data = JSON.parse(raw);
+      const summary = data?.summary;
+      if (!summary || !validCounts(summary.example_count, summary.failure_count, summary.pending_count)
+        || summary.failure_count + summary.pending_count > summary.example_count
+        || !optionalDuration(summary.duration) || !validRspecExamples(data.examples)) return null;
+      return {
+        summary: {
+          passed: summary.example_count - summary.failure_count - summary.pending_count,
+          failed: summary.failure_count,
+          skipped: summary.pending_count,
+          duration: typeof summary.duration === "number" && Number.isFinite(summary.duration) && summary.duration >= 0
+            ? `${summary.duration.toFixed(1)}s` : undefined,
+        },
+        failures: (data.examples ?? [])
+          .filter((example: { status: string }) => example.status === "failed")
+          .map((example: {
+            full_description: string;
+            file_path?: string;
+            line_number?: number;
+            exception?: { message?: string };
+          }) => ({
+            testName: example.full_description,
+            file: example.file_path,
+            line: example.line_number,
+            error: example.exception?.message?.slice(0, 500) || "Test failed",
+          })),
+      };
     } catch {
       return null;
     }
@@ -873,20 +930,31 @@ export default function (pi: ExtensionAPI) {
     name: "test_run_parsed",
     label: "Test Run Parsed",
     description:
-      "Run tests and return structured results (pass/fail per test, failure messages, stack traces with file locations). Auto-detects test framework from the command.",
+      "Run tests once and return executed command/exit code plus recognized test results. Opaque task commands are unchanged; unparsed counts are null with raw output, not zero.",
     parameters: Type.Object({
       command: Type.String({
         description:
           "Test command to run, e.g. 'npm test', 'pytest tests/', 'go test ./...'",
       }),
       filter: Type.Optional(
-        Type.String({ description: "Test name filter pattern" }),
+        Type.String({ description: "Name filter for recognized direct frameworks; nonempty filters on opaque wrappers are rejected before execution" }),
       ),
     }),
     async execute(_toolCallId, args, _signal, _onUpdate, ctx) {
       const framework = detectFramework(args.command);
+      if (args.filter && framework === "unknown") {
+        return {
+          content: [{ type: "text", text: JSON.stringify({
+            summary: null,
+            failures: [],
+            execution: { command: args.command, exitCode: null },
+            error: "Cannot apply a filter to an unknown framework or opaque wrapper. Supply the verified filtering syntax in command, or use a recognized direct framework command.",
+            note: "Test command was not executed.",
+          }, null, 2) }],
+          details: {},
+        };
+      }
       let command = args.command;
-
       if (args.filter) {
         switch (framework) {
           case "jest":
@@ -906,96 +974,49 @@ export default function (pi: ExtensionAPI) {
       }
 
       const jsonCommand = appendJsonFlag(command, framework);
-
+      const execution: { command: string; exitCode: number | null } = { command: jsonCommand, exitCode: null };
       try {
-        const { stdout, stderr } = await execShell(jsonCommand, {
+        const { stdout, stderr, exitCode } = await execShell(jsonCommand, {
           cwd: ctx.cwd,
           timeout: TEST_TIMEOUT_MS,
         });
-
+        execution.exitCode = exitCode;
         let result: TestResult | null = null;
+        if (framework === "jest") result = parseJestJson(stdout);
+        else if (framework === "vitest") result = parseVitestJson(stdout);
+        else if (framework === "go") result = parseGoTest(stdout);
+        else if (framework === "rspec") result = parseRspecJson(stdout);
 
-        if (framework === "jest") {
-          result = parseJestJson(stdout);
-        } else if (framework === "vitest") {
-          result = parseVitestJson(stdout);
-        } else if (framework === "go") {
-          result = parseGoTest(stdout);
-        } else if (framework === "rspec") {
-          try {
-            const data = JSON.parse(stdout);
-            result = {
-              summary: {
-                passed:
-                  data.summary?.example_count -
-                  (data.summary?.failure_count || 0) -
-                  (data.summary?.pending_count || 0),
-                failed: data.summary?.failure_count || 0,
-                skipped: data.summary?.pending_count || 0,
-                duration: data.summary?.duration
-                  ? `${data.summary.duration.toFixed(1)}s`
-                  : undefined,
-              },
-              failures: (data.examples || [])
-                .filter((e: { status: string }) => e.status === "failed")
-                .map(
-                  (e: {
-                    full_description: string;
-                    file_path?: string;
-                    line_number?: number;
-                    exception?: { message?: string };
-                  }) => ({
-                    testName: e.full_description,
-                    file: e.file_path,
-                    line: e.line_number,
-                    error: e.exception?.message?.slice(0, 500) || "Test failed",
-                  }),
-                ),
-            };
-          } catch {
-            result = null;
-          }
-        }
-
-        // Fallback: raw output if structured parsing failed
         if (!result) {
           const combined = stdout + (stderr ? `\n--- stderr ---\n${stderr}` : "");
           return {
-            content: [{ type: "text", text: JSON.stringify(
-              {
-                summary: {
-                  passed: 0,
-                  failed: 0,
-                  skipped: 0,
-                  note: "Could not parse structured results",
-                },
-                failures: [],
-                raw: truncateRaw(combined),
-                note: `Framework detected: ${framework}. Structured parsing failed -- raw output returned.`,
-              },
-              null,
-              2,
-            ) }],
+            content: [{ type: "text", text: JSON.stringify({
+              summary: null,
+              failures: [],
+              execution,
+              raw: truncateRaw(combined),
+              note: `Framework detected: ${framework}. Structured parsing failed -- counts are unknown; raw output returned.`,
+            }, null, 2) }],
             details: {},
           };
         }
-
         return {
-          content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify({
+            ...result,
+            execution,
+            ...(stderr ? { stderr: truncateRaw(stderr) } : {}),
+          }, null, 2) }],
           details: {},
         };
-      } catch (e) {
+      } catch (error) {
         return {
-          content: [{ type: "text", text: JSON.stringify(
-            {
-              summary: { passed: 0, failed: 0, skipped: 0 },
-              failures: [],
-              error: (e as Error).message,
-              note: "Test command failed to execute.",
-            },
-            null,
-            2,
-          ) }],
+          content: [{ type: "text", text: JSON.stringify({
+            summary: null,
+            failures: [],
+            execution,
+            error: error instanceof Error ? error.message : String(error),
+            note: "Test execution or result handling failed; no test counts are claimed.",
+          }, null, 2) }],
           details: {},
         };
       }

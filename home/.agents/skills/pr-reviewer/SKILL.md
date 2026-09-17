@@ -6,7 +6,7 @@ description: Multi-model critic consensus PR reviews -- bugs only, false-positiv
 
 # PR Reviewer Skill
 
-CRITICAL: before using this skill, load the `cortex` skill — PR reviews are persisted as cortex tasks, and the persistence/linking steps below assume the cortex CLI vocabulary (`cortex_update`, lanes, tags, statuses).
+The default review product is a Cortex draft; load or reuse the `cortex` skill when that persistence is within the requested scope. If the user explicitly requests answer-only/no external records, skip Cortex and clipboard writes and return the structured review inline. Do not change an explicitly requested durable product silently; report a persistence blocker if it cannot be delivered.
 
 ## Purpose
 
@@ -18,40 +18,41 @@ Goal: "Would merging this improve the codebase?"
 
 ### Stage 1: Fetch PR context
 
-Pre-requisites already resolved the PR and checked out the remote branch. If `gh pr checkout` fails (deleted branch), use `gh pr view --json headRefOid` + `git checkout <sha> --detach`.
+Use the explicitly provided PR URL/number or pinned source context first. Only when no source was supplied, resolve the current PR with `gh pr view --json number -q .number`; ask once if no unique PR can be identified. Do not check out or detach the user's branch to begin a read-only review.
 
-- `gh pr view <number> --json title,body,author,baseRefName,headRefName,files,additions,deletions,url`
-- `gh pr diff <number>` -- the authoritative diff source. Prefer over `git-diff-summary` for scope (it can include merged-in changes on diverged branches).
-- For merged-main branches: use three-dot diff (`git diff base...HEAD`) and `gh pr view --json commits` to disambiguate PR-specific changes from merged-in noise
-- `git_blame_context` on critical changed regions for prior change rationale
-- If PR references an issue, fetch via `gh issue view`
-- Fetch existing PR comments for dedup: `gh api repos/{owner}/{repo}/pulls/{number}/comments --jq '.[] | {id, path, line, body}'`
+- Capture metadata with `gh pr view <source> --json title,body,author,baseRefName,baseRefOid,headRefName,headRefOid,files,additions,deletions,url,updatedAt` and retain the reviewed base/head revisions.
+- Use the supplied revision-scoped diff or `gh pr diff <source>` as the PR scope. Pair live retrieval with its captured revisions; if references change during retrieval, refresh the affected evidence before relying on it.
+- Read relevant source at the pinned revision through authorized read-only tools. If objects are already local, `git show <sha>:<path>` and `git diff <base-sha>...<head-sha>` avoid assuming the active HEAD is the PR head. Missing source is a gap to report, not permission for an automatic checkout/fetch/install workflow.
+- Use `git_blame` for material prior-change rationale when that evidence is needed; fetch linked issues only when they affect the review.
+- Fetch or reuse applicable PR comments for early deduplication: `gh api repos/{owner}/{repo}/pulls/{number}/comments --jq '.[] | {id, path, line, body}'`. Note incomplete comment coverage instead of claiming exhaustive deduplication.
+- Keep API retrieval read-only. If adding query fields with `gh api`, explicitly use `--method GET`; field arguments otherwise change its default method.
 
 ### Stage 2: Deep analysis
 
-Read PR description for intent. When the description is thorough with structured sections, leverage it to skip exploratory investigation and focus on validating claims against the diff. Read changed files in full context (not just diff hunks). Use `ast_query` for structural patterns if needed. Use available search tools (grep, find, ast_query) to explore unfamiliar areas of the codebase.
+Read the PR description for intent and use applicable context already supplied. Before reporting a finding, inspect the changed code plus the relevant definitions, callers, data contracts, and tests needed to establish a reachable failure. Expand to full files when those relationships require it; do not explore unrelated code or reread an unchanged snapshot merely because a stage changed. Use registered search/structural tools for unresolved questions.
 
 Focus on BUGS, SECURITY, and LOGIC -- not style or code quality.
 
 Severity tiers:
 - Critical: type mismatches causing runtime errors, nil/null crashes, SQL injection, auth/authz bypasses, data corruption/loss, deadlocks, race conditions, memory leaks, unbounded resource usage, breaking API changes
 - Medium: N+1 queries degrading performance, missing error handling on critical paths, improper transaction handling, config errors affecting functionality, missing validation on user inputs, incorrect error/status codes
-- Minor: missing tests for NEW functionality that could mask bugs, documentation gaps that could cause misuse of a public API
+- Minor: bounded concrete behavioral defects or newly introduced public-API documentation errors with a demonstrated misuse path. Missing tests alone are not a finding.
 
 Do NOT report: formatting, naming, style, linter-level issues, theoretical optimizations, "consider using X instead" suggestions. These belong to linters.
 
 If no real issues are found, produce a PASS verdict with empty findings sections. Do NOT invent concerns to populate the template.
 
-For each potential finding, invoke the researcher agent for deep investigation:
-  spawn(agent: "researcher", task: "<potential finding + diff path + worktree path>")
+Apply the pre-filter below and deduplicate against applicable comments BEFORE delegation. Verify mechanical facts inline; delegate only unresolved substantial investigations, grouped by shared evidence rather than one child per candidate.
 
-The researcher investigates (call-stack tracing, test coverage checks, language
-verification, line number verification) and returns findings with confidence levels
-and verbatim evidence.
+Task-array template (fill in actual revisions, paths, and questions):
 
-Only findings returned with CERTAIN or LIKELY confidence proceed to Stage 3.
+```json
+{"tasks":[{"agent":"researcher","task":"Verify <screened candidate batch> against <pinned diff/source paths> without edits; trace reachable behavior and relevant tests, returning confidence and file:line evidence."}]}
+```
 
-If the researcher fails or times out, fall back to inline verification:
+Only source-verified inline or delegated findings with CERTAIN or LIKELY confidence proceed. If delegation fails, continue inline only where the evidence is obtainable within scope; report remaining gaps rather than inventing another workflow.
+
+Verification requirements for both paths:
 1. VERIFY the language -- confirm syntax, stdlib, and library behavior
 2. TRACE the call stack -- check if upstream callers prevent or downstream handles it
 3. CHECK test coverage -- search for existing tests covering this scenario
@@ -77,20 +78,12 @@ Self-review: If the reviewer is also the PR author, note the conflict in the Sum
 
 ### Stage 3: Multi-model critic consensus
 
-If the critique infrastructure is unavailable (critics.yml missing or unreadable), retain all findings that passed researcher verification with CERTAIN or LIKELY confidence. Note in the output: "Consensus step skipped -- findings retained based on researcher verification only. N findings would normally be filtered by consensus." Skip to Stage 4.
+An empty screened batch skips this entire stage, including configuration/prompt reads. Otherwise read or reuse `~/.agents/skills/critique/critics.yml` and `critic-prompt.md` once. If configuration, dispatch, or actual identity verification is unavailable, report consensus unavailable/unverified and retain directly supported findings labeled not consensus-filtered. Do not create a probe or substitute-review loop to claim diversity.
 
-Invoke multi-model critic consensus using the critique infrastructure:
-
-1. Read `~/.agents/skills/critique/critics.yml` to get the available critic models
-2. Read `~/.agents/skills/critique/critic-prompt.md` to get the shared evaluation prompt
-3. For each finding, construct a `spawn` call with `tasks` array -- one task per critic model.
-   Each task's `task` field = the critic prompt + finding details + evaluation criteria below + PR diff context.
-   Each task's `model` field = the model identifier from critics.yml.
-4. Collect results, extract KEEP/REJECT/ABSTAIN votes from each critic's response
-5. Apply dynamic consensus: majority KEEP = finding survives. Adjust threshold when critics abstain/timeout (e.g., 2/3 KEEP when one critic abstains).
-
-Each critic receives: the finding (severity, file:line, title, description, suggestion),
-the PR diff (or relevant excerpts for large diffs), and the worktree path for code exploration.
+1. Send the screened finding batch in one `spawn` tasks array with one task per configured critic model, explicitly setting each model. Include finding IDs/evidence, the shared prompt and criteria, relevant diff/source snapshots, and a bounded read-only scope. Require KEEP/REJECT/ABSTAIN with rationale per finding; split only for a demonstrated context limit.
+2. With N configured critics, multi-model validation requires KEEP from `max(2, floor(N / 2) + 1)` distinct, verified actual model identities, one vote per model. Requested labels and model self-reports do not verify dispatch.
+3. Abstentions, duplicate identities, timeouts, missing verification, and tool failures never lower the quorum. Below-quorum findings remain explicitly not consensus-filtered, not silently discarded or labeled validated.
+4. Inspect specific conflicts between votes and source evidence and report unresolved disagreement instead of rerunning until favorable votes appear. Agreement is not factual proof. Refresh only evidence invalidated by relevant changes, missing context, or material freshness needs.
 
 #### Evaluation Criteria
 
@@ -118,7 +111,7 @@ evaluated for cost transparency.
 
 ### Stage 4: Deduplication
 
-Compare surviving findings against existing PR comments fetched in Stage 1.
+Use the comment snapshot already screened before delegation to make the final deduplication decision. Re-fetch only when relevant comments changed or current coverage is materially required, not simply because this stage was reached.
 
 A finding is a DUPLICATE if:
 - Same issue already raised by any commenter (even if worded differently)
@@ -129,12 +122,14 @@ When uncertain, mark as duplicate. Better to skip a duplicate than repeat one.
 
 ### Stage 5: Output
 
-Attempt the project's relevant test suite and build/lint commands. Read repo guidelines for test execution. Record each command and its outcome. If validation cannot run because the required environment or dependencies are unavailable, record the exact command and blocker, continue with static verification, and do not claim that validation passed.
+Use applicable revision-scoped CI/local evidence first. Run only relevant, authorized validation that addresses a concrete uncertainty, after inspecting the command and its side effects. Do not execute a blanket build/test/lint cycle or a modifying formatter merely to complete a review stage. Record each performed command and outcome; label unperformed validation and blockers explicitly.
+
+If execution requires a checkout/worktree, obtain authorization when not already supplied and protect the user's dirty worktree. A disposable worktree isolates file changes, not network access or credentials; it is not a security sandbox. If the required scope/environment is unavailable, continue only with permitted static inspection and report limitations—no unapproved installs, destructive cleanup, or claims that tests passed.
 
 For Terraform workspaces: `terraform validate` confirms schema conformance but does NOT validate semantic correctness of attribute interactions. Cross-reference provider documentation for resource types in the diff to verify behavioral intent matches configuration.
 
 Verdict system:
-- PASS: No significant issues. Safe to merge.
+- PASS: No substantiated significant issues in the reviewed scope; this does not certify unperformed validation or guarantee merge safety.
 - GO WITH FIXES: Minor issues, not blocking.
 - NEEDS REVIEW: Moderate issues needing human attention before merge.
 - BLOCK: Critical bugs. Do NOT merge until fixed.
@@ -180,11 +175,11 @@ e.g., "2 critical, 1 medium findings survived critic review (5 of 8 initial find
 (only dimensions evaluated: x = good, ~ = n/a, - = concern noted in findings)
 ```
 
-Omit empty finding subsections (except for PASS verdict where all sections are empty by design). Persist this rendered markdown via the Cortex persistence section below. Copy the body to clipboard if `pbcopy`/`xclip` available.
+Omit empty finding subsections (except for PASS with no findings). Clearly distinguish consensus-filtered findings from directly verified findings whose consensus was unavailable/below quorum. Use the Cortex persistence section for the configured durable product unless the user explicitly requested answer-only/no external records; that mode returns the review inline without Cortex or clipboard writes.
 
 ## Cortex persistence
 
-PR reviews live in cortex — not as files. The flow mirrors the `pr-description-generator` skill so reviews coexist with plans and PR descriptions in the same lane.
+When durable output is authorized, PR reviews live in Cortex—not substitute files—and coexist with plans and PR descriptions in the same lane. Skip this entire section for an explicit answer-only/no-external-records request. If requested persistence is unavailable, report that blocker without claiming it succeeded or creating an alternate artifact.
 
 1. ALWAYS use the `cortex_update` tool, call that tool for every update. If the tool does not exist follow the Fallback Strategy.
     Fallback strategy: generate ONE session id at the start of your agent session, hold in working memory, and reuse it for the lifetime of the session:
@@ -222,7 +217,6 @@ PR reviews live in cortex — not as files. The flow mirrors the `pr-description
 
     cortex add "PR Review #<pr-number>: <pr-title>" \
       --lane "$LANE" \
-      --priority 1 \
       --status draft \
       --body-file "$REVIEW_BODY" \
       -t "$TAGS"
@@ -243,18 +237,22 @@ PR reviews live in cortex — not as files. The flow mirrors the `pr-description
 
 ## Output Format
 
-- Persist the rendered review as a cortex task per the recipe above (lane = repo dir, status = `draft`, tags = `pr-review` + every tag of the user-specified plan if one was provided, EXCEPT the reserved `plan` tag).
-- Inform the user of the cortex task id; the body is viewable via `cortex show <review-id>`.
-- Copy the rendered review markdown body to clipboard if available (`pbcopy` on macOS, `xclip -selection clipboard` on Linux). Skip if neither is present.
+- For authorized durable output, persist the review per the recipe above (repo lane, `draft`, `pr-review` plus supplied-plan tags except reserved `plan`); leave priority unset unless explicitly requested.
+- Report the created task ID only after persistence succeeds; its body is viewable via `cortex show <review-id>`. For explicit answer-only mode, return the structured review inline instead.
+- Copy to clipboard only within the requested output scope and when the capability is available.
 
 ## Self-Improvement
 
-After execution, use `skill-improver` to capture observations. Before execution, check `SKILL_NOTES.md` for known edge cases.
+Capture feedback only for concrete, novel, reusable evidence from this task and within its authorized scope. Ordinary success or restating existing guidance starts no notes read, observer, or promotion.
+
+When capture is justified, the current agent owns the gate: resolve `SKIP_SKILL_NOTES` from the environment only (never `.env`); `1` or `true` disables notes. Otherwise use the `improve-skills` Fast Loop. Reuse applicable evidence; one owner and at most one entry per skill/session. A delegated observer receives `notes_enabled=true`, the target, and the concrete observation.
 
 ## Rules
 
-- ALWAYS load the `cortex` skill first for CLI vocabulary, lane / priority / status / tag semantics, and the `--as` session-id requirement
-- ALWAYS persist the PR review via `cortex add --body-file`; NEVER inline `-b "..."` for KB-scale markdown
+Cortex-specific rules below apply to authorized durable output, not explicit answer-only mode.
+
+- Load or reuse the `cortex` skill when persistence is required; preserve its attribution/status semantics.
+- Persist authorized durable reviews via `cortex add --body-file`; NEVER inline `-b "..."` for KB-scale markdown.
 - ALWAYS attribute the new review task immediately after `cortex add` with `cortex_update` (include the verdict in the message)
 - ALWAYS tag the review task with `pr-review`; ALSO inherit every tag from the user-specified plan when one was provided, EXCEPT the reserved `plan` tag
 - NEVER auto-discover plans for reviews — only link to a plan when the user explicitly names a plan id in `$ARGUMENTS`
@@ -262,9 +260,9 @@ After execution, use `skill-improver` to capture observations. Before execution,
 - NEVER edit a `review`-status cortex task without explicit user confirmation
 - NEVER post comments directly on the PR
 - NEVER report style, formatting, or theoretical concerns -- bugs only
-- ALWAYS read changed files in full context, not just diff hunks
-- ALWAYS attempt relevant tests/builds as validation and report either their outcomes or the exact environmental blocker
-- No finding survives without majority critic votes
+- Verify findings against relevant source context, callers/contracts, and tests; expand reads when needed, not merely to satisfy a stage.
+- Use relevant authorized validation or still-applicable evidence; explicitly report unperformed checks and blockers. Never infer test success from missing counts or an unverified claim.
+- Label multi-model validation only when the fixed distinct-model quorum is met; preserve directly supported issues with an honest degraded/unfiltered label when consensus is unavailable.
 - If no real issues found, output PASS with empty sections
 - Keep findings terse -- one line each, explain "why" not "what"
 - Skip checklist dimensions that don't apply

@@ -1,13 +1,15 @@
 # Skill Improvement Methodology
 
-Self-improving instruction files for LLM coding agents via a two-speed feedback loop.
+Behavior-first, human-gated improvement of instruction files. The former process and dated measurements are retained as historical context, not evidence of current model behavior; see [Protocol evaluation](protocol-evaluation.md) for current scope, contracts, ownership, and approval gates.
 
 ## Overview
 
-Each skill is a pair of markdown files:
+A skill can pair its instructions with an optional observation log, used only within the authorized notes scope:
 
-- **SKILL.md** -- agent instructions, capped at 150 lines (instruction-following degrades beyond this)
-- **SKILL_NOTES.md** -- structured observation log, append-only
+- `SKILL.md` -- agent instructions; no universal line-count failure threshold is established. Evaluate induced work, quality, and model/task compatibility; see [Protocol evaluation](protocol-evaluation.md).
+- `SKILL_NOTES.md` -- structured observations; capture is append-only, and cleanup or instruction promotion requires human approval.
+
+The inventory below belongs to the historical Feb 25 -- Mar 3, 2026 account, not today's installed/active skill inventory. The current guide records all 18 audited skills and their first-slice dispositions.
 
 | Skill | Purpose | Lines | Observations |
 |---|---|---|---|
@@ -21,9 +23,15 @@ Each skill is a pair of markdown files:
 
 ## Feedback Loop
 
-### Fast Loop (automated)
+### Fast Loop (conditional)
 
-After every skill execution, a sandboxed subagent (`@skill-improver`) appends an observation to SKILL_NOTES.md:
+Capture is conditional on novel reusable evidence and the notes opt-out; do not spawn an observer after every execution. Historical examples and metrics below describe the former process, not current requirements.
+
+Only when capture is relevant and authorized, the caller resolves `SKIP_SKILL_NOTES` from the environment, NEVER `.env`; `1` or `true` disables notes. Reuse an applicable resolved flag and evidence. A delegated observer requires the parent's explicit `notes_enabled=true`, target, concrete observation, and evidence in its task text; missing/false enablement means no notes I/O, environment-tool search, or replacement workflow.
+
+One owner may append at most one batched entry per skill/session after checking relevant evidence for novelty and duplication. Ordinary success or a paraphrase of instructions is not an observation; no recursive observer or automatic `SKILL.md` change follows.
+
+Historical entry example (unchanged):
 
 ```markdown
 ### 2026-03-02 | Successful Pattern | pr-description-generator
@@ -33,28 +41,30 @@ After every skill execution, a sandboxed subagent (`@skill-improver`) appends an
 **Actionability:** ready-to-promote
 ```
 
-Subagent constraints: can only edit `*SKILL_NOTES.md`, temperature 0.1, 10-step budget, no bash/web access.
+The historical subagent description specified edits only to `*SKILL_NOTES.md`, temperature 0.1, a 10-step budget, and no bash/web access. Those settings and the former “sandboxed” description are not current runtime guarantees. The current `skill-improver` agent declares `read`, `edit`, and `write`; its invocation contract limits it to enabled, evidence-backed notes capture, not instruction changes, shell commands, `.env` reads, trackers, or another observer. A declared role/tool list is not proof of filesystem sandboxing.
 
-Observations are triaged on capture: `ready-to-promote` | `needs-more-data` | `question-for-user`.
-
-Categories: Edge Cases, Successful Patterns, Open Questions, Deviations, Tool Limitations.
+Observations use `ready-to-promote` | `needs-more-data` | `question-for-user`, but a tag is not approval or proof. Categories are `Edge Case` | `Successful Pattern` | `Open Question` | `Deviation` | `Tool Limitation`.
 
 ### Slow Loop (human-gated)
 
-`/improve-skill` reviews accumulated notes and proposes changes to SKILL.md. Promotion hierarchy:
+An explicit `/improve-skill` request dispatches to `improve-skills`, not the `skill-improver` observer. Review the named target, or all skills only when batch/all was requested. Reuse applicable evidence, propose a targeted diff with expected behavioral effect and uncertainty, and obtain human approval before changing `SKILL.md` or cleaning up notes. Preserve the requested review product without manufacturing follow-on work. Promotion hierarchy:
 
 1. **Generalize** (preferred) -- collapse edge cases into one principle
 2. **Replace** -- new principle supersedes old
 3. **Compress** -- same meaning, fewer words
 4. **Append** (last resort) -- genuinely new, no overlap
 
-Signal-to-noise check: *"If I removed this line, would the agent behave differently?"*
+The historical signal-to-noise question was “If I removed this line, would the agent behave differently?” Also ask whether that difference helps the task, safety, or necessary coordination. Repeated notes or shorter text alone do not establish cross-task/model benefit; validate proposed changes against applicable behavior cases.
 
 ### Governance
 
-`/skill-health` audits line counts, word counts, entry age, and flags skills approaching the 150-line ceiling.
+The `skill-health` diagnostic is a scoped, read-only audit of triggers, owners, induced work, intended benefits, evidence, and retain/gate/repair/retire recommendations. Broken references, conflicting obligations, unsupported work, and missing safety/stop conditions matter more than line counts. Size and age are secondary diagnostics, not ceilings or automatic cleanup triggers; do not read private logs merely to populate a metrics table or introduce subagents just to shorten prose.
+
+The shared protocol owns authorization and stopping; skills own domain work; wrappers bind inputs once; leaf agents return assigned evidence. Actual runtime injection and source-owner blockers can still conflict with these contracts. Local scorer/text tests establish neither LLM compliance nor integrated deployment; behavioral promotion needs the separate approvals and profile-specific gates in the current guide.
 
 ## Metrics (7 days: Feb 25 -- Mar 3, 2026)
+
+Historical measurements and examples below are preserved as originally recorded. They are selected authoring/usage observations, not a controlled evaluation of quality, reduced unnecessary work, cross-model reliability, or current deployed behavior.
 
 ### Activity
 
@@ -71,7 +81,7 @@ Signal-to-noise check: *"If I removed this line, would the agent behave differen
 
 ### Compression
 
-Skills got smaller while gaining capabilities:
+The historical account described smaller files with added guidance; these size changes alone do not establish improved capability or task outcomes:
 
 | Skill | Initial | Current | Delta |
 |---|---|---|---|
@@ -114,20 +124,24 @@ Mar 03  pr-reviewer created (pre-standardized); first 4 promotions
 
 ## Architecture
 
+Current ownership sketch, not an automatic pipeline or an enforced sandbox:
+
+```text
+Explicit request -> thin wrapper -> selected skill -> requested result
+                                           |
+                    novel reusable evidence + authorized + notes enabled?
+                         no: stop              yes: one capture owner
+                                                      |
+                                     SKILL_NOTES.md (append-only capture)
+                                     at most one entry per skill/session
+                                                      |
+                                      user-requested /improve-skill review
+                                                      |
+                                     evidence + proposed diff + uncertainty
+                                                      |
+                                             human approval
+                                                      |
+                                         scoped SKILL.md change
 ```
-  Commands              Skills                  Feedback
-  ┌───────────┐          ┌────────────────┐
-  │ /plan     │─────────>│ SKILL.md       │
-  │ /implement│─────────>│ (instructions) │
-  │ /pr-desc  │─────────>│                │
-  │ ...       │          └───────┬────────┘
-  └───────────┘                  │ after execution
-                                 v
-                       @skill-improver ──> SKILL_NOTES.md
-                       (sandboxed)        (observations)
-                                                 │
-                                  /improve-skill │ (human-gated)
-                                                 v
-                                          SKILL.md updated
-                                          (150-line ceiling)
-```
+
+The capture gate belongs to one caller, not both wrapper and skill. An observer is optional, receives the resolved enablement explicitly, and does not coordinate a second workflow. Instruction changes require evidence and human approval, not a line-count target or a quota of observations.

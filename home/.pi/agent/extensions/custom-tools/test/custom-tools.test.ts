@@ -19,11 +19,16 @@ import { EventEmitter } from "events";
 interface SpawnResult {
   stdout: string;
   stderr: string;
-  exitCode: number;
+  exitCode: number | null;
+  signal?: string;
+  spawnError?: string;
 }
 
 /** FIFO queue consumed by each spawn() call. */
 let spawnQueue: SpawnResult[] = [];
+let spawnCalls: Array<{ cmd: string; args: string[] }> = [];
+
+beforeEach(() => { spawnCalls = []; });
 
 function setSpawnResults(...results: SpawnResult[]) {
   spawnQueue = [...results];
@@ -38,7 +43,8 @@ function fail(stderr: string, exitCode = 1): SpawnResult {
 }
 
 mock.module("child_process", () => ({
-  spawn: (_cmd: string, _args: string[], _opts: unknown) => {
+  spawn: (cmd: string, args: string[], _opts: unknown) => {
+    spawnCalls.push({ cmd, args: [...args] });
     const behavior = spawnQueue.shift() ?? { stdout: "", stderr: "", exitCode: 0 };
     const proc = new EventEmitter() as EventEmitter & { stdout: EventEmitter; stderr: EventEmitter };
     const stdoutEmitter = new EventEmitter();
@@ -50,7 +56,8 @@ mock.module("child_process", () => ({
     queueMicrotask(() => {
       if (behavior.stdout) stdoutEmitter.emit("data", Buffer.from(behavior.stdout));
       if (behavior.stderr) stderrEmitter.emit("data", Buffer.from(behavior.stderr));
-      proc.emit("close", behavior.exitCode);
+      if (behavior.spawnError) proc.emit("error", new Error(behavior.spawnError));
+      proc.emit("close", behavior.exitCode, behavior.signal ?? null);
     });
 
     return proc;
@@ -525,6 +532,107 @@ describe("custom-tools extension", () => {
   describe("test_run_parsed", () => {
     beforeEach(() => { spawnQueue = []; });
 
+    const validCounts = { numPassedTests: 1, numFailedTests: 0, numPendingTests: 0, testResults: [] };
+
+    for (const [mode, behavior] of [
+      ["signal termination", { stdout: "partial output", stderr: "", exitCode: null, signal: "SIGTERM" }],
+      ["spawn error", { stdout: "", stderr: "", exitCode: null, spawnError: "spawn bash ENOENT" }],
+    ] as const) {
+      it(`preserves an unavailable exit code after ${mode}`, async () => {
+        setSpawnResults(behavior);
+        const result = await executeTool("test_run_parsed", { command: "task test" });
+        const data = parseResultJson(result) as { summary: unknown; execution: unknown; raw: string };
+        expect(data.summary).toBeNull();
+        expect(data.execution).toEqual({ command: "task test", exitCode: null });
+        expect(data.raw).toContain(mode === "spawn error" ? "spawn bash ENOENT" : "partial output");
+        expect(spawnCalls).toHaveLength(1);
+      });
+    }
+
+    for (const command of ["task test", "task test:unit", "task jest", "task pytest", "task rspec", "task --taskfile other.yml test"]) {
+      it(`preserves opaque command: ${command}`, async () => {
+        setSpawnResults(ok("43 runs, 0 failures"));
+        const result = await executeTool("test_run_parsed", { command });
+        expectValidResult(result);
+        expect(spawnCalls).toEqual([{ cmd: "bash", args: ["-c", command] }]);
+        const data = parseResultJson(result) as { summary: unknown; raw: string; execution: unknown };
+        expect(data.summary).toBeNull();
+        expect(data.raw).toContain("43 runs");
+        expect(data.execution).toEqual({ command, exitCode: 0 });
+      });
+    }
+
+    for (const command of ["task test", "npm test"]) {
+      it(`rejects unsupported filtering before executing: ${command}`, async () => {
+        const result = await executeTool("test_run_parsed", { command, filter: "selected case" });
+        expectValidResult(result);
+        expect(spawnCalls).toHaveLength(0);
+        const data = parseResultJson(result) as { summary: unknown; error: string; execution: unknown };
+        expect(data.summary).toBeNull();
+        expect(data.error).toMatch(/filter/i);
+        expect(data.execution).toEqual({ command, exitCode: null });
+      });
+    }
+
+    it("retains a nonzero exit even when structured counts report passing tests", async () => {
+      setSpawnResults({ stdout: JSON.stringify(validCounts), stderr: "worker failed after tests", exitCode: 2 });
+      const result = await executeTool("test_run_parsed", { command: "npx jest" });
+      const data = parseResultJson(result) as { summary: { passed: number }; execution: unknown };
+      expect(data.summary.passed).toBe(1);
+      expect(data.execution).toEqual({ command: "npx jest --json", exitCode: 2 });
+      expect(spawnCalls).toHaveLength(1);
+    });
+
+    it("retains command errors without inventing zero test counts", async () => {
+      setSpawnResults(fail("command not found", 127));
+      const result = await executeTool("test_run_parsed", { command: "missing-test-runner" });
+      const data = parseResultJson(result) as { summary: unknown; raw: string; execution: unknown };
+      expect(data.summary).toBeNull();
+      expect(data.raw).toContain("command not found");
+      expect(data.execution).toEqual({ command: "missing-test-runner", exitCode: 127 });
+      expect(spawnCalls).toHaveLength(1);
+    });
+
+    const invalidResults = [
+      { command: "npx jest", raw: "{}" },
+      { command: "npx jest", raw: JSON.stringify({ ...validCounts, numPassedTests: "1" }) },
+      { command: "npx jest", raw: '{"numPassedTests":1e400,"numFailedTests":0,"numPendingTests":0,"testResults":[]}' },
+      { command: "npx vitest", raw: JSON.stringify({ ...validCounts, numFailedTests: -1 }) },
+      { command: "npx vitest", raw: JSON.stringify({ ...validCounts, testResults: {} }) },
+      { command: "bundle exec rspec", raw: JSON.stringify({ summary: { example_count: 1, failure_count: 2, pending_count: 0 }, examples: [] }) },
+      { command: "bundle exec rspec", raw: JSON.stringify({ summary: { example_count: "5", failure_count: 0, pending_count: 0 }, examples: [] }) },
+      { command: "go test ./...", raw: "{}" },
+      { command: "go test ./...", raw: '{"Action":"pass","Test":"TestOK","Package":"./example"}\nnot JSON' },
+      { command: "npx jest", raw: JSON.stringify({ ...validCounts, testResults: [7] }) },
+      { command: "npx vitest", raw: JSON.stringify({ ...validCounts, testResults: [7] }) },
+      { command: "bundle exec rspec", raw: JSON.stringify({ summary: { example_count: 1, failure_count: 0, pending_count: 0 }, examples: [7] }) },
+      { command: "npx jest", raw: JSON.stringify({ ...validCounts, testResults: [{ assertionResults: [7] }] }) },
+      { command: "npx vitest", raw: JSON.stringify({ ...validCounts, testResults: [{ assertionResults: [7] }] }) },
+      { command: "npx jest", raw: JSON.stringify({ numPassedTests: 0, numFailedTests: 1, numPendingTests: 0, testResults: [{ assertionResults: [{ status: "failed", fullName: "example", failureMessages: [7] }] }] }) },
+      { command: "npx vitest", raw: JSON.stringify({ numPassedTests: 0, numFailedTests: 1, numPendingTests: 0, testResults: [{ assertionResults: [{ status: "failed", fullName: "example", line: "3", failureMessages: [] }] }] }) },
+      { command: "bundle exec rspec", raw: JSON.stringify({ summary: { example_count: 1, failure_count: 1, pending_count: 0 }, examples: [{ status: "failed", full_description: 7 }] }) },
+    ];
+    for (const [index, { command, raw }] of invalidResults.entries()) {
+      it(`rejects unsupported structured result schema ${index + 1}`, async () => {
+        setSpawnResults(ok(raw));
+        const result = await executeTool("test_run_parsed", { command });
+        const data = parseResultJson(result) as { summary: unknown; raw: string; execution: { exitCode: number } };
+        expect(data.summary).toBeNull();
+        expect(data.raw).toContain(raw);
+        expect(data.execution.exitCode).toBe(0);
+        expect(spawnCalls).toHaveLength(1);
+      });
+    }
+
+    it("preserves valid direct Vitest parsing and records its executed command", async () => {
+      setSpawnResults(ok(JSON.stringify(validCounts)));
+      const result = await executeTool("test_run_parsed", { command: "npx vitest run" });
+      const data = parseResultJson(result) as { summary: { passed: number }; execution: unknown };
+      expect(data.summary.passed).toBe(1);
+      expect(data.execution).toEqual({ command: "npx vitest run --reporter=json", exitCode: 0 });
+      expect(spawnCalls).toEqual([{ cmd: "bash", args: ["-c", "npx vitest run --reporter=json"] }]);
+    });
+
     it("parses jest JSON output (all passing)", async () => {
       const jestOutput = JSON.stringify({
         numPassedTests: 5,
@@ -640,6 +748,7 @@ describe("custom-tools extension", () => {
         filter: "my test pattern",
       });
       expectValidResult(result);
+      expect(spawnCalls).toEqual([{ cmd: "bash", args: ["-c", 'npx jest -t "my test pattern" --json'] }]);
     });
   });
 

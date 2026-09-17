@@ -1,6 +1,8 @@
 # Building Skills and Agentic Workflows
 
-Standards for building Agentic skills, agents, commands, and custom tools.
+Historical background for agentic workflows. For current behavior-first evaluation, source ownership, and verified Pi contracts, use [Protocol evaluation](protocol-evaluation.md); older harness examples below are not current Pi APIs or blanket permission policy.
+
+The original design examples and research summaries are retained as history, not measured results for the current migration. In particular, YAML permission fields, `@mention`/Tab invocation, shell-output injection, and the file-based workflow table describe older harness conventions. They do not establish runtime isolation or authorize tool access, code execution, persistence, or deployment.
 
 ## Core Philosophy
 
@@ -15,7 +17,7 @@ Anthropic's SWE-bench agent used a short task prompt with 5 high-level steps, pa
 
 ### Signal over noise
 
-Every line in a skill should change agent behavior. If removing a line wouldn't change anything, it's noise.
+The historical heuristic was that every line should change behavior. A line can also induce useless work: evaluate its task/safety benefit, trigger, owner, and stopping condition, not behavioral effect or brevity alone.
 
 ### Start from use, not from design
 
@@ -45,17 +47,17 @@ description: <one-line description>
 <What the agent produces. Format expectations.>
 
 ## Self-Improvement
-<Append to SKILL_NOTES.md; check SKILL_NOTES.md before executing.>
+<Only capture authorized, novel reusable evidence when notes are enabled; no routine pre-read or observer.>
 
 ## Rules
 <Hard constraints. Stop conditions. Things the agent must never do.>
 ```
 
-`## Purpose` is always first. `## Rules` is always last.
+`## Purpose` first and `## Rules` last are local authoring conventions, not universal loader requirements.
 
 ### Size
 
-Aim for under 150 lines. But don't count lines -- ask "is every line earning its space?"
+Earlier guidance aimed for under 150 lines. No universal line-count failure threshold is established: evaluate induced work, correctness, safety, and task/model compatibility. Long on-demand references can be useful; size alone does not warrant deletion, decomposition, or a new orchestrator.
 
 ### What belongs in a skill
 
@@ -95,10 +97,10 @@ color: info | warning
 
 ### Principles
 
-- **Agents** = tool isolation boundaries. Different permissions or modes of operation.
-- **Skills** = methodology injection. Repeatable approach, no tool isolation needed.
-- **Commands** = user-facing entry points. Wire agents to skills with pre-loaded context.
-- **Don't over-restrict tools.** Agents perform better with full access and behavioral guardrails than with tools disabled. The one restriction that consistently helps: preventing source file modification during investigation.
+- Agents were described as tool-isolation roles; actual permission enforcement depends on the runtime, not this example's metadata.
+- Skills supply domain methodology; loading a skill is not an authorization or isolation mechanism.
+- Commands are user-facing entry points; current wrappers bind explicit inputs once and dispatch to the selected skill.
+- Historical guidance favored broad tool access. This is NOT blanket permission policy: use task-appropriate least privilege and verified runtime boundaries. Behavioral guardrails do not replace sandboxing, and a worktree alone is not a sandbox.
 
 ### Subagent vs. Primary
 
@@ -141,7 +143,7 @@ Load the `<skill-name>` skill and follow its instructions to <verb>: $ARGUMENTS
 ### Two-loop model
 
 ```
-Fast loop (every use): Agent appends observations to SKILL_NOTES.md
+Fast loop (novel evidence, notes enabled): one owner may capture a batched observation; ordinary success starts no follow-on workflow.
 Slow loop (periodic):  User runs /improve-skill, reviews and approves changes
 ```
 
@@ -159,7 +161,7 @@ When promoting observations to principles:
 ### SKILL_NOTES.md conventions
 
 - Timestamp entries (YYYY-MM-DD), one idea per entry
-- Old irrelevant notes are candidates for removal
+- Capture is append-only; propose cleanup only with human approval, never automatic deletion based on age
 - Notes contradicting principles are important signals
 
 ---
@@ -170,7 +172,7 @@ When promoting observations to principles:
 /explore -> /debug -> /plan -> /plan-review -> /implement -> /pr-desc
 ```
 
-Each stage is optional. Use what's needed. See `docs/planning-methodology.md` for the plan -> review -> implement pipeline in detail.
+This historical chain is illustrative, not a default pipeline. Its command names and file-based outputs are not current Cortex persistence contracts; see the [historical planning methodology](planning-methodology.md) for the former design. Preserve explicitly requested Cortex plans, reviews, reports, and handoffs. Finishing one task does not authorize the next stage.
 
 | Stage | Purpose | Agent | Output |
 |-------|---------|-------|--------|
@@ -187,9 +189,9 @@ Handoffs: explorer report -> planning, debugger report -> implementation, plan -
 
 ## Anti-Patterns
 
-**Over-engineering skills**: 200+ line skills with rigid phases, word budgets, iteration counts. Removes model judgment. Fix: strip to principles + behaviors.
+Unsupported work expansion: the former 200+ line heuristic is not a health verdict. Diagnose unsupported obligations, broken references, conflicting ownership, and missing safety/stop conditions; retain useful detailed procedures and examples.
 
-**Restricting tools instead of guiding behavior**: Disabling tools to prevent misuse. The agent loses needed capabilities. Fix: guide through skill instructions. Only restrict source file modification during investigation.
+Permission confusion: neither broad tool access nor prose-only guardrails establish safety. Restrict capabilities according to the authorized task and actual runtime isolation; inspect execution side effects rather than assuming all non-editing tools are harmless.
 
 **Copying global skills without adaptation**: Identical repo-local copies of global skills. Maintenance burden, zero benefit. Fix: delete the local copy or make it genuinely better with repo-specific context.
 
@@ -197,7 +199,9 @@ Handoffs: explorer report -> planning, debugger report -> implementation, plan -
 
 ---
 
-## Research References
+## Historical Research References
+
+These original summaries and numbers are retained unchanged as background. They are not evidence of current shell/Pi behavior, quality noninferiority, reduced unnecessary work, or a deployed rollout; the current guide includes primary sources and counterevidence.
 
 | Source | Finding | Application |
 |--------|---------|-------------|

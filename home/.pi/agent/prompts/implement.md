@@ -4,18 +4,15 @@ description: Execute an implementation plan by systematically completing each ta
 
 Load the `cortex-implementer` skill and follow its instructions to implement the plan: $ARGUMENTS
 
-## Plan discovery
+## Explicit plan input
 
-- If a `lane` is provided by the user, use `cortex ls -l <lane> -t plan -s open` to investigate if the lane contains any open tasks and ask the user which to implement
-- If nothing is provided by the user, find the current `lane` as the current git repo or current directory and use `cortex ls -l <lane> -t plan -s open` to investigate if the lane contains any open taks and ask the user which to implement
+Use the Cortex task ID the user provided, including an unambiguous explicit reference to a task already identified in the conversation. If no task is identified, ask for its ID once and wait. Do not enumerate lanes, select a plausible plan, or create a replacement plan.
 
-ALWAYS: give the user the opportunity to override a discovered plan with a custom one
+The skill owns status/coordination checks and execution. Do not re-confirm an already authorized, explicit handoff solely because planning notes exist.
 
 ## Rules
 
-- **ALWAYS** load the `cortex-implementer` skill first for detailed instructions
-- **ALWAYS** verify source task exist before reading and that it is in an `open` state
-- **ALWAYS** use actual code and tests as source material
-- **NEVER** invent or hallucinate code behavior
-- **NEVER** skip verification steps between tasks
-- **NEVER** continue past failures without user confirmation
+- Load the `cortex-implementer` skill for its execution contract.
+- Verify the named task exists and follow its status gate; `open` or explicit authorization permits execution.
+- Use actual code and tests as evidence; never invent code behavior or verification results.
+- Follow the skill's bounded, safe retry and baseline-acceptance rules; ask when authorization or a nontrivial scope change requires it.

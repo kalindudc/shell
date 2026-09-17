@@ -7,7 +7,7 @@ description: On-demand multi-model critic consensus for arbitrary concerns
 
 ## Purpose
 
-Evaluate user-provided concerns through multi-model critic consensus. Takes one or more concerns (about code, architecture, design, process, or any artifact), investigates each via the researcher agent, then filters through multi-model critic consensus to separate real issues from speculative or unfounded worries.
+Evaluate user-provided concerns against source evidence, using multi-model critic consensus when the configured models can be independently verified. Verify simple claims inline and delegate substantial unresolved questions; do not create a researcher session per concern by default.
 
 Goal: "Is this concern real, evidenced, and significant -- or speculative noise?"
 
@@ -15,14 +15,10 @@ Goal: "Is this concern real, evidenced, and significant -- or speculative noise?
 
 ### 0. Pre-check
 
-If SKIP_CRITIQUE=true or SKIP_CRITIQUE=1 environment flag is set, then skip all steps and exit immediately with a message: "Critique skill skipped due to SKIP_CRITIQUE flag."
+Resolve `SKIP_CRITIQUE` from applicable context or the environment once; never read `.env` to find it. If it is `true` or `1`, return "Critique skill skipped due to SKIP_CRITIQUE flag." The wrapper does not repeat this preflight.
 
 ```bash
-env | grep -i "SKIP_CRITIQUE"
-
-# or
-
-cat ~/.env | grep -i "SKIP_CRITIQUE"
+printf '%s\n' "${SKIP_CRITIQUE-}"
 ```
 
 ### 1. Parse concerns
@@ -32,39 +28,30 @@ Extract individual concerns from user input. Each concern should have:
 - Optional context references (file paths, URLs, code snippets, PR numbers)
 - Optional severity the user believes it has
 
-If the user provides a single block of text with multiple concerns, split them into individual items. If boundaries are ambiguous, ask the user to clarify.
+If no concerns were supplied, ask once after honoring the opt-out. Split multiple concerns where their boundaries are clear; ask only when ambiguity materially affects scope or correctness.
 
-### 2. Investigate each concern
+### 2. Investigate the concern batch
 
-For each concern, invoke the researcher agent using `spawn`:
+Deduplicate related concerns and reuse applicable revision-scoped evidence. Verify mechanical facts inline. Delegate only unresolved substantial questions that benefit from independent context, grouping concerns that share sources.
 
+Task-array template (fill in the actual bounded scope and evidence requirements):
+
+```json
+{"tasks":[{"agent":"researcher","task":"Verify <unresolved concern batch> in <verified paths/revision> without edits; return confidence, file:line evidence, and remaining gaps."}]}
 ```
-spawn(agent: "researcher", task: "<concern description + context references + codebase path>")
-```
 
-The researcher investigates against actual source material and returns findings with confidence levels (CERTAIN/LIKELY/POSSIBLE/DECLINE) and verbatim evidence.
-
-Only concerns with CERTAIN or LIKELY confidence proceed to Step 3. Concerns rated POSSIBLE or DECLINE are reported in the output as "Insufficient Evidence" with the researcher's notes -- they skip critic evaluation.
-
-If the researcher fails or times out, fall back to inline verification: read the referenced files, trace dependencies, and verify claims directly.
+Use the same evidence/confidence standard for inline and delegated work: CERTAIN or LIKELY concerns proceed; POSSIBLE or DECLINE remain explicitly "Insufficient Evidence." No surviving concerns means no critic sessions. If delegation fails, continue inline only when the missing evidence is obtainable within scope; do not invent another workflow.
 
 ### 3. Multi-model critic consensus
 
-Invoke multi-model critic consensus:
+An empty screened batch skips this entire stage, including configuration/prompt reads.
 
-1. Read `~/.agents/skills/critique/critics.yml` to get the available critic models
-2. Read `~/.agents/skills/critique/critic-prompt.md` to get the shared evaluation prompt
-3. For each investigated concern, construct a `spawn` call with `tasks` array -- one task per critic model.
-   - ALWAYS spawn all critics in parallel
-   - ALWAYS explicitly specify the model for each critic
-   - Each task's `task` field = the critic prompt + concern + evidence + evaluation criteria below.
-   - Each task's `model` field = the model identifier from critics.yml.
-   - Bound source scope and tool-call budgets to the evidence required.
-   - Require `KEEP`, `REJECT`, or `ABSTAIN` as the first response line.
-   - When references are dynamic, provide immutable revisions or snapshots where available.
-4. Collect results and extract KEEP/REJECT/ABSTAIN votes. Classify each REJECT rationale as contradiction, insufficient verification, or tool failure without changing the vote.
-5. Apply dynamic consensus: majority KEEP = validated. Adjust threshold when critics abstain/timeout (e.g., 2/3 KEEP when one critic abstains).
-6. Immediately before final output, recheck dynamic references. If they changed, refresh the evidence and rerun the affected critic tasks.
+1. Read or reuse `~/.agents/skills/critique/critics.yml` and `critic-prompt.md` once for this review. Establish the configured critic count N and whether the runtime can provide verified actual model identities. Configuration labels or a model's self-identification are not dispatch evidence.
+2. If configuration, dispatch, or identity evidence is unavailable, report consensus as unavailable/unverified and retain directly supported concerns for human review, labeled not consensus-filtered. Do not spawn probes or compensating review loops just to manufacture diversity.
+3. Send the evidence-backed concern batch in one `spawn` tasks array, one task per critic model. Each task explicitly sets its configured model and includes the shared prompt, concern IDs, evidence, criteria, and bounded source scope. Require KEEP/REJECT/ABSTAIN with rationale per concern. Split only when a demonstrated context limit requires it; record the actual session count.
+4. To label a concern multi-model validated, require KEEP from at least `max(2, floor(N / 2) + 1)` distinct, verified actual model identities. Count one vote per actual model. Abstentions, duplicate identities, timeouts, missing verification, and tool failures never lower this quorum.
+5. Distinguish evidence-based rejection from insufficient verification/tool failure without rewriting votes. If evidence contradicts votes, inspect the specific conflict and report unresolved disagreement; do not rerun until a desired vote appears. Agreement is a filter, not factual proof.
+6. Scope the output to the reviewed revisions/snapshots. Refresh only evidence invalidated by relevant changes, lost/truncated context, or a material freshness requirement; unchanged valid evidence does not require another review pass.
 
 #### Evaluation Criteria
 
@@ -72,7 +59,7 @@ REJECT if any of these apply:
 - Concern is purely speculative without concrete evidence
 - Concern's claims contradict actual source material (critic verified)
 - Concern is a subjective preference, not a factual issue
-- Concern describes intended/documented behavior as a problem
+- Concern calls intended behavior a defect without evidence of conflict with the user's objectives or concrete harm; documented intent alone does not make a protocol efficient or correct
 - Concern is about a theoretical scenario with no plausible trigger path
 - Evidence does not support the stated severity or impact
 
@@ -88,7 +75,7 @@ Write structured analysis to `./tmp/critics/<label>-analysis.md`.
 The label is derived from user input:
 - If user provides a label/topic, sanitize it (lowercase, hyphens, no special chars)
 - If no label, use ISO date-time: `YYYYMMDD-HHMMSS`
-- Cap filename (excluding `-analysis.md` suffix) at 128 characters total
+- Cap the complete filename, including `-analysis.md`, at 128 characters; shorten the sanitized label as needed
 
 Use this output template:
 
@@ -109,6 +96,9 @@ Use this output template:
 - **Critic consensus:** <votes>/<critics> KEEP
 - **Recommendation:** <suggested action>
 
+## Not Consensus-Filtered
+<Directly source-verified concerns whose consensus was unavailable/unverified/below quorum, with evidence and the specific limitation. Omit when empty.>
+
 ## Filtered Concerns
 <N> concerns filtered by critic consensus:
 - <title> (votes: <votes>/<critics> KEEP -- <primary rejection reason>)
@@ -121,18 +111,20 @@ Use this output template:
 - <title> -- <researcher notes on why evidence was insufficient>
 ```
 
-Omit empty sections. Copy to clipboard if `pbcopy`/`xclip` available.
+Omit empty sections. Honor an explicit answer-only/no-artifact request by returning the structured review inline; otherwise retain the configured report file. Copy to clipboard only within the requested output scope. When consensus is unavailable or below quorum, include directly supported concerns in a clearly labeled not-consensus-filtered section rather than claiming they were validated.
 
 ## Self-Improvement
 
-After execution, use `skill-improver` to capture observations. Before execution, check `SKILL_NOTES.md` for known edge cases.
+Capture feedback only for concrete, novel, reusable evidence from this task and within its authorized scope. Ordinary success or restating existing guidance starts no notes read, observer, or promotion.
+
+When capture is justified, the current agent owns the gate: resolve `SKIP_SKILL_NOTES` from the environment only (never `.env`); `1` or `true` disables notes. Otherwise use the `improve-skills` Fast Loop. Reuse applicable evidence; one owner and at most one entry per skill/session. A delegated observer receives `notes_enabled=true`, the target, and the concrete observation.
 
 ## Rules
 
 - NEVER modify source files -- this skill is read-only analysis
 - ALWAYS investigate concerns against actual source material before critic evaluation
 - ALWAYS include researcher confidence level for transparency
-- No concern survives without majority critic KEEP votes
+- Claim multi-model validation only when the fixed distinct-model quorum is met. Report unavailable consensus and directly supported unfiltered concerns honestly; never substitute votes for source evidence.
 - If no concerns are validated, output the analysis with empty Validated section
 - Keep output terse -- explain "why" not "what"
 - NEVER fabricate evidence -- if it can't be verified, report it as Insufficient Evidence

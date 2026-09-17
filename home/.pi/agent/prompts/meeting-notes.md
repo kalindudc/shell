@@ -22,4 +22,3 @@ Run these checks in order before loading the skill. Stop at the first failure.
 - **ALWAYS** evaluate all tabs (including nested `childTabs`) and all linked Sheets
 - **ALWAYS** STOP loudly on auth/permission errors — no silent fallback
 - **ALWAYS** cite the source tab + locator for every action item and open question
-- **ALWAYS** use `skill-improver` to capture observations after skill execution completes

@@ -13,16 +13,18 @@ Reuse guidance already in context; reload only if it has changed or is no longer
 
 ## When to Spawn
 
-Use `spawn` for most delegation — including parallel execution. Multiple `spawn` calls in a single response run concurrently and return together:
-- 2+ independent tasks with no data dependencies
-- Subtask involves >10 tool calls (broad search, reading many files, exploration)
-- Complex subtask whose output feeds into your next step
-- Context isolation for focused work (deep debugging, single-module analysis)
+Use `spawn` when substantial independent work or context isolation has a concrete benefit:
+- Independent questions can be answered without shared writes or data dependencies.
+- A bounded investigation benefits from a focused context rather than duplicating evidence already available to the parent.
+- A complex subtask can return a useful, verifiable result that supports the next decision.
 
-Use `spawn_bg` only for long-running work that you do not need immediately:
-- Lengthy research or documentation gathering while you continue other work
-- Running full test suites or builds while continuing implementation
-- Fire-and-forget tasks where results are consumed later
+Use only registered delegation capabilities. In Pi, `spawn` is foreground with a nonempty `tasks` array; one call can run independent tasks in parallel and returns when they finish. Do not invent a background tool or promise that the parent can continue while the foreground call is blocked.
+
+Task-array template (replace placeholders with verified paths and concrete questions):
+
+```json
+{"tasks":[{"task":"In <repo>/module-a, verify <claim A> against source and tests without edits; return findings with file:line evidence and uncertainty."},{"task":"In <repo>/module-b, verify independent <claim B> against source and tests without edits; return findings with file:line evidence and uncertainty."}]}
+```
 
 ## When NOT to Spawn
 
@@ -33,11 +35,10 @@ Use `spawn_bg` only for long-running work that you do not need immediately:
 
 ## Common Patterns
 
-- **Plan execution**: one minion per independent task, verify integration after all complete
-- **Code review**: parallel minions per file or module, aggregate findings
-- **Test + continue**: `spawn_bg` for tests, main context continues working
-- **Research + implement**: `spawn_bg` for research, main context scaffolds, incorporate findings when ready
-- **Multi-file edits**: group files into batches, one minion per batch
+- Plan execution: delegate independent scopes with disjoint file ownership; the parent verifies integration.
+- Research/review: group related questions and evidence, rather than creating a child for each small claim.
+- Verification: run a simple check inline; delegate only when isolation or substantial independent work justifies the coordination cost.
+- Multi-file edits: batch related files under one owner and wait for dependent results before continuing.
 
 ## Task Descriptions
 

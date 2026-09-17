@@ -15,9 +15,11 @@ Output is a structured review report -- the user decides whether to approve, rev
 
 ## Entry Criteria
 
-Before beginning review, verify the plan meets minimum structural requirements (see `docs/planning-methodology.md` for plan structure and quality signals):
+Use the user's explicit Markdown file or Cortex task ID, including an unambiguous source already identified in the conversation. If no unique source is supplied, ask once. An invalid source is a specific lookup error, not permission to discover or substitute another plan.
 
-- Plan file exists and is readable markdown
+Verify these embedded minimum structural requirements; no external methodology file is required:
+
+- The explicitly named file exists and is readable, or the named Cortex task contains a readable Markdown body
 - Plan has a High-Level Objective section
 - Plan has Low-Level Tasks section with at least one task
 - Plan has a Context section (Beginning and/or Ending context)
@@ -28,9 +30,9 @@ If entry criteria fail but the document contains plan-like intent (objectives, r
 
 ### 1. Ingest the plan
 
-- Read the plan file completely
-- Identify: High-Level Objective, Mid-Level Objectives, Implementation Notes, Context, Low-Level Tasks, Validation Gates
-- Note any external references (research, documentation URLs, library docs) for verification in step 3
+- Read the chosen plan completely once and retain its source identity and reviewed snapshot. For a Cortex source, use `cortex show <id> --json` once and inspect its body; reviewing a draft does not authorize implementation or require the implementer's open-status gate.
+- Identify: High-Level Objective, Mid-Level Objectives, Implementation Notes, Context, Low-Level Tasks, Validation Gates.
+- Use applicable source/verification context already available; reload only after a relevant change, missing/truncated context, or material freshness need. Do not mutate the plan body or its status during review.
 
 ### 2. Understand the intent
 
@@ -51,16 +53,15 @@ Completeness ("ensure requirements are complete and flowdown is adequate"):
 
 Correctness ("compare output against requirements"):
 
-Invoke the researcher agent for factual claim verification:
-  spawn(agent: "researcher", task: "<claims to verify + plan path + codebase path>")
+Verify mechanical claims inline and reuse applicable evidence. Delegate only unresolved substantial factual questions in a bounded batch, not the entire verification checklist automatically.
 
-The researcher verifies: file existence, API signatures, code snippet validity,
-quantitative claims, and negative claims. Its findings (with confidence levels and
-verbatim evidence) feed into the Correctness evaluation.
+```json
+{"tasks":[{"agent":"researcher","task":"Verify <unresolved claims> against <plan snapshot and verified source paths>; return confidence and file:line evidence without edits."}]}
+```
 
-If the researcher fails or times out, fall back to inline verification:
+Apply these checks to inline and delegated findings. If delegation is unavailable, continue inline only where the required evidence can be obtained within scope:
 - Do referenced files, functions, classes exist? (Use Read, ast_query, Glob). Always read the actual pattern files being referenced and at least one real data file -- plans frequently describe idealized schemas rather than actual data shapes.
-- Do referenced libraries/APIs exist and support described usage? Check installed source/type definitions as ground truth (docs omit signature details). For claims depending on external platform documentation (cloud provider behavior, runtime limitations), always webfetch the cited URLs -- these are load-bearing and unverifiable from codebase alone.
+- Do referenced libraries/APIs exist and support the described usage? Check actual source/type definitions. For external behavior, use authoritative version-matched documentation through registered tools; reuse applicable verified source evidence rather than refetching every cited URL by default.
 - Are code snippets syntactically valid?
 - For quantitative claims (element counts, line counts, test counts), verify directly against the source or a real generated output rather than trusting listed enumerations. When a plan hardcodes emitted/generated paths, compare the list and count against that output; if recommending a fix, prefer dynamic discovery over replacing one hardcoded enumeration with another.
 - Verify negative capability claims ("does not support X", "cannot do Y") with the same rigor as positive claims -- trace transitive call chains, check resource lists. Self-assessment sections (Known Gaps, Known Limitations, Caveats) contain falsifiable negative claims that must be included as researcher verification targets with HIGHER priority than specification sections, because they are harder to verify by casual reading and more likely to be stale.
@@ -103,20 +104,12 @@ Each finding gets:
 
 ### 5. Multi-model critic consensus on Blockers and Concerns
 
-If the critique infrastructure is unavailable (critics.yml missing or unreadable), retain all Blocker and Concern findings from researcher verification. Note in the output: "Consensus step skipped -- findings retained based on researcher verification only." Skip to step 6.
+Screen and deduplicate Blockers/Concerns before this stage; an empty batch skips the entire stage, including configuration/prompt reads. Read or reuse `~/.agents/skills/critique/critics.yml` and `critic-prompt.md` once. If configuration, model dispatch, or actual identity verification is unavailable, report consensus unavailable/unverified and retain directly supported findings labeled not consensus-filtered; do not invent a consensus agent or probe loop.
 
-Invoke multi-model critic consensus using the critique infrastructure:
-
-1. Read `~/.agents/skills/critique/critics.yml` to get the available critic models
-2. Read `~/.agents/skills/critique/critic-prompt.md` to get the shared evaluation prompt
-3. For each finding with severity Blocker or Concern, construct a `spawn` call with `tasks` array -- one task per critic model.
-   Each task's `task` field = the critic prompt + finding details + evaluation criteria below + plan context.
-   Each task's `model` field = the model identifier from critics.yml.
-4. Collect results, extract KEEP/REJECT/ABSTAIN votes from each critic's response
-5. Apply dynamic consensus: majority KEEP = finding survives. Adjust threshold when critics abstain/timeout (e.g., 2/3 KEEP when one critic abstains).
-
-Each critic receives: the finding (severity, dimension, description, evidence),
-the plan file path, and the codebase path for verification.
+1. Send the screened Blocker/Concern batch once to each configured critic in a single `spawn` tasks array, with explicit model, shared evaluation prompt, finding IDs/evidence, plan snapshot, and bounded source paths. Require KEEP/REJECT/ABSTAIN with rationale per finding. Split only for a demonstrated context limit.
+2. Let N be the configured critic count. Multi-model validation requires KEEP from `max(2, floor(N / 2) + 1)` distinct, verified actual model identities, one vote per model. Requested labels or model self-reports are not identity verification.
+3. Abstentions, duplicate identities, timeouts, unavailable verification, and tool failures do not lower the quorum. Report below-quorum findings as not consensus-filtered; do not erase direct evidence or claim agreement that was not established.
+4. Inspect concrete conflicts between votes and source evidence and report unresolved disagreement rather than rerunning to obtain favorable votes. Reuse applicable evidence; refresh only after relevant changes or a material freshness/context gap. Report actual critic-session counts and limitations.
 
   ## Evaluation Criteria
 
@@ -143,11 +136,13 @@ Suggestions, Nits, and Praise skip the critic stage.
 
 ## Output
 
-Write structured review to `./tmp/plan-review/<plan-name>-review.md`:
+Keep the configured report at `./tmp/plan-review/<plan-name>-review.md` unless the user explicitly requests answer-only/no artifact output. Use `cortex-<id>` for a Cortex source's filename stem, or a sanitized file stem; cap the complete filename at 128 characters. Identify the actual source and reviewed snapshot. Never modify the source plan or create a replacement plan.
+
+Use this structured review format:
 
 ```
 # Plan Review: <plan title>
-**Source:** <path> | **Verdict:** Approve / Request Changes / Reject | **Date:** <date>
+**Source:** <file or Cortex task ID; reviewed snapshot> | **Verdict:** Approve / Request Changes / Reject | **Date:** <date>
 
 ## Summary
 [1-3 sentences: what the plan proposes, overall assessment, critic consensus stats]
@@ -180,16 +175,18 @@ e.g., "2 blockers survived critic review (3 of 5 initial Blocker/Concern finding
 [If Request Changes or Reject: what needs to change and why]
 ```
 
-Omit empty severity sections. Target: readable in under 5 minutes. Copy to clipboard if `pbcopy`/`xclip` available.
+Omit empty severity sections and distinguish consensus-filtered findings from directly verified findings whose consensus was unavailable/below quorum. Target: readable in under 5 minutes. Copy to clipboard only within the requested output scope.
 
 ## Self-Improvement
 
-After execution, use `skill-improver` to capture observations. Before execution, check `SKILL_NOTES.md`.
+Capture feedback only for concrete, novel, reusable evidence from this task and within its authorized scope. Ordinary success or restating existing guidance starts no notes read, observer, or promotion.
+
+When capture is justified, the current agent owns the gate: resolve `SKIP_SKILL_NOTES` from the environment only (never `.env`); `1` or `true` disables notes. Otherwise use the `improve-skills` Fast Loop. Reuse applicable evidence; one owner and at most one entry per skill/session. A delegated observer receives `notes_enabled=true`, the target, and the concrete observation.
 
 ## Rules
 
 - NEVER approve a plan without verifying at least the Correctness dimension (file existence, API claims)
-- ALWAYS read the plan completely before beginning evaluation
+- Read the chosen plan completely once; reuse that snapshot unless relevant changes or context loss invalidate it. Honor explicit input/output scope and never discover or mutate an unrelated plan.
 - ALWAYS verify factual claims -- do not take the plan at face value
 - ALWAYS label finding severity and dimension explicitly
 - ALWAYS explain "why" for each finding with evidence from verification

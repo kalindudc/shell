@@ -5,6 +5,8 @@ argument-hint: "<cortex-task-id>"
 
 Load the `handover` skill and follow its "Receiving side (/pickup)" instructions to resume from handover cortex task: $1
 
+Full user response: $ARGUMENTS
+
 ## Pre-requisites (run in order; stop at the first failure)
 
 1. **Require a task id.** The requested id is `$1`. If that is blank, run `cortex ls -t handover` and ask the user which handover task to resume — do NOT guess.

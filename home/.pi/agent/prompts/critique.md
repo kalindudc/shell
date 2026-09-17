@@ -4,19 +4,7 @@ description: Evaluate concerns through multi-model critic consensus
 
 Load the `critique` skill and follow its instructions to evaluate: $ARGUMENTS
 
-If no concerns are provided, prompt the user for concerns to evaluate.
-
-## Pre-Check
-
-If SKIP_CRITIQUE=true or SKIP_CRITIQUE=1 environment flag is set, then skip all steps and exit immediately with a message: "Critique skill skipped due to SKIP_CRITIQUE flag."
-
-```bash
-env | grep -i "SKIP_CRITIQUE"
-
-# or
-
-cat ~/.env | grep -i "SKIP_CRITIQUE"
-```
+The skill owns opt-out, input clarification, verification, and critic batching. Do not repeat its preflight, inspect `.env`, or start an additional review pipeline.
 
 ## Rules
 
@@ -25,4 +13,3 @@ cat ~/.env | grep -i "SKIP_CRITIQUE"
 - ALWAYS use actual code and tests as source material
 - NEVER invent or hallucinate code behavior
 - NEVER exceed 128 characters for output filename
-- ALWAYS use `skill-improver` agent to capture observations after skill execution completes, NEVER add any manual notes
