@@ -79,6 +79,7 @@ home/.pi/agent/extensions/pi-tool-gateway-extension
 home/.pi/agent/extensions/atuin.ts
 home/.pi/agent/extensions/herdr*
 home/.pi/agent/extensions/shopify*
+home/.pi/agent/extensions/pi-rtk-optimizer
 
 # SKILL_NOTES.md files are local observations, bootstrapped by src/scripts/bootstrap-skill-notes.sh
 home/.pi/agents/skills/*/SKILL_NOTES.md
