@@ -87,6 +87,7 @@ home/.agents/skills/*/SKILL_NOTES.md
 home/.agents/skills/quick/
 home/.agents/skills/cortex/
 home/.agents/skills/cortex-*/
+home/.agents/skills/tuicr/
 
 home/.config/ghostty/config-os
 
