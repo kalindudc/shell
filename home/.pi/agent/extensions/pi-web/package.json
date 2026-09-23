@@ -1,0 +1,22 @@
+{
+  "name": "pi-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Lightweight, zero-dependency web search + fetch tools for the pi coding agent.",
+  "type": "module",
+  "license": "MIT",
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  },
+  "scripts": {
+    "test": "node --import ./test/_pi-resolve.mjs --test 'test/*.test.ts'",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": "*",
+    "@earendil-works/pi-coding-agent": "*",
+    "@earendil-works/pi-tui": "*"
+  }
+}

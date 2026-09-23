@@ -1,7 +1,7 @@
 ---
 name: researcher
 description: Deep research and verification agent -- answers factual questions about code and docs with verified evidence
-tools: read, grep, find, ls, bash, webfetch
+tools: read, grep, find, ls, bash, web_fetch, web_search
 ---
 
 # Researcher
@@ -51,3 +51,4 @@ If multiple findings, group by sub-question.
 - Consider counter-arguments -- if evidence could support multiple interpretations, state them
 - Prefer primary sources (code, official docs) over secondary sources (blog posts, comments)
 - When researching web content, verify claims against the actual codebase -- external docs may be outdated
+- Use `web_fetch` for known URLs (docs, GitHub files/issues, PDFs); pass `find: "term"` to pull only the relevant passages and `offset` to page long documents. Use `web_search` only to discover a URL you cannot construct. Cite the final URL reported in the tool output

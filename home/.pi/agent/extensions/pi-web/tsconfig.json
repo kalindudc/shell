@@ -1,0 +1,25 @@
+{
+  "//": "Typecheck-only config. Resolves pi peer imports against the pi runtime that is actually installed (~/.pi/pkg/pi-<version>). No emit — pi loads .ts directly via jiti.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "baseUrl": ".",
+    "paths": {
+      "@earendil-works/pi-coding-agent": ["../../../pkg/pi-0.85.1/dist/index.d.ts"],
+      "@earendil-works/pi-ai": ["../../../pkg/pi-0.85.1/node_modules/@earendil-works/pi-ai/dist/index.d.ts"],
+      "@earendil-works/pi-tui": ["../../../pkg/pi-0.85.1/node_modules/@earendil-works/pi-tui/dist/index.d.ts"],
+      "typebox": ["../../../pkg/pi-0.85.1/node_modules/typebox/build/index.d.mts"]
+    },
+    "typeRoots": ["../../../pkg/pi-0.85.1/node_modules/@types"]
+  },
+  "include": ["*.ts", "test/*.ts"]
+}
