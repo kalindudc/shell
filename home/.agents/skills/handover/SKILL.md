@@ -4,7 +4,8 @@ description: >-
   Conversation handoff for pi. GIVING (/handover [target] [focus]) hands off THIS
   conversation, or ANOTHER session when the first argument names one (session
   .jsonl path, cortex task id, pi-<uuid> tag, or session uuid). RECEIVING
-  (/pickup <task-id>) resumes from a handover task.
+  (/pickup <task-id>) resumes from a handover task. Inside Herdr (HERDR_ENV=1),
+  GIVING also splits a pane below and auto-runs /pickup there.
 ---
 
 # Handover
@@ -14,6 +15,9 @@ with zero shared memory, can continue the work without loss. Two deliverables:
 
 1. A paste-ready handover brief on the system clipboard.
 2. A durable, resumable cortex task whose body is the same brief.
+3. When this agent runs inside a Herdr pane (`HERDR_ENV=1`): a fresh pi in a
+   new pane below this one that has already been sent `/pickup <id>` — see
+   "Phase 4 — Herdr auto-pickup" below. Outside Herdr this is skipped.
 
 This skill covers THREE directions of a handoff, through TWO commands:
 - GIVING (`/handover [focus]`): create the brief + cortex task for THIS conversation — the giving-side procedure below.
@@ -62,6 +66,11 @@ has no kept tail — the receiving agent gets ONLY the brief. So this skill:
   into a session file + facts. Exit 0 resolved, 2 ambiguous (candidate table),
   1 not found. `collect-context.sh --session` calls it for you.
 - `scripts/clip.sh` — copies stdin to the clipboard, portably.
+- `scripts/herdr-pickup.sh <task-id> --cwd <repo-root> [--direction right|down] [--no-switch-focus] [--dry-run]` —
+  Phase 4 helper and the ONLY place this skill drives Herdr. Inside a Herdr
+  pane it splits, starts a fresh pi, sends `/pickup <task-id>`, verifies the
+  resumed banner, and hands focus over; elsewhere it exits 3 (`status=skipped`).
+  Requires `herdr`, `jq`, `cortex`. `--help` documents keys and exit codes.
 - `references/brief-template.md` — the exact brief structure to follow.
 
 Invoke them by absolute path, e.g. `~/.agents/skills/handover/scripts/collect-context.sh`.
@@ -158,6 +167,53 @@ bootstrap header. Follow the cortex persistence recipe.
 
    If `clip.sh` reports no clipboard tool, tell the user the file path it
    preserved so they can copy it manually.
+
+### Phase 4 — Herdr auto-pickup (only when this agent runs inside a Herdr pane)
+
+Goal: the user never opens a terminal, starts pi, and types `/pickup` by hand.
+When Herdr manages this pane, a fresh pi is started in a new pane below this
+one (stacked) and sent `/pickup <id>`; it runs unattended until it asks the
+user to confirm.
+
+ALL Herdr mechanics live in ONE vetted script. Run it; do NOT improvise
+`herdr` calls, and do NOT run bare `herdr` (it launches the TUI; nested
+launches are blocked). Give the bash tool a timeout of at least 300 s — the
+script waits for the new agent to finish orienting.
+
+```bash
+~/.agents/skills/handover/scripts/herdr-pickup.sh <id> --cwd "$ROOT"
+```
+
+`$ROOT` = the repo root from the brief's section 4. For another session it is
+the TARGET's cwd when `cwd_state` says it exists on this machine, else `$PWD`
+(and say so). Skip this phase, and say so, when Phase 3 degraded to
+clipboard-only — without a cortex id there is nothing to pick up.
+
+The script prints `key=value` lines and ends with `status=`. Read them; never
+guess:
+
+- exit 0 / `status=running` — pi runs in `pane_id=` as `agent=`.
+  `banner=seen` means the receiving side printed `Resumed from handover #<id>`
+  and focus was handed to it (`focus=switched`). `banner=not-seen` with
+  `wait=timeout …` means it is still orienting; focus stays here. Report the
+  values verbatim in the Herdr line of the return format.
+- exit 3 / `status=skipped` — not inside Herdr or a prerequisite is missing
+  (`reason=`). Mention it in one line only for `herdr-cli-missing`,
+  `pi-kind-unsupported`, or `jq-missing`; otherwise stay silent. The manual
+  "To resume" line applies.
+- exit 1 / `status=failed` — a Herdr step failed (`step=`; the verbatim Herdr
+  error and a read of the new pane are on stderr). Quote them, report
+  `pane_id`/`agent` if printed so the user can look, and STOP. NEVER re-run
+  the script or hand-roll the remaining steps: a stalled or timed-out prompt
+  does not prove it was not delivered, and a second pi in the same pane is
+  worse than none.
+- exit 2 — usage error (bad id, missing `--cwd`). Fix the arguments once.
+
+Options when the user asks for them: `--direction right` (side by side
+instead of stacked), `--no-switch-focus` (stay in this pane), `--dry-run`
+(print the exact commands, mutate nothing). The script performs exactly ONE split,
+ONE `agent start`, ONE `agent prompt`; it never closes or moves panes and
+never touches `herdr server`.
 
 ---
 
@@ -274,6 +330,9 @@ Follow `references/brief-template.md` exactly, with these differences:
   someone looking at the source task finds the brief.
 - Bootstrap header `[SESSION_ID]` = the TARGET session id (the receiving agent
   resumes THAT work). Clipboard as usual.
+- Then run "Phase 4 — Herdr auto-pickup" exactly as in the main flow, with the
+  new pane's `--cwd` = the TARGET session's cwd when `cwd_state` says it exists
+  on this machine (else `$PWD`, and say so in the return message).
 
 ### Rules (giving for another session)
 
@@ -283,7 +342,8 @@ Follow `references/brief-template.md` exactly, with these differences:
 - READ-ONLY in the target repo (git status/log/diff, file reads). No
   builds/tests/services there.
 - Writes: clipboard + ONE new cortex task + (only when sourced from a task) ONE
-  cross-link update on the source task.
+  cross-link update on the source task + (inside Herdr only) the Phase 4 pane
+  split / `agent start` / `agent prompt`.
 - Say when the session may still be live and when the repo has moved on.
 
 ### Return to the user (giving for another session)
@@ -293,6 +353,7 @@ Follow `references/brief-template.md` exactly, with these differences:
 - **Source:** <target as given → how it resolved>
 - **Cortex task:** #<id> — <title> (lane `<lane>`, tag `handover`)<; cross-linked from #<source-id>>
 - **Clipboard:** brief copied (<n> bytes)
+- **Herdr:** pickup running in pane `<pane-id>` as agent `pickup-<id>`, focus moved there | skipped — not inside Herdr | failed: <verbatim error>
 - **Mission:** <one line>
 - **Immediate next step:** <one line>
 - **Confidence / gaps:** <what the transcript did not prove; repo drift since the session>
@@ -303,7 +364,10 @@ Follow `references/brief-template.md` exactly, with these differences:
 
 - READ-ONLY except exactly TWO writes: the system clipboard and ONE cortex
   task (plus one cross-link update on the source task when handing off
-  another session that came from / picked up a cortex task). NEVER modify project files, run git write commands, stage, or commit.
+  another session that came from / picked up a cortex task). Inside Herdr
+  (`HERDR_ENV=1`) Phase 4 adds exactly ONE `pane split`, ONE `agent start`,
+  and ONE `agent prompt`, all performed by `scripts/herdr-pickup.sh` in the
+  pane it creates — never by hand-rolled `herdr` calls. NEVER modify project files, run git write commands, stage, or commit.
 - NEVER fabricate progress or evidence. Unverified claims MUST be labeled.
 - SELF-CONTAINED: assume the receiving agent has nothing but the brief.
 - Preserve the user's original request VERBATIM.
@@ -311,7 +375,8 @@ Follow `references/brief-template.md` exactly, with these differences:
 - Keep the cortex title to one concise mission-level line.
 - Degrade gracefully: no session file / no `jq` -> synthesize from memory;
   no `cortex` -> clipboard only, and say so; no clipboard tool -> report the
-  saved file path from `clip.sh`. EXCEPTION: when handing off ANOTHER session there is
+  saved file path from `clip.sh`; not inside Herdr / no `herdr` CLI -> skip
+  Phase 4 and keep the manual "To resume" line. EXCEPTION: when handing off ANOTHER session there is
   no memory to fall back on — without `jq` or the session file the resolver
   exits 1; STOP and tell the user instead of writing an ungrounded brief.
 - Honor the user's focus argument if provided.
@@ -321,9 +386,10 @@ Follow `references/brief-template.md` exactly, with these differences:
 **Handover complete.**
 - **Cortex task:** #<id> — <title> (lane `<lane>`, tag `handover`)
 - **Clipboard:** brief copied (<n> bytes) — paste into a new pi session to resume
+- **Herdr:** pickup running in pane `<pane-id>` as agent `pickup-<id>`, focus moved there | skipped — not inside Herdr | failed: <verbatim error>
 - **Mission:** <one line>
 - **Immediate next step:** <one line>
-- **To resume:** start a fresh session and paste the clipboard, or hand task #<id> to an agent.
+- **To resume (if the Herdr pickup did not run):** start a fresh session and paste the clipboard, or hand task #<id> to an agent.
 
 ---
 

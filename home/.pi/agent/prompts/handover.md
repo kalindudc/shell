@@ -1,5 +1,5 @@
 ---
-description: Hand off a conversation — THIS one by default, or another session when the first argument names it — as a self-contained brief on the clipboard + a durable resumable cortex task
+description: Hand off a conversation — THIS one by default, or another session when the first argument names it — as a self-contained brief on the clipboard + a durable resumable cortex task; inside Herdr the pickup is auto-started in a new pane
 argument-hint: "[target] [focus instructions]"
 ---
 
