@@ -1,0 +1,16 @@
+onboarding = false
+
+[theme]
+name = "gruvbox"
+auto_switch = false
+
+[ui.toast]
+delivery = "system"
+
+[ui]
+agent_panel_sort = "spaces"
+show_agent_labels_on_pane_borders = true
+prompt_new_tab_name = false
+
+[experimental]
+pane_history = true
