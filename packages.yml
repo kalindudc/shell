@@ -133,6 +133,7 @@ brew:
   - 1password-cli
   - kubectl
   - helm
+  - herdr
 
 brew_cask:
   - docker
@@ -176,5 +177,8 @@ custom:
   - install_delta_deb
   - install_zoxide_curl
   - install_starship_curl
+  - install_herdr
+  - install_herdr_plus
+  - install_herdr_automatic_rename
   - install_nerd_fonts_brew
   - install_nvm_curl

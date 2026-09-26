@@ -92,5 +92,10 @@ home/.agents/skills/herdr/
 
 home/.config/ghostty/config-os
 
+# herdr runtime state (plugin installs, lockfile) — only config.toml is tracked
+home/.config/herdr/plugins/
+home/.config/herdr/plugins.json
+home/.config/herdr/.plugins.lock
+
 home/.gnupg/
 !home/.gnupg/gpg-agent.conf

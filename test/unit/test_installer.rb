@@ -77,6 +77,7 @@ class TestInstaller < Minitest::Test
     assert_includes packages, 'git', "brew should include git"
     assert_includes packages, 'starship', "brew should include starship"
     assert_includes packages, 'atuin', "brew should include atuin"
+    assert_includes packages, 'herdr', "brew should include herdr"
   end
 
   def test_packages_yml_snap_packages
@@ -108,6 +109,18 @@ class TestInstaller < Minitest::Test
     assert_includes packages, 'install_pyenv', "custom should include install_pyenv"
     assert_includes packages, 'install_fzf_latest', "custom should include install_fzf_latest"
     assert_includes packages, 'install_atuin', "custom should include install_atuin"
+    assert_includes packages, 'install_herdr', "custom should include install_herdr"
+    assert_includes packages, 'install_herdr_plus', "custom should include install_herdr_plus"
+    assert_includes packages, 'install_herdr_automatic_rename',
+                    "custom should include install_herdr_automatic_rename"
+
+    herdr_index = packages.index('install_herdr')
+    herdr_plus_index = packages.index('install_herdr_plus')
+    rename_index = packages.index('install_herdr_automatic_rename')
+    assert_operator herdr_index, :<, herdr_plus_index,
+                    "install_herdr must run before install_herdr_plus"
+    assert_operator herdr_index, :<, rename_index,
+                    "install_herdr must run before install_herdr_automatic_rename"
   end
 
   def test_atuin_config_tracks_only_non_secret_settings

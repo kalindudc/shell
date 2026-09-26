@@ -141,6 +141,29 @@ module Installer
       Installer::Utils.run!("bash", "-c", "curl -sS https://starship.rs/install.sh | sh -s -- -y")
     end
 
+    def install_herdr
+      return if Installer::Utils.command?("herdr")
+
+      Installer::Utils.log("Installing herdr...")
+      Installer::Utils.run!("bash", "-c", "curl -fsSL https://herdr.dev/install.sh | sh")
+    end
+
+    def install_herdr_plus
+      return unless Installer::Utils.command?("herdr")
+      return if `herdr plugin list 2>/dev/null`.include?("cloudmanic.herdr-plus")
+
+      Installer::Utils.log("Installing herdr-plus plugin...")
+      Installer::Utils.run!("herdr", "plugin", "install", "cloudmanic/herdr-plus", "--yes")
+    end
+
+    def install_herdr_automatic_rename
+      return unless Installer::Utils.command?("herdr")
+      return if `herdr plugin list 2>/dev/null`.include?("herdr-automatic-rename")
+
+      Installer::Utils.log("Installing herdr-automatic-rename plugin...")
+      Installer::Utils.run!("herdr", "plugin", "install", "qu8n/herdr-automatic-rename", "--yes")
+    end
+
     def install_fnm_curl
       return if Installer::Utils.command?("fnm")
 

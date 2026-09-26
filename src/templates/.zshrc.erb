@@ -110,6 +110,12 @@ fi
 [[ -f "$ZSH_PLUGIN_DIR/kubectl-autocomplete/kubectl-autocomplete.plugin.zsh" ]] && \
   source "$ZSH_PLUGIN_DIR/kubectl-autocomplete/kubectl-autocomplete.plugin.zsh"
 
+# herdr-automatic-rename — real-time tab naming for herdr (plugin-installed hook)
+for _f in ${HOME}/.config/herdr/plugins/github/herdr-automatic-rename-*/shell/hook.zsh(N); do
+  source "$_f"
+  break
+done
+
 # fast-syntax-highlighting — MUST be sourced last
 [[ -f "$ZSH_PLUGIN_DIR/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh" ]] && \
   source "$ZSH_PLUGIN_DIR/fast-syntax-highlighting/fast-syntax-highlighting.plugin.zsh"
