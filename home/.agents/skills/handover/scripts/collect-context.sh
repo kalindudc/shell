@@ -250,8 +250,11 @@ if [ -n "$found" ]; then echo "$found"; else echo '(none — full history is int
 sep "ORIGINAL REQUEST (first user message — preserve intent VERBATIM)"
 J 'select(.type=="message" and .message.role=="user") | .message.content | totext' | head -80
 
-sep "ALL USER MESSAGES (the human's steering signal, in order — includes scope changes)"
-J 'select(.type=="message" and .message.role=="user") | "----\n" + (.message.content | totext)' | head -400
+sep "ALL USER MESSAGES (the human's steering signal, in order — includes scope changes; #1's full text is in ORIGINAL REQUEST above)"
+J 'select(.type=="message" and .message.role=="user") | "----\n" + (.message.content | totext)' | head -400 | awk '
+  /^----$/ { n++; if (n==1) { print "---- [user message #1 — full verbatim text is in ORIGINAL REQUEST above]"; skip=1; next } else { skip=0 } }
+  skip==1 { next }
+  { print }'
 
 sep "FILES READ (read/fetch tool calls — the map of what was inspected)"
 J 'select(.type=="message" and .message.role=="assistant") | .message.content[]? | select(.type=="toolCall" and (.name=="read" or .name=="web_fetch" or .name=="fetch_content")) | (.arguments.path // .arguments.url // empty), (.arguments.urls[]? // empty)' | awk 'NF' | sort -u | head -80

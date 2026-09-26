@@ -15,20 +15,11 @@ original request.
 
 ---
 
-## How this differs from generic `/compact` (why each section exists)
-
-pi's compaction produces: Goal / Constraints / Progress / Key Decisions /
-Next Steps / Critical Context / read-files / modified-files, and it KEEPS the
-most recent ~20k tokens verbatim. A handover has no "kept recent messages" —
-the receiving agent gets nothing but this brief. So this template adds the
-context that compaction can safely omit but a cold-start agent cannot:
-
-- Verbatim original request (compaction paraphrases; intent drifts).
-- A resume runbook (repo/branch/build/test/services) so a cold agent can act.
-- Mental model / architecture built up over the session.
-- Rejected alternatives + gotchas (so the new agent avoids proven dead ends).
-- Evidence attached to completed work (so "done" is trustworthy, not claimed).
-- Provenance + a durable cortex task so the handoff is traceable and resumable.
+A handover has NO kept-recent-tail (unlike `/compact`, which preserves ~20k
+recent tokens verbatim in the same session): the receiving agent gets nothing
+but this brief. That is why the template carries the verbatim request, the
+resume runbook, the mental model, rejected alternatives, and per-item
+evidence — sections compaction may omit but a cold-start agent cannot.
 
 ---
 
