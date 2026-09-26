@@ -35,9 +35,6 @@ scrollback-limit = 20000000
 shell-integration = zsh
 app-notifications = no-clipboard-copy
 
-# OPTIONS END #
-keybind = shift+enter=text:\x1b\r
-
 font-family = JetBrainsMono Nerd Font
 font-codepoint-map = U+25B0-U+25B1=CaskaydiaMono Nerd Font Mono
 
