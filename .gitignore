@@ -99,3 +99,5 @@ home/.config/herdr/.plugins.lock
 
 home/.gnupg/
 !home/.gnupg/gpg-agent.conf
+
+home/bin/ejson
