@@ -191,6 +191,8 @@ Architecture: tuicr is ONLY the live annotation transport between agent and huma
 
 Load the `tuicr` skill for all session mechanics (discovery, launch, headless mint, comment semantics, diff reconstruction). This section defines only the review protocol layered on top. A pr-reviewer local review IS the tuicr skill's 'agent review' workflow with pre-authorized comment writing -- do not re-ask for approval to annotate the session you minted.
 
+AUTHORIZATION: An explicit request to run this local-review workflow pre-authorizes bounded control of an available supported multiplexer (including Herdr) to create and manage the workflow's own fresh `tuicr` pane/session. Do not ask separately for multiplexer permission. Preserve the caller's focus, operate only in the requested repository and review scope, and close only panes this workflow created. Ask only when the repository/session target is ambiguous or an operation would exceed these bounds; this authorization never extends to unrelated panes, agents, workspaces, or destructive session control.
+
 ### Stage 1 (local): scope and session mint
 
 1. Scope: resolve `<base>` (user-named ref, else the merge-base with the default branch). Review diff = `git diff <base>..HEAD` PLUS uncommitted worktree changes. Pin `HEAD_SHA=$(git rev-parse --short HEAD)` -- every round binds to its HEAD. UNTRACKED files are invisible to `git diff` scopes: `git add -N` new files that must be reviewable under `-r` scopes (`-w` covers them), and treat the session's `file_count` as the ground truth for what is annotatable.
