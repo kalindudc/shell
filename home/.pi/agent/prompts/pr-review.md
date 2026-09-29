@@ -21,7 +21,7 @@ The skill owns bounded investigation and registered `spawn` task-array batching.
 
 - Retain the configured Cortex draft product when authorized, with `pr-review` and supplied-plan tags except reserved `plan`; the skill owns persistence, attribution, and linking.
 - Honor an explicit answer-only/no-external-records request with an inline review and no Cortex or clipboard writes.
-- Never post comments directly on the PR; the user decides what to post.
+- Never write to the PR without explicit user approval of the drafted GitHub review. The skill's Stage 6 owns the draft, the approved post (COMMENT, REQUEST_CHANGES, or APPROVE), its verification, and the Cortex close-out; re-reviews re-validate prior findings and post a new review.
 
 ## Rules
 
