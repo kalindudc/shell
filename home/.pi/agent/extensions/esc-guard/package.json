@@ -1,0 +1,6 @@
+{
+  "name": "esc-guard",
+  "version": "1.0.0",
+  "description": "Require multiple Esc presses to abort a running agent",
+  "type": "module"
+}
