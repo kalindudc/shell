@@ -6,6 +6,9 @@
 - Separate queries per comparison option when evaluating alternatives
 - Quote exact error messages when researching errors
 - Add `"official docs"` or `"documentation"` to target authoritative sources
+- Keep queries short -- a few specific terms, not a sentence; if results are sparse, drop a term to broaden, then narrow again
+- Never re-run an identical query -- rewrite it with the official term, a synonym, or a different angle
+- A search result is a lead, not evidence -- `web_fetch` the page before citing it
 
 ## Examples
 

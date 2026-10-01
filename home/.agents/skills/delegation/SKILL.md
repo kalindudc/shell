@@ -91,3 +91,5 @@ Every minion task MUST include:
 - WHERE — file paths, directories, URLs
 - HOW to verify — test commands, expected outputs
 - WHAT to return — summary of results, not raw output
+
+For the `researcher` agent, also give numbered questions, exact paths/revisions/URLs, a tool-call budget (e.g. "~15 tool calls"), and explicit non-scope (e.g. "no full-file review"). Split broad sweeps into focused researchers: broad assignments exhaust their turns and return progress instead of findings.

@@ -48,11 +48,11 @@ Both tools come from the `pi-web` extension (`~/.pi/agent/extensions/pi-web`). R
 For complex questions, comparisons, or critical decisions.
 
 1. Formulate 2-4 distinct queries targeting different angles (see `references/query-tips.md`)
-2. Run them in one `web_search` call with `queries: [...]` to see the landscape, then either read the top results inline with `web_fetch` or, for large surveys, spawn one minion per angle following the `delegation` skill pattern:
+2. Run them in one `web_search` call with `queries: [...]` to see the landscape, then either read the top results inline with `web_fetch` or, for large surveys, spawn one `researcher` agent per independent angle (at most 4) following the `delegation` skill pattern:
+   ```json
+   {"tasks":[{"agent":"researcher","task":"Question: <one angle, one falsifiable sentence>. Start from: <URLs or none>. Budget: ~10 tool calls. Non-scope: <what to skip>. Return: answer, findings with confidence and final URLs, conflicts and gaps."}]}
    ```
-   Use web_search for "{query}", then web_fetch the top 2-3 results (use find/offset to read only relevant sections). Return: summary + source URLs.
-   ```
-3. Cross-reference findings across minions, flag contradictions, produce consolidated summary with citations
+3. Cross-reference findings across researchers, flag contradictions, produce consolidated summary with citations
 
 ## Rules
 

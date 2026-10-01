@@ -22,7 +22,7 @@ Skill (pr-reviewer, plan-reviewer, plan-generator, critique)
 
 | Component | Role | Location |
 |-----------|------|----------|
-| Researcher | Deep investigation, returns evidence with confidence levels | `agents/researcher.md` |
+| Researcher | Deep investigation, returns evidence with confidence levels | `home/.pi/agent/agents/researcher.md` |
 | Consensus orchestrator | Spawns critics, batches items, tallies votes | `agents/consensus.md` |
 | Critic (x3) | Votes KEEP/REJECT against provided criteria | `agents/critic/{claude,gpt,gemini}.md` |
 | Calling skill | Provides domain-specific criteria in Task prompt | `skills/{pr-reviewer,plan-reviewer,plan-generator,critique}/SKILL.md` |
@@ -51,4 +51,4 @@ Before critics vote, the researcher agent investigates claims against actual sou
 
 ## Cost
 
-Each critic invocation is one Task call per model. A review with 5 findings = 15 critic calls. Batching reduces this to 3 calls for >5 findings. The researcher adds 1 call per investigation (runs in its own 30-step session).
+Each critic invocation is one Task call per model. A review with 5 findings = 15 critic calls. Batching reduces this to 3 calls for >5 findings. The researcher adds 1 call per investigation (runs in its own session, capped by `steps: 100` in its frontmatter).
