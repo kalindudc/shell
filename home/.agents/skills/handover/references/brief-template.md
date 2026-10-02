@@ -8,7 +8,7 @@ continue the work correctly.
 Fill every section. Omit a section only when it is genuinely empty, and when
 you do, write `_none_` rather than deleting the heading — absence is signal.
 
-Write in plain, dense prose and tight lists. No filler. Prefer exact paths,
+Write in plain prose and tight lists. No filler. Prefer exact paths,
 exact commands, and quoted evidence over vague description. Preserve the
 user's intent VERBATIM where the template asks for it — do not paraphrase the
 original request.

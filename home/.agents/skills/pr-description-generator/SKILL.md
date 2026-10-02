@@ -13,12 +13,11 @@ Generate PR descriptions that maximize reviewability and merge probability throu
 
 ## Brevity Constraint
 
-The entire PR description MUST be readable in under 5 minutes. A description nobody reads helps nobody.
+The entire PR description MUST be readable in under 5 minutes. A description nobody reads helps nobody. Keep it short by leaving out what a reviewer does not need, not by compressing sentences (Agent Protocol: Writing for people).
 
-- Prefer bullet points over paragraphs
-- One sentence where one sentence suffices — never two
+- Use bullets for separate changes and short, plain sentences for explanation
 - Omit sections that add no value for a given PR rather than padding them
-- If a section can be said in 1 line, say it in 1 line
+- Define project acronyms and internal names the first time they appear
 - The file tree is often the longest section — that is fine, it is scannable
 
 ## Process
@@ -69,9 +68,9 @@ Structured by impact on review outcomes (highest-impact elements first). Keep it
 
 [Imperative one-liner — "Add X", "Fix Y", "Refactor Z". Must stand alone in git history.]
 
-**Why:** [1-2 sentences. What problem does this solve? What breaks without it?]
+**Why:** [2-3 plain sentences: the problem, who or what it affects, and what breaks without this change.]
 
-**What:** [Bullet list of key changes — keep to 3-5 bullets max]
+**What:** [3-5 bullets, each a short sentence that starts with a verb]
 
 ## Review guidance
 
@@ -213,8 +212,8 @@ When capture is justified, the current agent owns the gate: resolve `SKIP_SKILL_
 - NEVER edit a `review`-status cortex task without explicit user confirmation
 - Be thorough in analyzing the changes
 - Always format in markdown
-- FOLLOW KISS -- if it can be shorter, make it shorter
+- FOLLOW KISS -- cut sections and details the reviewer does not need; never compress sentences to save space
 - NEVER over reference related issues or PRs, if you are unsure if a an issue/PR is relevant, omit it or prompt the user for clarification rather than guessing
 - Every claim must match actual code changes -- verify alignment before output
 - Omit optional sections entirely rather than filling them with placeholder content
-- Brevity is a feature, not a compromise -- say more with less
+- Brevity is a feature: include less, and say it plainly

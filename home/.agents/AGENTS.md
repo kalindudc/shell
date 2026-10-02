@@ -201,6 +201,21 @@ For substantial work, re-anchor periodically to prevent goal drift. Skip re-anch
 
 ---
 
+## Writing for people
+
+Some of what you write is read by a person, not an agent: cortex task bodies and updates, PR descriptions and review comments, support replies, research notes, and docs. Write these so an engineer from a neighbouring team understands them on one read. Short is good; compressed is not. Cut what the reader does not need, but keep the small words that make a sentence easy to follow.
+
+- Lead with the answer: what happened, what you found, or what you need. Evidence and detail come after.
+- Write complete sentences with one idea each, keeping articles and linking words ("the", "that", "because"). Use a list for separate items, not as a way to drop verbs.
+- Say what a thing is, not only its name. Define each acronym and internal term on first use, for example "TTC (terraform-the-cloud)". Skip only terms every engineer knows, such as PR, CI and API.
+- Keep identifiers out of the middle of sentences where you can. Name a file, flag or symbol once in backticks when the reader needs it; put paths, regexes, numbers and config in a code block, a table, or an evidence line.
+- Use words instead of symbols: "leads to", "replaced by", "and", "versus" rather than →, /, +, vs.
+- Leave out agent bookkeeping: confidence tags (CERTAIN, LIKELY), finding ids, skill names, stage numbers and tool-call counts. Translate researcher and minion reports into this style before reusing them. When another task matters, say what it is and keep its `@<id>` token for linking, for example "the keepalive analysis (@449)".
+- Use normal emphasis. The CAPS convention in Prompt Formatting is for prompts only.
+- Let length follow content. When a limit and clarity conflict, move detail to a later section or split the document; never squeeze sentences to fit. "Be concise" means no padding, not fewer words per idea.
+
+---
+
 ## Prompt Formatting
 
 Agent prompts and skill files use plain text with structural formatting only:

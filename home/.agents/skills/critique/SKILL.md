@@ -126,5 +126,5 @@ When capture is justified, the current agent owns the gate: resolve `SKIP_SKILL_
 - ALWAYS include researcher confidence level for transparency
 - Claim multi-model validation only when the fixed distinct-model quorum is met. Report unavailable consensus and directly supported unfiltered concerns honestly; never substitute votes for source evidence.
 - If no concerns are validated, output the analysis with empty Validated section
-- Keep output terse -- explain "why" not "what"
+- Keep output short and plain -- explain "why" not "what", in full sentences (Agent Protocol: Writing for people)
 - NEVER fabricate evidence -- if it can't be verified, report it as Insufficient Evidence

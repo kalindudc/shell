@@ -97,7 +97,7 @@ continue. The rest of the flow is unchanged.
 
 Read `references/brief-template.md` and write the brief to follow it EXACTLY.
 
-- Self-contained, dense, plain prose and tight lists. No filler.
+- Self-contained, plain prose and tight lists. No filler. The user reads section 1 (Mission), so write it per the Agent Protocol's Writing for people.
 - Preserve the original request VERBATIM in section 2.
 - Attach EVIDENCE (quoted decisive output) to every completed item. NEVER
   claim something passed/works without proof; mark unverifiable items as such.

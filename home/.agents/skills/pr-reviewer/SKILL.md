@@ -112,7 +112,7 @@ KEEP only if ALL true:
 - CONCRETE, PROVABLE, IMMEDIATE impact
 - Verified by reading the actual code
 
-Note in the output summary how many critic sessions were spawned and total findings
+Note in the Validation section how many critic sessions were spawned and total findings
 evaluated for cost transparency.
 
 ### Stage 4: Deduplication
@@ -153,8 +153,8 @@ Author: <author> | <base> -> <head>
 Verdict: PASS / GO WITH FIXES / NEEDS REVIEW / BLOCK
 
 ## Summary
-<2-3 sentences: what the PR does, severity breakdown, critic consensus stats>
-e.g., "2 critical, 1 medium findings survived critic review (5 of 8 initial findings filtered). 3 critic sessions spawned."
+<2-3 plain sentences: what the PR does, the verdict, and the findings that matter most>
+e.g., "This PR moves cache eviction into the request path. Two critical bugs block it: eviction can drop in-flight entries, and the new TTL is never read."
 
 ## Findings
 
@@ -178,6 +178,7 @@ e.g., "2 critical, 1 medium findings survived critic review (5 of 8 initial find
 
 ## Validation
 - `<command>` -- <result>
+- Critic consensus: <N> sessions spawned, <filtered> of <total> candidate findings filtered
 
 ## Checklist
 - [x] Design  ...
@@ -409,6 +410,6 @@ Cortex-specific rules below apply to authorized durable output, not explicit ans
 - Use relevant authorized validation or still-applicable evidence; explicitly report unperformed checks and blockers. Never infer test success from missing counts or an unverified claim.
 - Label multi-model validation only when the fixed distinct-model quorum is met; preserve directly supported issues with an honest degraded/unfiltered label when consensus is unavailable.
 - If no real issues found, output PASS with empty sections
-- Keep findings terse -- one line each, explain "why" not "what"
+- Keep each finding short: one or two plain sentences on what breaks and why, then the evidence
 - Skip checklist dimensions that don't apply
-- No filler, no preamble, no verbose explanations
+- No filler or preamble; write the summary and every comment per the Agent Protocol's Writing for people
