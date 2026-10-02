@@ -48,7 +48,7 @@ Per-task `model` fields select each minion's model (see Model Selection).
 
     python3 ~/.agents/skills/delegation/discover-models.py
 
-It prints every usable model (authenticated providers only) with per-M cost, context window, and reasoning/image flags: this machine's `enabledModels` picks lead the first page, followed by the cheapest of the curated families (glm, gpt, claude, deepseek, grok, gemini, solar). Slices: `--limit N`, `--min-out <usd>` (e.g. `--min-out 2` shows premium tiers only), `--provider <key>` (a store provider key like `openrouter`, NOT an id prefix like `gemini`), `--all` (full catalog — use when the curated families are absent on this machine).
+It prints every usable model (authenticated providers only, including providers that extensions register at runtime, such as a corporate model proxy) with per-M cost, context window, and reasoning/image flags: this machine's `enabledModels` picks lead the first page, followed by the cheapest of the curated families (glm, gpt, claude, deepseek, grok, gemini, solar). Slices: `--limit N`, `--min-out <usd>` (e.g. `--min-out 2` shows premium tiers only), `--provider <key>` (a provider key as printed, like `openrouter` or `anthropic-1m`, NOT an id prefix like `gemini`), `--all` (full catalog — use when the curated families are absent on this machine).
 
 Map the table's ROLES onto the script's output — the roles transfer across machines, the concrete ids do not:
 
@@ -82,7 +82,7 @@ Pick the first row that matches the task. When output quality is insufficient, e
 - Unknown models, ambiguous ids, or models without configured auth fail that minion immediately with a clear error; the rest of the batch proceeds.
 - Never start at flagship. Premium rows cost roughly 50-100x the default per minion; escalate only failures, never preemptively.
 
-Maintenance: picks and prices verified 2026-09-26 on this machine from the local catalog (`~/.pi/agent/models-store.json`) and `enabledModels` in settings; k3 session-cost billing at catalog rates confirmed 2026-09-26 (earlier $0 plan-billed observation applied to the retired kimi-k2 model). Per-task model resolution added to pi-minions the same day (verify after extension upgrades that `model` fields still apply). `discover-models.py` needs no maintenance — it reads whatever catalog/auth exist on the current machine. Refresh the table when notable models release, and re-verify it on any machine where it is used.
+Maintenance: picks and prices verified 2026-09-26 on this machine from the local catalog (`~/.pi/agent/models-store.json`) and `enabledModels` in settings; k3 session-cost billing at catalog rates confirmed 2026-09-26 (earlier $0 plan-billed observation applied to the retired kimi-k2 model). Per-task model resolution added to pi-minions the same day (verify after extension upgrades that `model` fields still apply). `discover-models.py` needs no maintenance — it asks the local pi for its live model registry (`pi --mode rpc`, `get_available_models`), so it reflects whatever catalog, auth, and extension-registered providers exist on the current machine. Refresh the table when notable models release, and re-verify it on any machine where it is used.
 
 ## Task Descriptions
 
