@@ -15,13 +15,14 @@ prompt_new_tab_name = false
 sidebar_width = 36
 sidebar_max_width = 48
 
-# pi agents: the second line shows the cortex task and the session name, which
-# the herdr-label pi extension reports (~/.pi/agent/extensions/herdr-label).
-# The line disappears while a session has neither.
+# pi agents: row 2 is the session name; row 3 is the cortex task and, for a plan,
+# its progress. The herdr-label pi extension reports both
+# (~/.pi/agent/extensions/herdr-label). An empty row disappears.
 [ui.sidebar.agents.rows_by_agent]
 pi = [
   ["state_icon", "workspace", "tab"],
-  [{ token = "$cortex", fg = "#d79921", bold = true }, "$goal"],
+  ["$goal"],
+  [{ token = "$cortex", fg = "#d79921", bold = true }, "$progress"],
 ]
 
 [experimental]

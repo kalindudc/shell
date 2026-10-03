@@ -15,6 +15,8 @@ export interface LabelState {
 export interface LabelTokens {
 	goal: string | null;
 	cortex: string | null;
+	/** Plan progress such as "6/11 tasks", or null when the task is not a plan. */
+	progress: string | null;
 }
 
 export interface HerdrTarget {
@@ -52,9 +54,49 @@ export function cortexTaskFrom(toolName: string, input: Record<string, unknown>,
 	return id;
 }
 
-export function buildTokens(sessionName: string | undefined, cortex: number | null): LabelTokens {
+export function buildTokens(sessionName: string | undefined, cortex: number | null, progress: string | null = null): LabelTokens {
 	const goal = sessionName?.trim();
-	return { goal: goal ? goal : null, cortex: cortex === null ? null : `#${cortex}` };
+	return { goal: goal ? goal : null, cortex: cortex === null ? null : `#${cortex}`, progress };
+}
+
+const TASK_LINE = /^\d+\.\s/;
+const TASK_DONE = /^task (\d+):/;
+
+/** Numbered task lines in the plan's `## Low-Level Tasks` section, skipping code fences. */
+function countTasks(body: string): number {
+	let inSection = false;
+	let inFence = false;
+	let count = 0;
+	for (const line of body.split("\n")) {
+		if (line.startsWith("```")) inFence = !inFence;
+		if (inFence) continue;
+		if (line.startsWith("## ")) {
+			if (inSection) break;
+			inSection = line.trimEnd() === "## Low-Level Tasks";
+		} else if (inSection && TASK_LINE.test(line)) count += 1;
+	}
+	return count;
+}
+
+/**
+ * Progress of a plan from `cortex show <id> --json` output: distinct `task N:`
+ * updates (what the bundled implementer posts and resumes from) against the
+ * plan's task count. Null for anything that is not a plan with numbered tasks.
+ */
+export function planProgress(show: unknown): string | null {
+	const data = show as { task?: { tags?: unknown; body?: unknown }; updates?: unknown } | null;
+	const tags = data?.task?.tags;
+	const body = data?.task?.body;
+	if (!Array.isArray(tags) || !tags.includes("plan") || typeof body !== "string") return null;
+	const total = countTasks(body);
+	if (total === 0) return null;
+	const done = new Set<number>();
+	for (const update of Array.isArray(data?.updates) ? data.updates : []) {
+		const match = TASK_DONE.exec(String((update as { summary?: unknown })?.summary ?? ""));
+		const n = match ? Number(match[1]) : 0;
+		if (n >= 1 && n <= total) done.add(n);
+	}
+	return `${done.size}/${total} tasks`;
 }
 
 /** The latest saved state on the current session branch. */

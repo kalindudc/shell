@@ -1,7 +1,7 @@
 {
   "name": "herdr-label",
   "version": "1.0.0",
-  "description": "Show each pi agent's session name and cortex task in the Herdr sidebar",
+  "description": "Show each pi agent's session name, cortex task and plan progress in the Herdr sidebar",
   "type": "module",
   "scripts": {
     "test": "node --test 'test/*.test.ts'"

@@ -15,16 +15,15 @@ Three layers make a plan AI-critical (as opposed to a generic project plan):
 ## The Pipeline
 
 ```
-/plan -> /plan-review -> /implement
+/plan (draft, review, fix) -> /implement
 ```
 
-Each stage has a skill that defines the methodology and a command that provides the entry point. Review is optional but recommended for complex plans.
+Each stage has a skill that defines the methodology and a command that provides the entry point. Review is part of `/plan`: a plan is saved to cortex only after a fresh-context reviewer and multi-model critics have checked it. `SKIP_PLAN_REVIEW=1` or `SKIP_CRITIQUE=1`, in the environment or `~/.env`, turns a stage off.
 
 | Stage | Skill | Command | Output |
 |-------|-------|---------|--------|
-| Generate | `plan-generator` | `/plan` | `./tmp/plan/<name>-plan.md` |
-| Review | `plan-reviewer` | `/plan-review` | `./tmp/plan-review/<name>-review.md` |
-| Implement | `implementer` | `/implement` | Code changes + plan marked completed |
+| Plan and review | `cortex-planner`, plus the review cycle in the `/plan` prompt | `/plan` | A draft cortex task tagged `plan` |
+| Implement | `cortex-implementer` | `/implement` | Code changes, plus one `task N:` update per task |
 
 ### Generate
 
@@ -39,7 +38,7 @@ If research is unambiguous, proceed. If ambiguous, stop and ask the user.
 
 ### Review
 
-The plan-reviewer evaluates plans across 7 dimensions adapted from formal engineering review practices:
+The review questions in `/plan` condense 7 dimensions adapted from formal engineering review practices:
 
 | Dimension | Source | Core Question |
 |-----------|--------|---------------|

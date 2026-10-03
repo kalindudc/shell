@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { ENTRY_TYPE, buildTokens, cortexTaskFrom, herdrTarget, restoreState } from "../labels.ts";
+import { ENTRY_TYPE, buildTokens, cortexTaskFrom, herdrTarget, planProgress, restoreState } from "../labels.ts";
 
 describe("cortexTaskFrom", () => {
 	it("takes the task id from a cortex_update tool call", () => {
@@ -47,16 +47,65 @@ describe("cortexTaskFrom", () => {
 
 describe("buildTokens", () => {
 	it("maps a session name and task to the goal and cortex tokens", () => {
-		assert.deepEqual(buildTokens("Fix esc guard", 446), { goal: "Fix esc guard", cortex: "#446" });
+		assert.deepEqual(buildTokens("Fix esc guard", 446), { goal: "Fix esc guard", cortex: "#446", progress: null });
+	});
+
+	it("passes plan progress through to its own token", () => {
+		assert.deepEqual(buildTokens("Plan review", 476, "3/8 tasks"), { goal: "Plan review", cortex: "#476", progress: "3/8 tasks" });
 	});
 
 	it("clears tokens that have no value, so a new session never shows the old one's labels", () => {
-		assert.deepEqual(buildTokens(undefined, null), { goal: null, cortex: null });
-		assert.deepEqual(buildTokens("   ", null), { goal: null, cortex: null });
+		assert.deepEqual(buildTokens(undefined, null), { goal: null, cortex: null, progress: null });
+		assert.deepEqual(buildTokens("   ", null, null), { goal: null, cortex: null, progress: null });
 	});
 
 	it("trims the session name", () => {
-		assert.deepEqual(buildTokens("  Fix it  ", null), { goal: "Fix it", cortex: null });
+		assert.deepEqual(buildTokens("  Fix it  ", null), { goal: "Fix it", cortex: null, progress: null });
+	});
+});
+
+describe("planProgress", () => {
+	const fence = "```";
+	const body = [
+		"# Plan: x",
+		"",
+		"## Low-Level Tasks",
+		"",
+		"1. First",
+		fence,
+		"UPDATE: a.md",
+		"FROM:",
+		"## Not a heading",
+		"1. Not a task",
+		"TO:",
+		"2. Still not a task",
+		fence,
+		"2. Second",
+		"3. Third",
+		"",
+		"## Validation Gates",
+		"",
+		"4. Not a task either",
+	].join("\n");
+	const show = (summaries: string[], tags = ["plan"], text = body) => ({
+		task: { tags, body: text },
+		updates: summaries.map((summary) => ({ summary })),
+	});
+
+	it("counts distinct recorded tasks against the plan's task count", () => {
+		const updates = ["task 1: a", "task 2: b", "task 2: c", "task 9: x", "task 3 blocked: y"];
+		assert.equal(planProgress(show(updates)), "2/3 tasks");
+	});
+
+	it("ignores headings and numbered lists inside code fences", () => {
+		assert.equal(planProgress(show(["plan written", "status → open"])), "0/3 tasks");
+	});
+
+	it("returns null for a task that is not a plan or has no Low-Level Tasks", () => {
+		assert.equal(planProgress(show(["task 1: a"], ["research"])), null);
+		assert.equal(planProgress(show([], ["plan"], "# Plan\n\nThe Low-Level Tasks are below.\n\n1. Not under the heading")), null);
+		assert.equal(planProgress(null), null);
+		assert.equal(planProgress({}), null);
 	});
 });
 
