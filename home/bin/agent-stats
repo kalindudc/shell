@@ -1,0 +1,21 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# agent-stats - workflow metrics for cortex plans and their pi sessions
+#
+# Usage: agent-stats [--since YYYY-MM-DD]
+#
+# Prints bookkeeping share, session size and plan deviation counts as a
+# markdown table. Read-only: uses `cortex ls/show --json` and the pi session
+# logs under ~/.pi/agent/sessions. Compare two windows with --since.
+
+ENV.delete('BUNDLE_GEMFILE')
+
+require_relative 'lib/agent_stats'
+
+if ARGV.include?('-h') || ARGV.include?('--help')
+  puts File.readlines(__FILE__)[3..9].map { |line| line.sub(/^# ?/, '') }
+  exit 0
+end
+
+AgentStats.run(ARGV)

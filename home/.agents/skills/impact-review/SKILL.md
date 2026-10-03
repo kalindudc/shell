@@ -203,9 +203,9 @@ Each form entry becomes a `## <text>` section (fill in `[NAME]`), rendered by `k
   ```
 
 - `choice`: the pick is the user's call. Give 1-2 sentences of first-hand evidence from the section of `evidence.md` for the entry's `evidence` question (e.g. trust and resourcefulness). Suggest an option only if `options` is set or the user supplied them.
-- `text`: a short answer grounded in the evidence or the user's answers.
+- `text`: a short answer grounded in the evidence or the user's answers. In peer mode this answer is pasted into the form verbatim, so it follows the anonymity rules: 80-150 words, no links, no quotes, and no numbers or specifics that came from private conversations. Base it on the first-hand evidence behind the ratings. When the question asks for both sides (e.g. "for better or worse"), give the concrete difference first, then one honest, constructive growth area, and never invent a weakness the evidence does not show. For a subject with little first-hand evidence, say what you saw and its limits.
 
-Peer drafts end with:
+When the peer form has no `text` entry, peer drafts end with:
 
 ```markdown
 ## Optional comment (only if the form has a box)
@@ -236,7 +236,7 @@ Use this when the user names several peers. Batch the mechanical steps; keep jud
    - Org collectors: run each `rubric.collect` entry for every subject, following its batch steps. These items show what the subject shipped; they are context, not first-hand.
 5. Classify in one codemode call that loops the classify template over subjects (per-subject `dir`, `questions`, `subject`, `s`, `role`, `mode: "peer"`). Aggregate in one bash loop.
 6. Verify and draft per subject; judgment does not batch, but it parallelizes. For 3+ subjects, spawn one minion per subject (mid/premium model, read-only, ~30 tool calls) with the peer form rendering rules, the rating anchors, the first-hand-only and anonymity rules, and the run dir; each writes `draft.md` and `decisions.md`. When a subject has few first-hand items (under ~5 for a statement), suggest "I don't know" or a conservative rating.
-   Then calibrate across the batch yourself: keep top ratings rare and backed by sustained first-hand evidence, lower top ratings that rest on one episode or one PR (note the alternative in the rationale), and privacy-scan every draft (no quote marks, no `colleague-N`, no links or numbers in the optional comment). Write each cortex body yourself; do not copy minion `decisions.md` into cortex, since it may carry DM-derived detail.
+   Then calibrate across the batch yourself: keep top ratings rare and backed by sustained first-hand evidence, lower top ratings that rest on one episode or one PR (note the alternative in the rationale), and privacy-scan every draft (no quote marks, no `colleague-N`, no links or numbers in any pasteable text answer or the optional comment). Write each cortex body yourself; do not copy minion `decisions.md` into cortex, since it may carry DM-derived detail.
 7. Present all drafts together with a summary table (subject, closeness, suggested ratings, choice evidence, first-hand item count), then set each task to `review`. Set each to `done` only when the user confirms that subject's review was submitted.
 
 ## References
