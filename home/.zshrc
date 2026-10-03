@@ -599,12 +599,6 @@ if command -v rbenv &>/dev/null; then
   }
 fi
 
-# Ruby gem bin
-if command -v ruby &>/dev/null; then
-  export GEM_HOME="$(ruby -e 'puts Gem.user_dir')"
-  export PATH="$GEM_HOME/bin:$PATH"
-fi
-
 # Shopify dev
 [[ -f /opt/dev/sh/chruby/chruby.sh ]] && \
   { type chruby >/dev/null 2>&1 || chruby() { source /opt/dev/sh/chruby/chruby.sh; chruby "$@"; }; }
@@ -618,6 +612,13 @@ fi
 # tec agent
 [[ -x $HOME/.local/state/tec/profiles/base/current/global/init ]] && \
   eval "$($HOME/.local/state/tec/profiles/base/current/global/init zsh)"
+
+# Ruby gem bin. Runs after Nix and tec put their Ruby on PATH, so GEM_HOME
+# belongs to the Ruby that actually runs, not macOS's system Ruby.
+if command -v ruby &>/dev/null; then
+  export GEM_HOME="$(ruby -e 'puts Gem.user_dir')"
+  export PATH="$GEM_HOME/bin:$PATH"
+fi
 
 # .env
 if [[ -s $HOME/.env ]]; then

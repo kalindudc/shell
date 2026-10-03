@@ -14,7 +14,7 @@ ENV.delete('BUNDLE_GEMFILE')
 require_relative 'lib/agent_stats'
 
 if ARGV.include?('-h') || ARGV.include?('--help')
-  puts File.readlines(__FILE__)[3..9].map { |line| line.sub(/^# ?/, '') }
+  puts(File.readlines(__FILE__)[3..9].map { |line| line.sub(/^# ?/, '') })
   exit 0
 end
 
