@@ -1,0 +1,55 @@
+{
+  "context": "{SOURCE} involving {SUBJECT} ({ROLE}, {ORG}). Judge ONLY {S}'s own behaviour shown in this item; ignore what anyone else did. Lines authored by {S} are prefixed '{S}:'.",
+  "gate": "substantive",
+  "strength": {
+    "true": "clear evidence",
+    "false": "no or weak evidence"
+  },
+  "sources": {
+    "github-pr": "A GitHub pull request",
+    "github-review": "A GitHub pull request review",
+    "slack-thread": "A Slack thread",
+    "slack-message": "A Slack message",
+    "slack-dm": "A Slack direct-message conversation"
+  },
+  "questions": {
+    "substantive": {
+      "type": "bool",
+      "instructions": "Does this item show {S} doing substantive work (building, shipping, deciding, reviewing, debugging, operating, teaching, coordinating delivery), rather than only social chat, scheduling, acknowledgements, or automated output?",
+      "criteria": {
+        "true": "substantive work by {S}",
+        "false": "chatter, logistics, or no real contribution by {S}"
+      }
+    },
+    "outcome": {
+      "type": "bool",
+      "instructions": "Does the item show a concrete, observable outcome of {S}'s work (shipped change, production result, metric moved, incident resolved, decision recorded), not just intent or discussion?",
+      "criteria": {
+        "true": "observable outcome",
+        "false": "intent, plans, or discussion only"
+      }
+    },
+    "ai": {
+      "type": "bool",
+      "instructions": "Does {S} use AI (agents, LLMs, AI-built tooling) to move faster, go further, or raise quality in this item?",
+      "criteria": {
+        "true": "clear AI leverage by {S}",
+        "false": "no visible AI use by {S}"
+      }
+    },
+    "reach": {
+      "type": "choice",
+      "instructions": "How far does the effect of {S}'s contribution in this item reach?",
+      "criteria": {
+        "self": "only {S}'s own task",
+        "team": "{S}'s immediate team",
+        "cross_team": "other teams or a wider org area",
+        "company": "company-wide, or merchants and buyers at scale"
+      }
+    }
+  },
+  "concern": {
+    "instructions": "Does this item show {S} falling short? Pick the most prominent shortfall in {S}'s own behaviour, or none.",
+    "none": "no shortfall by {S}"
+  }
+}

@@ -78,6 +78,7 @@ home/.pi/agent/extensions/cortex
 home/.pi/agent/extensions/pi-tool-gateway-extension
 home/.pi/agent/extensions/atuin.ts
 home/.pi/agent/extensions/herdr*
+!home/.pi/agent/extensions/herdr-label/
 home/.pi/agent/extensions/shopify*
 home/.pi/agent/extensions/pi-rtk-optimizer
 
@@ -89,7 +90,9 @@ home/.agents/skills/cortex/
 home/.agents/skills/cortex-*/
 home/.agents/skills/tuicr/
 home/.agents/skills/herdr/
-home/.agents/skills/impact-review/
+# impact-review org pack (internal forms, ids, adapters); the generic skill is tracked
+home/.agents/skills/impact-review/private/
+__pycache__/
 
 home/.config/ghostty/config-os
 

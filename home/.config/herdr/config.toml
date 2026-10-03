@@ -11,6 +11,18 @@ delivery = "system"
 agent_panel_sort = "spaces"
 show_agent_labels_on_pane_borders = true
 prompt_new_tab_name = false
+# Room for each agent's goal on its own sidebar line.
+sidebar_width = 36
+sidebar_max_width = 48
+
+# pi agents: the second line shows the cortex task and the session name, which
+# the herdr-label pi extension reports (~/.pi/agent/extensions/herdr-label).
+# The line disappears while a session has neither.
+[ui.sidebar.agents.rows_by_agent]
+pi = [
+  ["state_icon", "workspace", "tab"],
+  [{ token = "$cortex", fg = "#d79921", bold = true }, "$goal"],
+]
 
 [experimental]
 pane_history = true

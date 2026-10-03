@@ -1,0 +1,99 @@
+{
+  "org": "Acme",
+  "program": "Growth review",
+  "verified": "2026-01-01",
+  "model": { "provider": "<provider>", "id": "<bool-capable classifier>" },
+  "tool": {
+    "name": "review.acme.example",
+    "url": "https://review.acme.example/",
+    "notes": ["Drafts are pasted into the tool by the user. The skill never submits."]
+  },
+  "cycle": {
+    "label": "2026-H1",
+    "start": "2026-01-01",
+    "end": "2026-06-30",
+    "status": "derived",
+    "months": 6,
+    "deadlines": [
+      { "what": "Self-reflections and peer reviews", "due": "2026-07-01 to 2026-07-07", "note": "Confirm in the program docs." }
+    ]
+  },
+  "references": ["Program docs: <link to the page that publishes the form questions and the window>"],
+  "reverify": [
+    "Check the program docs' last-updated date. If it is newer than `verified`, update `forms`, `dimensions`, and `verified` before running.",
+    "Confirm the cycle window and deadlines; set `cycle.status` to `official` once published."
+  ],
+  "principles": ["Reviews are evidence-based: observable outcomes over stated ones."],
+  "forms": {
+    "scale": "1-5",
+    "self": [
+      { "kind": "examples", "max": 2, "text": "Share up to 2 examples of work from the last 6 months. What did you deliver, and what changed because of it?" },
+      { "kind": "unlock", "text": "What support would help you grow your impact?" },
+      { "kind": "ratings" },
+      { "kind": "text", "text": "Anything else your reviewers should know?" }
+    ],
+    "peer": [
+      { "kind": "ratings" },
+      { "kind": "choice", "text": "Would you want [NAME] on your next critical project?", "options": ["Definitely", "Probably", "Not sure", "Probably not"], "evidence": "reliable" }
+    ],
+    "manager": ["What did [NAME] deliver this cycle?"],
+    "notes": ["There is no peer free-text box."]
+  },
+  "categories": {
+    "name": "Impact levels",
+    "note": "The manager's call, not the reviewer's. Use only to sanity-check evidence strength.",
+    "levels": [
+      { "name": "Exceptional", "bar": "Impact well beyond own scope, with measurable results" },
+      { "name": "Strong", "bar": "Consistently delivers high-quality work with clear results" },
+      { "name": "Solid", "bar": "Reliably delivers what the role requires" }
+    ]
+  },
+  "dimensions": {
+    "deliver": {
+      "self": "I deliver work that solves the real problem",
+      "peer": "Delivers work that solves the real problem",
+      "question": "Does {S} identify the real need and deliver a change that addresses it, closing the work out (merged, released, verified)?",
+      "shortfall": "work stalled, missed the real need, or was left unfinished"
+    },
+    "quality": {
+      "self": "My work is careful and well tested",
+      "peer": "Their work is careful and well tested",
+      "question": "Does {S} show care for quality: tests, validation, clear documentation, safe rollouts, or thorough reviews?",
+      "shortfall": "quality gap: missing tests or validation, errors, or a careless review"
+    },
+    "collaborate": {
+      "self": "I make the people around me more effective",
+      "peer": "Makes the people around them more effective",
+      "question": "Does {S} help others move faster or do better work: unblocking, teaching, sharing context, or giving useful feedback?",
+      "shortfall": "blocked others, withheld context, or was hard to work with"
+    }
+  },
+  "extra_questions": {
+    "reliable": {
+      "type": "bool",
+      "peer_only": true,
+      "instructions": "Does this item show {S} being someone others can rely on for hard, high-stakes work?",
+      "criteria": "@strength",
+      "report": "Reliability signals for the 'next critical project' question"
+    }
+  },
+  "sources": { "wiki-page": "An internal wiki page" },
+  "github": { "owner": "acme-example" },
+  "slack": {
+    "workspace": "acme-example",
+    "read_channel_tool": "<codemode tool name that reads Slack channel history>",
+    "read_thread_tool": "<codemode tool name that reads a Slack thread>"
+  },
+  "people": ["Resolve a subject's full name, title, team, GitHub login, and Slack user id from the org directory. Role string = title + team."],
+  "collect": [
+    {
+      "name": "wiki",
+      "modes": ["self"],
+      "steps": [
+        "Export the subject's wiki pages for the buffered collection window to raw/wiki.md.",
+        "Convert each page to one item in the item schema (id, source \"wiki-page\", url, date, title, workstream, text with the subject's lines prefixed '<First>:') and write items/wiki.jsonl."
+      ]
+    }
+  ],
+  "notes": ["List the classifier ids you can use with `models.getAvailableOfType(\"classifier\")`; the model must support `bool` and `choice` questions."]
+}

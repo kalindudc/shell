@@ -1,0 +1,9 @@
+{
+  "name": "auto-title",
+  "version": "1.0.0",
+  "description": "Name each pi session after its first prompt, refined by a cheap model in the background",
+  "type": "module",
+  "scripts": {
+    "test": "node --test 'test/*.test.ts'"
+  }
+}
