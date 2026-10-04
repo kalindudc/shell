@@ -10,7 +10,7 @@
 typeset -g __real_host="$HOST"
 
 # pnpm
-export PNPM_HOME="/Users/kalindu/.local/share/pnpm"
+export PNPM_HOME="$HOME/.local/share/pnpm"
 
 # PATH — set once, at the top
 export PATH=\
