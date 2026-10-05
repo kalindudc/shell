@@ -14,6 +14,8 @@ _darcs
 \.git
 \.gitmodules
 
+\.stow-unfold # markers for directories that stay real in $HOME (src/install/unfold.rb)
+
 .+~          # emacs backup files
 \#.*\#       # emacs autosave files
 

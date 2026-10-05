@@ -105,7 +105,10 @@ home/.config/herdr/plugins/
 home/.config/herdr/plugins.json
 home/.config/herdr/.plugins.lock
 
-home/.gnupg/
+home/.gnupg/*
 !home/.gnupg/gpg-agent.conf
 
 home/bin/ejson
+
+# stow markers that keep shared $HOME directories real (see docs/architecture.md)
+!.stow-unfold

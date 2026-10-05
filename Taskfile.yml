@@ -25,7 +25,8 @@ tasks:
     deps:
       - generate:ghostty
     cmds:
-      - stow home -d "./" -t $HOME --adopt
+      # Goes through the installer so .stow-unfold directories are created before stow runs
+      - ruby src/install.rb --stow
 
   # Clean everything
   clean:
@@ -97,6 +98,7 @@ tasks:
       - |
         echo "Running Ruby installer unit tests..."
         bundle exec ruby test/unit/test_installer.rb
+        bundle exec ruby test/unit/test_unfold.rb
         echo "✓ Ruby installer tests passed"
       - |
         BUN="${HOME}/.bun/bin/bun"

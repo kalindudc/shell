@@ -1,0 +1,1 @@
+Stow marker: keep $HOME/.agents/skills a real directory so tools can write here without the repo owning it. See docs/architecture.md.

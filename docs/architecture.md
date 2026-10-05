@@ -96,9 +96,28 @@ ERB template generation unchanged:
 
 ## Dotfile Symlinking
 
-Stow unchanged:
+`home/` is a stow package linked into `$HOME`:
 ```
 stow home -d $SHELL_DIR -t $HOME --adopt
+```
+
+Run it through `./install.sh --stow` or `task stow`, not by hand, because of the step below.
+
+### Directories that stay real
+
+When a directory does not exist in `$HOME` yet, stow "folds" it: it replaces the whole directory with one symlink into the repo. Every file a tool later writes there (installed skills, pi sessions, credentials) then lands in the repo and has to be gitignored.
+
+To prevent this, a directory in `home/` that contains an empty `.stow-unfold` marker is created as a real directory in `$HOME` before stow runs (`src/install/unfold.rb`). Stow then links each tracked child individually, and anything a tool adds next to them stays out of the repo. The markers themselves are excluded in `home/.stow-local-ignore`.
+
+Current markers: `.pi`, `.pi/agent`, `.pi/agent/extensions`, `.agents`, `.agents/skills`, `.config`, `.config/herdr`, `.gnupg`, `bin`.
+
+Add a marker when tools write into a directory that also holds tracked files. The tradeoff: a new top-level item in a marked directory (for example a new skill under `home/.agents/skills/`) needs `task stow` before it shows up in `$HOME`. New files inside an existing skill or extension appear immediately, because those directories are still single links.
+
+The stow step refuses to run when a marked directory is still a folded symlink. Convert an existing machine once with the migration script. It moves gitignored runtime files out of the repo into the real directories, so close every pi and Claude session first:
+```
+ruby src/scripts/unfold-home.rb            # dry run: print the plan
+ruby src/scripts/unfold-home.rb --apply    # migrate; writes ~/.local/state/shell/unfold-manifest.json
+ruby src/scripts/unfold-home.rb --revert   # undo using that manifest
 ```
 
 ## Sudo Handling

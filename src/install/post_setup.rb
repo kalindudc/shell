@@ -6,6 +6,7 @@ require "open3"
 require "shellwords"
 require "socket"
 require "tempfile"
+require_relative "unfold"
 
 module Installer
   module PostSetup
@@ -74,6 +75,10 @@ module Installer
       raise Installer::CommandFailed, "stow is required to install dotfiles" unless Installer::Utils.command?("stow")
 
       Installer::Utils.log("Stowing dotfiles...")
+      # Directories marked with .stow-unfold must exist as real directories first,
+      # otherwise stow folds them into one symlink and tool files land in the repo.
+      Installer::Unfold.prepare_targets!(File.join(SHELL_DIR, "home"), HOME)
+      ensure_gpg_home_permissions!
       Installer::Utils.run!("stow", "home", "-d", SHELL_DIR, "-t", HOME, "--adopt")
     end
 
