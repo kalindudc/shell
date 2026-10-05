@@ -7,53 +7,166 @@
  * - git_diff_summary: Structured diff summary with categorization
  * - stack_trace_resolve: Resolve stack traces to workspace paths
  * - test_run_parsed: Run tests with structured output parsing
+ *
+ * Every command runs in its own process group and that group is SIGKILLed on
+ * timeout, on tool-call abort and on pi shutdown, so a hung test run cannot
+ * outlive the session that started it (see `exec`).
  */
 
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "@sinclair/typebox";
-import { spawn } from "child_process";
+import { spawn, spawnSync } from "child_process";
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-function exec(
-  cmd: string,
-  args: string[],
-  options: { cwd?: string; timeout?: number } = {},
-): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
+interface ExecOptions {
+  cwd?: string;
+  /** Wall-clock limit in ms. On expiry the whole process group is SIGKILLed. Default: DEFAULT_EXEC_TIMEOUT_MS. */
+  timeout?: number;
+  /** The tool call's abort signal: aborting kills the whole process group. */
+  signal?: AbortSignal;
+}
+
+interface ExecResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number | null;
+  /** The deadline fired and the process group was killed. */
+  timedOut: boolean;
+  /** `signal` aborted and the process group was killed. */
+  aborted: boolean;
+}
+
+/** Commands that are not test runs (git, ast-grep) still get a ceiling so a wedged child cannot outlive the tool call. */
+const DEFAULT_EXEC_TIMEOUT_MS = 2 * 60 * 1000;
+/** After `exit`, wait at most this long for the stdio pipes to close before giving up on trailing output. */
+const STDIO_DRAIN_MS = 1000;
+
+/**
+ * Process groups spawned by this extension that are still running. Killed on
+ * pi shutdown so a test run cannot outlive the session that started it.
+ */
+const liveProcessGroups = new Set<number>();
+
+/**
+ * SIGKILL `pid`'s whole process group (the child is spawned detached, so it
+ * leads its own group). Node accepts a negative pid for the group; Bun's
+ * process.kill rejects it, so fall back to /bin/kill, and last to the pid alone.
+ */
+function killProcessGroup(pid: number): void {
+  if (process.platform === "win32") {
+    try {
+      process.kill(pid, "SIGKILL");
+    } catch {
+      // Already gone.
+    }
+    return;
+  }
+  try {
+    process.kill(-pid, "SIGKILL");
+    return;
+  } catch {
+    // Runtime does not support group kills; try the shell builtin's binary.
+  }
+  const viaKill = spawnSync("kill", ["-KILL", "--", String(-pid)], { stdio: "ignore" });
+  if (viaKill.status === 0) return;
+  try {
+    process.kill(pid, "SIGKILL");
+  } catch {
+    // Already gone.
+  }
+}
+
+function killLiveProcessGroups(): void {
+  for (const pid of liveProcessGroups) killProcessGroup(pid);
+  liveProcessGroups.clear();
+}
+
+// `exit` runs for a normal quit and for pi's graceful SIGTERM/SIGHUP shutdown.
+// A SIGKILLed pi cannot clean up; nothing can fix that from here.
+process.once("exit", killLiveProcessGroups);
+
+/**
+ * Run a command with its whole process tree under control.
+ *
+ * Why not spawn's own `timeout` option: it SIGTERMs the direct child only.
+ * For `bash -c "pnpm test"` that kills bash and leaves pnpm -> sh -> pnpm
+ * -> bun running, reparented to launchd. One such orphan from a pi session
+ * that ended mid-run spun at 100% CPU for 25 days.
+ *
+ * The child is spawned `detached` so it leads a new process group; timeout,
+ * abort and pi shutdown all SIGKILL that group.
+ */
+function exec(cmd: string, args: string[], options: ExecOptions = {}): Promise<ExecResult> {
   return new Promise((resolve) => {
     const proc = spawn(cmd, args, {
       cwd: options.cwd,
       stdio: ["ignore", "pipe", "pipe"],
-      timeout: options.timeout,
+      detached: process.platform !== "win32",
     });
+    const pid = proc.pid;
+    if (pid !== undefined) liveProcessGroups.add(pid);
 
     let stdout = "";
     let stderr = "";
+    let timedOut = false;
+    let aborted = false;
+    let settled = false;
+    let drainTimer: ReturnType<typeof setTimeout> | undefined;
 
-    proc.stdout.on("data", (d: Buffer) => {
+    const kill = (): void => {
+      if (pid !== undefined) killProcessGroup(pid);
+    };
+    const onAbort = (): void => {
+      aborted = true;
+      kill();
+    };
+    const deadline = setTimeout(() => {
+      timedOut = true;
+      kill();
+    }, options.timeout ?? DEFAULT_EXEC_TIMEOUT_MS);
+
+    const finish = (exitCode: number | null, errorMessage?: string): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(deadline);
+      if (drainTimer) clearTimeout(drainTimer);
+      options.signal?.removeEventListener("abort", onAbort);
+      if (pid !== undefined) liveProcessGroups.delete(pid);
+      resolve({ stdout, stderr: errorMessage ?? stderr, exitCode, timedOut, aborted });
+    };
+
+    proc.stdout?.on("data", (d: Buffer) => {
       stdout += d.toString();
     });
-    proc.stderr.on("data", (d: Buffer) => {
+    proc.stderr?.on("data", (d: Buffer) => {
       stderr += d.toString();
     });
 
+    // `close` waits for the pipes too; a detached grandchild that inherited
+    // them would hold it open forever. Prefer `close`, but settle a little
+    // after `exit` regardless.
+    proc.on("exit", (code) => {
+      drainTimer = setTimeout(() => finish(code ?? null), STDIO_DRAIN_MS);
+    });
     proc.on("close", (code) => {
       // Signals and failed spawns do not supply a numeric process exit code.
-      resolve({ stdout, stderr, exitCode: code ?? null });
+      finish(code ?? null);
+    });
+    proc.on("error", (err) => {
+      finish(null, err.message);
     });
 
-    proc.on("error", (err) => {
-      resolve({ stdout, stderr: err.message, exitCode: null });
-    });
+    if (options.signal) {
+      if (options.signal.aborted) onAbort();
+      else options.signal.addEventListener("abort", onAbort, { once: true });
+    }
   });
 }
 
-function execShell(
-  command: string,
-  options: { cwd?: string; timeout?: number } = {},
-): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
+function execShell(command: string, options: ExecOptions = {}): Promise<ExecResult> {
   return exec("bash", ["-c", command], options);
 }
 
@@ -87,13 +200,13 @@ export default function (pi: ExtensionAPI) {
         Type.String({ description: "Directory to search (default: project root)" }),
       ),
     }),
-    async execute(_toolCallId, args, _signal, _onUpdate, ctx) {
+    async execute(_toolCallId, args, signal, _onUpdate, ctx) {
       const searchPath = args.path || ctx.cwd;
 
       const { stdout, stderr, exitCode } = await exec(
         "sg",
         ["--pattern", args.pattern, "--lang", args.language, "--json", searchPath],
-        { cwd: ctx.cwd },
+        { cwd: ctx.cwd, signal },
       );
 
       if (exitCode !== 0 && !stdout.trim()) {
@@ -163,14 +276,14 @@ export default function (pi: ExtensionAPI) {
         }),
       ),
     }),
-    async execute(_toolCallId, args, _signal, _onUpdate, ctx) {
+    async execute(_toolCallId, args, signal, _onUpdate, ctx) {
       const cwd = ctx.cwd;
       const lineRange = `${args.startLine},${args.endLine}`;
 
       const { stdout: blameRaw } = await exec(
         "git",
         ["blame", "--porcelain", "-L", lineRange, "--", args.file],
-        { cwd },
+        { cwd, signal },
       );
 
       if (!blameRaw.trim()) {
@@ -240,7 +353,7 @@ export default function (pi: ExtensionAPI) {
             const { stdout: showRaw } = await exec(
               "git",
               ["show", "--stat", `--format=${formatStr}`, hash],
-              { cwd },
+              { cwd, signal },
             );
 
             const firstLine = showRaw.split("\n")[0] || "";
@@ -361,7 +474,7 @@ export default function (pi: ExtensionAPI) {
         Type.Boolean({ description: "Include staged changes (default: true)" }),
       ),
     }),
-    async execute(_toolCallId, args, _signal, _onUpdate, ctx) {
+    async execute(_toolCallId, args, signal, _onUpdate, ctx) {
       const cwd = ctx.cwd;
 
       function buildDiffArgs(formatFlag: string): string[] {
@@ -377,8 +490,8 @@ export default function (pi: ExtensionAPI) {
       }
 
       const [numstatResult, nameStatusResult] = await Promise.all([
-        exec("git", buildDiffArgs("--numstat"), { cwd }),
-        exec("git", buildDiffArgs("--name-status"), { cwd }),
+        exec("git", buildDiffArgs("--numstat"), { cwd, signal }),
+        exec("git", buildDiffArgs("--name-status"), { cwd, signal }),
       ]);
 
       const numstatOut = numstatResult.stdout;
@@ -939,8 +1052,11 @@ export default function (pi: ExtensionAPI) {
       filter: Type.Optional(
         Type.String({ description: "Name filter for recognized direct frameworks; nonempty filters on opaque wrappers are rejected before execution" }),
       ),
+      timeout: Type.Optional(
+        Type.Number({ description: "Wall-clock limit in seconds (default 300). On expiry the whole process tree is killed and the result says so." }),
+      ),
     }),
-    async execute(_toolCallId, args, _signal, _onUpdate, ctx) {
+    async execute(_toolCallId, args, signal, _onUpdate, ctx) {
       const framework = detectFramework(args.command);
       if (args.filter && framework === "unknown") {
         return {
@@ -975,12 +1091,30 @@ export default function (pi: ExtensionAPI) {
 
       const jsonCommand = appendJsonFlag(command, framework);
       const execution: { command: string; exitCode: number | null } = { command: jsonCommand, exitCode: null };
+      const timeoutSeconds = args.timeout ?? TEST_TIMEOUT_MS / 1000;
       try {
-        const { stdout, stderr, exitCode } = await execShell(jsonCommand, {
+        const { stdout, stderr, exitCode, timedOut, aborted } = await execShell(jsonCommand, {
           cwd: ctx.cwd,
-          timeout: TEST_TIMEOUT_MS,
+          timeout: timeoutSeconds * 1000,
+          signal,
         });
         execution.exitCode = exitCode;
+        if (timedOut || aborted) {
+          const combined = stdout + (stderr ? `\n--- stderr ---\n${stderr}` : "");
+          return {
+            content: [{ type: "text", text: JSON.stringify({
+              summary: null,
+              failures: [],
+              execution,
+              error: timedOut
+                ? `Test command timed out after ${timeoutSeconds}s; its process group was killed.`
+                : "Test command aborted; its process group was killed.",
+              raw: truncateRaw(combined),
+              note: "No test counts are claimed. A timeout usually means a hung test, not a slow suite: narrow the command or raise `timeout` deliberately.",
+            }, null, 2) }],
+            details: {},
+          };
+        }
         let result: TestResult | null = null;
         if (framework === "jest") result = parseJestJson(stdout);
         else if (framework === "vitest") result = parseVitestJson(stdout);

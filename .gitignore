@@ -90,6 +90,10 @@ home/.agents/skills/cortex/
 home/.agents/skills/cortex-*/
 home/.agents/skills/tuicr/
 home/.agents/skills/herdr/
+# Shopify-owned skills installed with the `skills` CLI (skills.quick.shopify.io)
+home/.agents/skills/architecture-diagram/
+# the `skills` CLI also symlinks global installs into ~/.pi/agent/skills
+home/.pi/agent/skills/architecture-diagram
 # impact-review org pack (internal forms, ids, adapters); the generic skill is tracked
 home/.agents/skills/impact-review/private/
 __pycache__/

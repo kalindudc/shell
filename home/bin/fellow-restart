@@ -1,0 +1,234 @@
+#!/usr/bin/env bash
+#
+# fellow-restart -- restart Fellow.app on a schedule so its renderer leak
+# cannot accumulate (observed: 3.4 GB of compressed memory after 25 days up).
+#
+# Usage:
+#   fellow-restart run         Quit Fellow, let a staged update install, relaunch (run by launchd)
+#   fellow-restart init        Install/replace the LaunchAgent that runs `run` daily at 04:00
+#   fellow-restart status      Show scheduler state, last run, and Fellow's current memory
+#   fellow-restart uninstall   Remove the LaunchAgent
+#
+# `run` only relaunches Fellow when it was running: if you quit it on purpose
+# it stays quit. The pause between quit and relaunch exists so Squirrel's
+# ShipIt can apply a pending update: it aborts with "App Still Running" if
+# the app comes back too soon (seen on 2026-10-05 with a 5.7.7 update that had
+# been staged since 2026-09-09).
+#
+
+set -euo pipefail
+
+APP_NAME="Fellow"
+APP_BUNDLE="/Applications/${APP_NAME}.app"
+LAUNCHD_LABEL="com.kalindu.fellow-restart"
+LAUNCHD_PLIST="${HOME}/Library/LaunchAgents/${LAUNCHD_LABEL}.plist"
+CONFIG_DIR="${HOME}/.config/fellow-restart"
+LOGFILE="${CONFIG_DIR}/fellow-restart.log"
+RUN_HOUR=4
+RUN_MINUTE=0
+
+QUIT_WAIT_SECONDS=30     # graceful quit before SIGKILL
+UPDATE_WAIT_SECONDS=90   # max wait for ShipIt to finish installing an update
+MIN_GAP_SECONDS=10       # minimum quiet gap between quit and relaunch
+
+mkdir -p "${CONFIG_DIR}"
+
+log() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') $*" | tee -a "${LOGFILE}"
+}
+
+app_running() {
+    pgrep -x "${APP_NAME}" >/dev/null 2>&1
+}
+
+# Squirrel's updater for this app, if it is mid-install.
+updater_running() {
+    pgrep -f "com.electron.fellow.ShipIt" >/dev/null 2>&1
+}
+
+app_version() {
+    defaults read "${APP_BUNDLE}/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null || echo "unknown"
+}
+
+# Resident set of every Fellow process, in MB.
+app_rss_mb() {
+    ps -Ao rss,comm | awk -v app="${APP_NAME}" '$0 ~ app { s += $1 } END { printf "%d", s / 1024 }'
+}
+
+# ----------------------------------------------------------------- run
+
+cmd_run() {
+    if ! app_running; then
+        log "run: ${APP_NAME} is not running; leaving it quit"
+        return 0
+    fi
+    local before_rss before_version
+    before_rss=$(app_rss_mb)
+    before_version=$(app_version)
+    log "run: quitting ${APP_NAME} ${before_version} (rss ${before_rss} MB)"
+
+    osascript -e "quit app \"${APP_NAME}\"" >/dev/null 2>&1 || true
+    local waited=0
+    while app_running && (( waited < QUIT_WAIT_SECONDS )); do
+        sleep 1
+        waited=$((waited + 1))
+    done
+    if app_running; then
+        log "run: still running after ${QUIT_WAIT_SECONDS}s; sending SIGKILL"
+        pkill -9 -x "${APP_NAME}" || true
+        sleep 2
+    fi
+
+    # Give a staged update room to install before the app comes back.
+    sleep "${MIN_GAP_SECONDS}"
+    waited=0
+    while updater_running && (( waited < UPDATE_WAIT_SECONDS )); do
+        sleep 2
+        waited=$((waited + 2))
+    done
+    if updater_running; then
+        log "run: ShipIt still running after ${UPDATE_WAIT_SECONDS}s; relaunching anyway"
+    fi
+
+    open -a "${APP_NAME}"
+    sleep 5
+    if app_running; then
+        local after_version
+        after_version=$(app_version)
+        if [[ "${after_version}" != "${before_version}" ]]; then
+            log "run: relaunched ${APP_NAME}; updated ${before_version} -> ${after_version}"
+        else
+            log "run: relaunched ${APP_NAME} ${after_version}"
+        fi
+    else
+        log "run: ERROR ${APP_NAME} did not come back after relaunch"
+        return 1
+    fi
+}
+
+# ----------------------------------------------------------------- launchd
+
+scheduler_loaded() {
+    launchctl print "gui/${UID}/${LAUNCHD_LABEL}" >/dev/null 2>&1
+}
+
+# Resolve symlinks so launchd points at the real file (edits through the
+# symlink take effect without re-running init).
+resolve_symlink() {
+    local target="$1"
+    while [[ -L "${target}" ]]; do
+        local link
+        link=$(readlink "${target}")
+        if [[ "${link}" = /* ]]; then
+            target="${link}"
+        else
+            target="$(cd "$(dirname "${target}")" && cd "$(dirname "${link}")" && pwd)/$(basename "${link}")"
+        fi
+    done
+    echo "${target}"
+}
+
+cmd_init() {
+    local invoked
+    invoked=$(command -v fellow-restart || true)
+    if [[ -z "${invoked}" ]]; then
+        echo "Error: fellow-restart is not on PATH; cannot determine install path." >&2
+        return 1
+    fi
+    local script_path
+    script_path=$(resolve_symlink "${invoked}")
+
+    mkdir -p "$(dirname "${LAUNCHD_PLIST}")"
+
+    if scheduler_loaded; then
+        echo "↺ Unloading existing ${LAUNCHD_LABEL}"
+    fi
+    launchctl bootout "gui/${UID}/${LAUNCHD_LABEL}" 2>/dev/null || true
+    rm -f "${LAUNCHD_PLIST}"
+
+    cat > "${LAUNCHD_PLIST}" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>${LAUNCHD_LABEL}</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>${script_path}</string>
+        <string>run</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>${RUN_HOUR}</integer>
+        <key>Minute</key>
+        <integer>${RUN_MINUTE}</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>${CONFIG_DIR}/launchd.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>${CONFIG_DIR}/launchd.err.log</string>
+</dict>
+</plist>
+PLIST
+
+    plutil -lint "${LAUNCHD_PLIST}" >/dev/null
+    launchctl bootstrap "gui/${UID}" "${LAUNCHD_PLIST}"
+    echo "✓ Installed ${LAUNCHD_LABEL}: runs '${script_path} run' daily at $(printf '%02d:%02d' "${RUN_HOUR}" "${RUN_MINUTE}")"
+    echo "  plist: ${LAUNCHD_PLIST}"
+    echo "  log:   ${LOGFILE}"
+}
+
+cmd_uninstall() {
+    launchctl bootout "gui/${UID}/${LAUNCHD_LABEL}" 2>/dev/null || true
+    rm -f "${LAUNCHD_PLIST}"
+    echo "✓ Removed ${LAUNCHD_LABEL}"
+}
+
+cmd_status() {
+    if scheduler_loaded; then
+        echo "scheduler: loaded (${LAUNCHD_LABEL}), daily at $(printf '%02d:%02d' "${RUN_HOUR}" "${RUN_MINUTE}")"
+    else
+        echo "scheduler: NOT loaded (run: fellow-restart init)"
+    fi
+    if app_running; then
+        echo "${APP_NAME}: running, version $(app_version), rss $(app_rss_mb) MB"
+    else
+        echo "${APP_NAME}: not running (installed version $(app_version))"
+    fi
+    if updater_running; then
+        echo "updater: ShipIt is running"
+    fi
+    if [[ -s "${LOGFILE}" ]]; then
+        echo "last run:  $(tail -1 "${LOGFILE}")"
+    else
+        echo "last run:  never"
+    fi
+}
+
+# ----------------------------------------------------------------- main
+
+case "${1:-}" in
+    run) cmd_run ;;
+    init) cmd_init ;;
+    uninstall) cmd_uninstall ;;
+    status) cmd_status ;;
+    *)
+        sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+        exit 1
+        ;;
+esac

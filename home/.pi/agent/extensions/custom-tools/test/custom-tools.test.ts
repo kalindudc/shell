@@ -22,13 +22,33 @@ interface SpawnResult {
   exitCode: number | null;
   signal?: string;
   spawnError?: string;
+  /** Never exit on its own: only a kill of its process group ends it (simulates a hung test run). */
+  hang?: boolean;
 }
+
+type MockProc = EventEmitter & { stdout: EventEmitter; stderr: EventEmitter; pid: number };
 
 /** FIFO queue consumed by each spawn() call. */
 let spawnQueue: SpawnResult[] = [];
-let spawnCalls: Array<{ cmd: string; args: string[] }> = [];
+let spawnCalls: Array<{ cmd: string; args: string[]; opts: Record<string, unknown> }> = [];
+/** Live mock processes by pid, so a process-group kill can end a hanging one. */
+const procsByPid = new Map<number, MockProc>();
+let nextPid = 40_000;
+/** Every process.kill(pid, signal) the extension issued. */
+let killCalls: Array<{ pid: number; signal: string }> = [];
 
-beforeEach(() => { spawnCalls = []; });
+const realKill = process.kill.bind(process);
+process.kill = ((pid: number, signal?: string | number) => {
+  const sig = String(signal ?? "SIGTERM");
+  if (!procsByPid.has(Math.abs(pid))) return realKill(pid, signal as never);
+  killCalls.push({ pid, signal: sig });
+  const proc = procsByPid.get(Math.abs(pid))!;
+  procsByPid.delete(Math.abs(pid));
+  queueMicrotask(() => proc.emit("close", null, sig));
+  return true;
+}) as typeof process.kill;
+
+beforeEach(() => { spawnCalls = []; killCalls = []; });
 
 function setSpawnResults(...results: SpawnResult[]) {
   spawnQueue = [...results];
@@ -43,20 +63,24 @@ function fail(stderr: string, exitCode = 1): SpawnResult {
 }
 
 mock.module("child_process", () => ({
-  spawn: (cmd: string, args: string[], _opts: unknown) => {
-    spawnCalls.push({ cmd, args: [...args] });
+  spawn: (cmd: string, args: string[], opts: Record<string, unknown> = {}) => {
+    spawnCalls.push({ cmd, args: [...args], opts });
     const behavior = spawnQueue.shift() ?? { stdout: "", stderr: "", exitCode: 0 };
-    const proc = new EventEmitter() as EventEmitter & { stdout: EventEmitter; stderr: EventEmitter };
+    const proc = new EventEmitter() as MockProc;
     const stdoutEmitter = new EventEmitter();
     const stderrEmitter = new EventEmitter();
 
     proc.stdout = stdoutEmitter;
     proc.stderr = stderrEmitter;
+    proc.pid = nextPid++;
+    procsByPid.set(proc.pid, proc);
+    proc.once("close", () => procsByPid.delete(proc.pid));
 
     queueMicrotask(() => {
       if (behavior.stdout) stdoutEmitter.emit("data", Buffer.from(behavior.stdout));
       if (behavior.stderr) stderrEmitter.emit("data", Buffer.from(behavior.stderr));
       if (behavior.spawnError) proc.emit("error", new Error(behavior.spawnError));
+      if (behavior.hang) return;
       proc.emit("close", behavior.exitCode, behavior.signal ?? null);
     });
 
@@ -554,7 +578,7 @@ describe("custom-tools extension", () => {
         setSpawnResults(ok("43 runs, 0 failures"));
         const result = await executeTool("test_run_parsed", { command });
         expectValidResult(result);
-        expect(spawnCalls).toEqual([{ cmd: "bash", args: ["-c", command] }]);
+        expect(spawnCalls).toMatchObject([{ cmd: "bash", args: ["-c", command] }]);
         const data = parseResultJson(result) as { summary: unknown; raw: string; execution: unknown };
         expect(data.summary).toBeNull();
         expect(data.raw).toContain("43 runs");
@@ -581,6 +605,53 @@ describe("custom-tools extension", () => {
       expect(data.summary.passed).toBe(1);
       expect(data.execution).toEqual({ command: "npx jest --json", exitCode: 2 });
       expect(spawnCalls).toHaveLength(1);
+    });
+
+    // -------------------------------------------------------------------
+    // Process-tree hygiene. A real `pnpm test` is bash -> pnpm -> sh -> pnpm
+    // -> bun; Node's spawn({ timeout }) only SIGTERMs bash and leaves the
+    // rest running. One such orphan burned a CPU core for 25 days.
+    // -------------------------------------------------------------------
+    it("runs the test command in its own process group", async () => {
+      setSpawnResults(ok("43 runs, 0 failures"));
+      await executeTool("test_run_parsed", { command: "task test" });
+      expect(spawnCalls).toHaveLength(1);
+      expect(spawnCalls[0].opts.detached).toBe(true);
+      // Node's own timeout only signals the direct child; the extension owns the deadline instead.
+      expect(spawnCalls[0].opts.timeout).toBeUndefined();
+    });
+
+    it("kills the whole process group when the agent aborts, and reports it", async () => {
+      setSpawnResults({ stdout: "partial", stderr: "", exitCode: null, hang: true });
+      const controller = new AbortController();
+      const pending = getTool("test_run_parsed").execute(
+        "test-call-id", { command: "task test" }, controller.signal, undefined, { cwd: "/test/workspace" },
+      ) as Promise<ToolResult>;
+      await new Promise(r => setTimeout(r, 5));
+      expect(killCalls).toHaveLength(0);
+      controller.abort();
+      const result = await pending;
+      expectValidResult(result);
+      expect(killCalls).toEqual([{ pid: expect.any(Number), signal: "SIGKILL" }]);
+      expect(killCalls[0].pid).toBeLessThan(0); // negative pid = the process group
+      expect(procsByPid.size).toBe(0); // nothing left running
+      const data = parseResultJson(result) as { summary: unknown; error: string; execution: { exitCode: number | null } };
+      expect(data.summary).toBeNull();
+      expect(data.execution.exitCode).toBeNull();
+      expect(data.error).toMatch(/aborted/i);
+    });
+
+    it("kills the whole process group on timeout, and says so instead of hanging", async () => {
+      setSpawnResults({ stdout: "partial", stderr: "", exitCode: null, hang: true });
+      const result = await executeTool("test_run_parsed", { command: "task test", timeout: 0.01 });
+      expectValidResult(result);
+      expect(killCalls).toEqual([{ pid: expect.any(Number), signal: "SIGKILL" }]);
+      expect(killCalls[0].pid).toBeLessThan(0);
+      const data = parseResultJson(result) as { summary: unknown; error: string; raw?: string; execution: { exitCode: number | null } };
+      expect(data.summary).toBeNull();
+      expect(data.execution.exitCode).toBeNull();
+      expect(data.error).toMatch(/timed out after 0\.01 ?s/i);
+      expect(data.error).toMatch(/process group|process tree/i);
     });
 
     it("retains command errors without inventing zero test counts", async () => {
@@ -630,7 +701,7 @@ describe("custom-tools extension", () => {
       const data = parseResultJson(result) as { summary: { passed: number }; execution: unknown };
       expect(data.summary.passed).toBe(1);
       expect(data.execution).toEqual({ command: "npx vitest run --reporter=json", exitCode: 0 });
-      expect(spawnCalls).toEqual([{ cmd: "bash", args: ["-c", "npx vitest run --reporter=json"] }]);
+      expect(spawnCalls).toMatchObject([{ cmd: "bash", args: ["-c", "npx vitest run --reporter=json"] }]);
     });
 
     it("parses jest JSON output (all passing)", async () => {
@@ -748,7 +819,7 @@ describe("custom-tools extension", () => {
         filter: "my test pattern",
       });
       expectValidResult(result);
-      expect(spawnCalls).toEqual([{ cmd: "bash", args: ["-c", 'npx jest -t "my test pattern" --json'] }]);
+      expect(spawnCalls).toMatchObject([{ cmd: "bash", args: ["-c", 'npx jest -t "my test pattern" --json'] }]);
     });
   });
 
