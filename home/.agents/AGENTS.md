@@ -188,6 +188,11 @@ Before removing or changing existing code, state what it does and why it exists.
 - No premature abstraction: need 3 real examples before extracting
 - No silent fallbacks: `or {}` hides failures. Let it crash.
 - TDD: Write the test. Verify it fails. Implement. Verify it passes.
+- Comments: default to none. Names and structure carry the "what". A comment earns its place only when it says something the code cannot: why a non-obvious choice was made, an invariant the types and tests do not enforce, a workaround and what it works around, or a trap for the next editor. One line is the norm.
+  - NEVER narrate the code (`// loop over users`, `// return the result`), add section banners, or restate a name or type.
+  - NEVER write change-log or conversation comments (`// added to fix X`, `// updated per request`, `// previously did Y`). That belongs in git history, the PR description, or your reply to the user.
+  - Match the file: in a file with few comments, add none. Add docstrings only where the project's convention already puts them.
+  - No commented-out code, and no TODO for work you can do now.
 
 ---
 
@@ -203,7 +208,7 @@ For substantial work, re-anchor periodically to prevent goal drift. Skip re-anch
 
 ## Writing for people
 
-Some of what you write is read by a person, not an agent: cortex task bodies and updates, PR descriptions and review comments, support replies, research notes, and docs. Write these so an engineer from a neighbouring team understands them on one read. Short is good; compressed is not. Cut what the reader does not need, but keep the small words that make a sentence easy to follow.
+Some of what you write is read by a person, not an agent: cortex task bodies and updates, PR descriptions and review comments, support replies, research notes, and docs. Code comments are not covered here; they follow Code Standards. Write these so an engineer from a neighbouring team understands them on one read. Short is good; compressed is not. Cut what the reader does not need, but keep the small words that make a sentence easy to follow.
 
 - Lead with the answer: what happened, what you found, or what you need. Evidence and detail come after.
 - Write complete sentences with one idea each, keeping articles and linking words ("the", "that", "because"). Use a list for separate items, not as a way to drop verbs.
