@@ -11,8 +11,8 @@ require 'tmpdir'
 require_relative '../../src/install/unfold'
 
 # Exercises the .stow-unfold markers and the one-time migration against a scratch
-# repo and home built to look like the real layout: folded ~/.pi, ~/.agents and
-# ~/.claude, plus a real ~/.config holding a folded zsh directory.
+# repo and home built to look like the real layout: folded ~/.pi and ~/.agents,
+# plus a real ~/.config holding a folded zsh directory.
 class TestUnfold < Minitest::Test
   REAL_STOW_IGNORE = File.expand_path('../../home/.stow-local-ignore', __dir__)
 
@@ -31,8 +31,7 @@ class TestUnfold < Minitest::Test
     '.pi/agent/extensions/toolext/index.ts' => 'tool',
     '.agents/skills/myskill/SKILL_NOTES.md' => 'notes',
     '.agents/skills/toolskill/SKILL.md' => 'tool skill',
-    '.config/zsh/completions/_x' => 'compdef',
-    '.claude/settings.json' => '{}'
+    '.config/zsh/completions/_x' => 'compdef'
   }.freeze
 
   MARKERS = %w[.pi .pi/agent .pi/agent/extensions .agents .agents/skills .config].freeze
@@ -48,7 +47,6 @@ class TestUnfold < Minitest::Test
     home/.agents/skills/toolskill/
     home/.agents/skills/*/SKILL_NOTES.md
     home/.config/zsh/
-    home/.claude/
     !.stow-unfold
   IGNORE
 
@@ -74,11 +72,11 @@ class TestUnfold < Minitest::Test
 
   # macOS pgrep hides the caller's ancestors, which would miss a pi that runs the migration itself.
   def test_running_agents_come_from_full_process_list
-    ps_output = "  1 pi\n  2 /usr/local/bin/claude\n  3 -zsh\n  4 pipx\n"
+    ps_output = "  1 pi\n  2 /usr/local/bin/pi\n  3 -zsh\n  4 pipx\n"
     success = Object.new.tap { |s| s.define_singleton_method(:success?) { true } }
 
     Open3.stub(:capture2, [ps_output, success]) do
-      assert_equal ['pi (pid 1)', 'claude (pid 2)'], Installer::Unfold.default_running_agents
+      assert_equal ['pi (pid 1)', 'pi (pid 2)'], Installer::Unfold.default_running_agents
     end
   end
 
@@ -116,7 +114,7 @@ class TestUnfold < Minitest::Test
       'unfold .pi', 'unfold .agents', 'mkdir .pi/agent', 'mkdir .pi/agent/extensions', 'mkdir .agents/skills',
       'move .pi/pkg', 'move .pi/agent/auth.json', 'move .pi/agent/sessions', 'move .pi/agent/extensions/toolext',
       'move .pi/agent/extensions/linked', 'move .agents/skills/toolskill',
-      'unlink .config/zsh', 'move .config/zsh', 'unlink .claude', 'move .claude'
+      'unlink .config/zsh', 'move .config/zsh'
     ].each { |step| assert_includes steps, step }
     assert_equal steps.index('unfold .pi') + 1, steps.index('move .pi/pkg'), 'a folded dir is unfolded before its children move'
     %w[.pi/agent/extensions/mine .pi/agent/themes .agents/skills/myskill .config/app].each { |rel| assert_includes plan.kept, rel }
@@ -129,13 +127,12 @@ class TestUnfold < Minitest::Test
     MARKERS.each { |rel| assert_real_dir rel }
     %w[.pi/agent/extensions/mine .pi/agent/themes .agents/skills/myskill .config/app .zshrc].each { |rel| assert_linked rel }
     %w[.pi/pkg/pi/bin .pi/agent/auth.json .pi/agent/sessions/a/s1.jsonl .pi/agent/extensions/toolext/index.ts
-       .agents/skills/toolskill/SKILL.md .config/zsh/completions/_x .claude/settings.json].each do |rel|
+       .agents/skills/toolskill/SKILL.md .config/zsh/completions/_x].each do |rel|
       assert File.file?(File.join(@home, rel)), "#{rel} should live in home"
       refute path_present?(File.join(@pkg, rel)), "#{rel} should have left the repo"
     end
     assert_equal File.join(@root, 'nix-ext'), File.readlink(File.join(@home, '.pi/agent/extensions/linked'))
     refute File.symlink?(File.join(@home, '.config/zsh'))
-    refute File.symlink?(File.join(@home, '.claude'))
     assert File.file?(File.join(@pkg, '.agents/skills/myskill/SKILL_NOTES.md')), 'ignored files inside tracked dirs stay put'
     assert_path_exists @manifest
   end
@@ -178,7 +175,7 @@ class TestUnfold < Minitest::Test
 
   def test_revert_restores_the_folded_layout
     legacy_stow
-    before = %w[.pi .agents .claude .config/zsh].to_h { |rel| [rel, File.readlink(File.join(@home, rel))] }
+    before = %w[.pi .agents .config/zsh].to_h { |rel| [rel, File.readlink(File.join(@home, rel))] }
     migration.apply!(stow: -> { stow_with_markers })
     migration.revert!
 
@@ -200,7 +197,6 @@ class TestUnfold < Minitest::Test
     TRACKED.merge(IGNORED).each { |rel, body| write(File.join(@pkg, rel), body) }
     MARKERS.each { |rel| write(File.join(@pkg, rel, Installer::Unfold::MARKER), 'marker') }
     File.symlink(File.join(@root, 'nix-ext'), File.join(@pkg, '.pi/agent/extensions/linked'))
-    File.symlink(File.join(@home, '.agents/skills'), File.join(@pkg, '.claude/skills'))
     git('init', '-q')
     git('add', '-A')
     git('-c', 'user.email=t@example.com', '-c', 'user.name=t', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'fixture')

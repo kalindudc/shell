@@ -21,6 +21,7 @@ module Installer
       when "snap" then install_snap(packages)
       when "flatpak" then install_flatpak(packages)
       when "npm" then install_npm(packages)
+      when "pi" then install_pi(packages)
       when "pipx" then install_pipx(packages)
       when "custom_bootstrap" then install_custom(packages)
       when "custom" then install_custom(packages)
@@ -128,6 +129,32 @@ module Installer
     def install_npm(packages)
       ensure_npm_available!
       Installer::Utils.run!("npm", "install", "-g", *packages)
+    end
+
+    # pi packages (extensions, skills, prompts) are declared in ~/.pi/agent/settings.json by
+    # `pi install`. That file stays untracked because it also holds per-machine model choices.
+    # --no-approve keeps a project .pi in the current directory out of a global install.
+    def install_pi(packages)
+      raise Installer::CommandFailed, "pi is required before installing pi packages" unless Installer::Utils.command?("pi")
+
+      installed = installed_pi_packages
+      packages.each do |source|
+        if installed.include?(source)
+          Installer::Utils.log("pi package already installed: #{source}")
+          next
+        end
+
+        Installer::Utils.run!("pi", "install", source, "--no-approve")
+      end
+    end
+
+    def installed_pi_packages
+      stdout, stderr, status = Open3.capture3("pi", "list", "--no-approve")
+      unless status.success?
+        raise Installer::CommandFailed, "Command failed: pi list#{stderr.empty? ? "" : ": #{stderr.strip}"}"
+      end
+
+      stdout.lines.map(&:strip)
     end
 
     def install_pipx(packages)

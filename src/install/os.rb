@@ -12,7 +12,8 @@ module Installer
     }.freeze
 
     BOOTSTRAP_BACKENDS = %w[custom_bootstrap].freeze
-    SHARED_BACKENDS = %w[npm pipx custom].freeze
+    # pi runs after npm, which installs the pi CLI
+    SHARED_BACKENDS = %w[npm pi pipx custom].freeze
 
     module_function
 

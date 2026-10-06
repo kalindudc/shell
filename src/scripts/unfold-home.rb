@@ -3,14 +3,14 @@
 
 # One-time migration from folded stow trees to real directories in $HOME.
 #
-# Before markers existed, stow replaced ~/.pi, ~/.agents, ~/.claude and
+# Before markers existed, stow replaced ~/.pi, ~/.agents and
 # ~/.config/zsh with single symlinks into this repo, so every file tools wrote
 # there landed in the repo. This script turns those symlinks into real
 # directories, moves the gitignored runtime files out of the repo into them,
 # and restows so only tracked files are linked. See docs/architecture.md.
 #
 #   ruby src/scripts/unfold-home.rb            # dry run: print the plan, change nothing
-#   ruby src/scripts/unfold-home.rb --apply    # migrate (close every pi and Claude session first)
+#   ruby src/scripts/unfold-home.rb --apply    # migrate (close every pi session first)
 #   ruby src/scripts/unfold-home.rb --revert   # undo a migration using the saved manifest
 
 require_relative "../install/utils"

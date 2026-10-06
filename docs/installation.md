@@ -69,12 +69,13 @@ Backends are organized by package manager, not by OS:
 | `brew_cask` | Homebrew casks | macOS |
 | `custom_bootstrap` | Runtime bootstrap installers such as fnm | All |
 | `npm` | Global npm packages | All |
+| `pi` | pi packages, added with `pi install` (skips ones `pi list` already shows) | All |
 | `pipx` | Python CLI tools | All |
 | `custom` | Special installers | All |
 
 ## Custom Installers
 
-Packages in `custom_bootstrap:` run before npm/pipx so runtime managers exist first. Packages in the `custom:` section run after shared package backends and call Ruby methods for complex installations:
+Packages in `custom_bootstrap:` run before npm, pi and pipx so runtime managers exist first. Packages in the `custom:` section run after shared package backends and call Ruby methods for complex installations:
 
 - `install_docker_post` — enable docker service, add user to docker group
 - `install_pyenv` — install pyenv via curl
@@ -88,6 +89,7 @@ Packages in `custom_bootstrap:` run before npm/pipx so runtime managers exist fi
 - `install_fnm_curl` — install fnm via curl (listed in `custom_bootstrap`)
 - `install_nerd_fonts_brew` — install all nerd fonts via brew
 - `install_nvm_curl` — install nvm via curl (fallback)
+- `install_herdr_pi_integration` — install herdr's pi integration, which reports agent state to the herdr sidebar; reinstalled when outdated
 
 To add a custom installer, add the method name to `custom:` in `packages.yml` and define the method in `src/install/custom.rb`.
 

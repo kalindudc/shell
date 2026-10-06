@@ -15,7 +15,6 @@ export PNPM_HOME="$HOME/.local/share/pnpm"
 # PATH — set once, at the top
 export PATH=\
 $PNPM_HOME:\
-$HOME/.opencode/bin:\
 $HOME/.atuin/bin:\
 /opt/homebrew/bin:/opt/homebrew/sbin:\
 $HOME/bin/:$HOME/.local/bin:$HOME/bin:\
@@ -194,7 +193,6 @@ export EDITOR="nvim"
 alias edit="nvim"
 alias e="nvim"
 alias nv="neovide"
-alias c="claude --permission-mode acceptEdits"
 
 # terminal multiplexers
 alias tmux='tmux -CC'
@@ -471,9 +469,6 @@ export KUBECONFIG=$(printf '%s:' $HOME/.kube/*config*(N.) | sed 's/:$//')
 
 # agents template
 AGENTS_SCRIPT="yes"
-
-# OpenCode Configuration
-export OPENCODE_CONFIG_DIR="$HOME/.config/opencode"
 
 # Add other AI agent configurations here
 

@@ -25,26 +25,6 @@ test-manual.sh
 node_modules/
 home/bin/cortex
 
-home/.claude/settings.json
-
-# ignore home/.claude files, with some exceptions
-home/.claude/*
-!home/.claude/commands/
-!home/.claude/concepts/
-!home/.claude/templates/
-!home/.claude/agents/
-!home/.claude/skills/
-!home/.claude/scripts/
-
-# ignore .claude files, with some exceptions
-.claude/*
-!.claude/commands/
-!.claude/concepts/
-!.claude/templates/
-!.claude/agents/
-!.claude/skills/
-!.claude/scripts/
-
 home/.agents/**/*interview*
 
 # ignore home/.pi files, with some exceptions

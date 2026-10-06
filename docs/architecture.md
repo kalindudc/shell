@@ -50,6 +50,9 @@ brew:
 npm:
   - "@earendil-works/pi-coding-agent"
 
+pi:
+  - https://github.com/kalindudc/pi-minions
+
 custom_bootstrap:
   - install_fnm_curl
 
@@ -63,7 +66,7 @@ Backends are executed in order:
 2. Machine-profile bootstrap dependencies
 3. OS-specific backends (system packages first)
 4. `custom_bootstrap` runtime setup
-5. Shared backends (`npm`, `pipx`, then `custom`)
+5. Shared backends (`npm`, `pi`, `pipx`, then `custom`). `pi` comes after `npm` because npm installs the pi CLI.
 
 ## OS Detection
 
@@ -87,6 +90,7 @@ The `custom_bootstrap:` and `custom:` backends call Ruby methods for packages ne
 - `install_fnm_curl` — curl installer used before npm
 - `install_nerd_fonts_brew` — brew search + install
 - `install_nvm_curl` — curl installer (fallback)
+- `install_herdr_pi_integration` — `herdr integration install pi`, skipped when already current
 
 ## Configuration Generation
 
@@ -113,7 +117,7 @@ Current markers: `.pi`, `.pi/agent`, `.pi/agent/extensions`, `.agents`, `.agents
 
 Add a marker when tools write into a directory that also holds tracked files. The tradeoff: a new top-level item in a marked directory (for example a new skill under `home/.agents/skills/`) needs `task stow` before it shows up in `$HOME`. New files inside an existing skill or extension appear immediately, because those directories are still single links.
 
-The stow step refuses to run when a marked directory is still a folded symlink. Convert an existing machine once with the migration script. It moves gitignored runtime files out of the repo into the real directories, so close every pi and Claude session first:
+The stow step refuses to run when a marked directory is still a folded symlink. Convert an existing machine once with the migration script. It moves gitignored runtime files out of the repo into the real directories, so close every pi session first:
 ```
 ruby src/scripts/unfold-home.rb            # dry run: print the plan
 ruby src/scripts/unfold-home.rb --apply    # migrate; writes ~/.local/state/shell/unfold-manifest.json
@@ -135,7 +139,7 @@ Minimal continuation state is stored at `~/.local/state/shell/install.json` (or 
 
 | OS | Backends |
 |----|----------|
-| Arch Linux | pacman, yay, flatpak, custom_bootstrap, npm, pipx, custom |
-| Ubuntu | apt, snap, flatpak, custom_bootstrap, npm, pipx, custom |
-| Debian | apt, flatpak, custom_bootstrap, npm, pipx, custom |
-| macOS | brew, brew_cask, custom_bootstrap, npm, pipx, custom |
+| Arch Linux | pacman, yay, flatpak, custom_bootstrap, npm, pi, pipx, custom |
+| Ubuntu | apt, snap, flatpak, custom_bootstrap, npm, pi, pipx, custom |
+| Debian | apt, flatpak, custom_bootstrap, npm, pi, pipx, custom |
+| macOS | brew, brew_cask, custom_bootstrap, npm, pi, pipx, custom |

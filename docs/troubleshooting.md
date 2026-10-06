@@ -158,7 +158,7 @@ resetting the display mode at handover.
 
 ## Stow fails with "is a symlink, so files tools write there would land in the repo"
 
-The machine still has folded stow links from before `.stow-unfold` markers existed (see "Directories that stay real" in [architecture.md](architecture.md)). Close every pi and Claude session, then run the one-time migration:
+The machine still has folded stow links from before `.stow-unfold` markers existed (see "Directories that stay real" in [architecture.md](architecture.md)). Close every pi session, then run the one-time migration:
 
 ```bash
 ruby src/scripts/unfold-home.rb           # review the plan

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Bootstrap SKILL_NOTES.md files for all OpenCode skills.
+# Bootstrap SKILL_NOTES.md files for all shared agent skills (~/.agents/skills).
 # SKILL_NOTES.md is gitignored (it contains local observations),
 # so this script creates the template for each skill directory
 # that has a SKILL.md but no SKILL_NOTES.md.
@@ -9,7 +9,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-SKILLS_DIR="${1:-${HOME}/.config/opencode/skills}"
+SKILLS_DIR="${1:-${HOME}/.agents/skills}"
 
 if [[ ! -d "${SKILLS_DIR}" ]]; then
   echo "Skills directory not found: ${SKILLS_DIR}"
@@ -31,7 +31,7 @@ for skill_dir in "${SKILLS_DIR}"/*/; do
 # Skill Notes: ${skill_name}
 
 > Accumulated observations from real usage. Agents append entries here after skill execution.
-> Run \`/global/improve-skill ${skill_name}\` to review and promote valuable entries into SKILL.md.
+> Run \`/improve-skill ${skill_name}\` to review and promote valuable entries into SKILL.md.
 >
 > ## Entry Format
 >

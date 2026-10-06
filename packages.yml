@@ -164,6 +164,11 @@ custom_bootstrap:
 npm:
   - "@earendil-works/pi-coding-agent"
 
+# pi packages, added with `pi install` once npm has installed pi
+pi:
+  - https://github.com/kalindudc/pi-minions
+  - https://github.com/kalindudc/pi-quests
+
 pipx:
   - dunk
 
@@ -180,5 +185,6 @@ custom:
   - install_herdr
   - install_herdr_plus
   - install_herdr_automatic_rename
+  - install_herdr_pi_integration
   - install_nerd_fonts_brew
   - install_nvm_curl

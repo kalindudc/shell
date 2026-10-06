@@ -164,6 +164,21 @@ module Installer
       Installer::Utils.run!("herdr", "plugin", "install", "qu8n/herdr-automatic-rename", "--yes")
     end
 
+    # Reports pi agent state (working, idle, waiting) to the herdr sidebar. herdr owns the
+    # file it writes (~/.pi/agent/extensions/herdr-agent-state.ts) and overwrites it on reinstall,
+    # so an outdated integration is reinstalled too.
+    def install_herdr_pi_integration
+      return unless Installer::Utils.command?("herdr")
+      return if herdr_integration_status.lines.any? { |line| line.start_with?("pi: current") }
+
+      Installer::Utils.log("Installing herdr pi integration...")
+      Installer::Utils.run!("herdr", "integration", "install", "pi")
+    end
+
+    def herdr_integration_status
+      `herdr integration status 2>/dev/null`
+    end
+
     def install_fnm_curl
       return if Installer::Utils.command?("fnm")
 

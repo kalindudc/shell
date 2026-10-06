@@ -13,6 +13,7 @@ require_relative '../../src/install/errors'
 require_relative '../../src/install/state'
 require_relative '../../src/install/os'
 require_relative '../../src/install/backends'
+require_relative '../../src/install/custom'
 require_relative '../../src/install/dependencies'
 require_relative '../../src/install/post_setup'
 
@@ -39,7 +40,7 @@ class TestInstaller < Minitest::Test
 
   def test_packages_yml_has_expected_backends
     content = YAML.load_file(@packages_file)
-    expected_backends = %w[pacman yay apt brew brew_cask snap flatpak npm pipx custom]
+    expected_backends = %w[pacman yay apt brew brew_cask snap flatpak npm pi pipx custom]
 
     expected_backends.each do |backend|
       assert content.key?(backend), "packages.yml should have #{backend} key"
@@ -100,6 +101,15 @@ class TestInstaller < Minitest::Test
     assert_includes packages, '@earendil-works/pi-coding-agent', "npm should include pi-coding-agent"
   end
 
+  def test_packages_yml_pi_packages
+    content = YAML.load_file(@packages_file)
+    packages = content['pi']
+
+    assert packages.is_a?(Array), "pi packages should be an array"
+    assert_includes packages, 'https://github.com/kalindudc/pi-minions', "pi should include pi-minions"
+    assert_includes packages, 'https://github.com/kalindudc/pi-quests', "pi should include pi-quests"
+  end
+
   def test_packages_yml_custom_packages
     content = YAML.load_file(@packages_file)
     packages = content['custom']
@@ -113,14 +123,96 @@ class TestInstaller < Minitest::Test
     assert_includes packages, 'install_herdr_plus', "custom should include install_herdr_plus"
     assert_includes packages, 'install_herdr_automatic_rename',
                     "custom should include install_herdr_automatic_rename"
+    assert_includes packages, 'install_herdr_pi_integration',
+                    "custom should include install_herdr_pi_integration"
 
     herdr_index = packages.index('install_herdr')
     herdr_plus_index = packages.index('install_herdr_plus')
     rename_index = packages.index('install_herdr_automatic_rename')
+    integration_index = packages.index('install_herdr_pi_integration')
     assert_operator herdr_index, :<, herdr_plus_index,
                     "install_herdr must run before install_herdr_plus"
     assert_operator herdr_index, :<, rename_index,
                     "install_herdr must run before install_herdr_automatic_rename"
+    assert_operator herdr_index, :<, integration_index,
+                    "install_herdr must run before install_herdr_pi_integration"
+  end
+
+  def test_herdr_pi_integration_installs_unless_current
+    statuses = {
+      'pi: not installed (/h/.pi/agent/extensions/herdr-agent-state.ts)' => true,
+      'pi: outdated (v8) (/h/.pi/agent/extensions/herdr-agent-state.ts)' => true,
+      'pi: current (v9) (/h/.pi/agent/extensions/herdr-agent-state.ts)' => false
+    }
+
+    statuses.each do |pi_line, expect_install|
+      calls = []
+      status = "codex: current (v8) (/h/.codex/herdr-agent-state.sh)\n#{pi_line}\n"
+
+      Installer::Utils.stub(:command?, ->(name) { name == 'herdr' }) do
+        Installer::Custom.stub(:herdr_integration_status, status) do
+          Installer::Utils.stub(:run!, ->(*cmd) { calls << cmd }) do
+            capture_io { Installer::Custom.install_herdr_pi_integration }
+          end
+        end
+      end
+
+      expected = expect_install ? [%w[herdr integration install pi]] : []
+      assert_equal expected, calls, "for status line: #{pi_line}"
+    end
+  end
+
+  def test_herdr_pi_integration_skips_without_herdr
+    Installer::Utils.stub(:command?, false) do
+      Installer::Utils.stub(:run!, ->(*cmd) { flunk "must not run #{cmd.join(' ')}" }) do
+        Installer::Custom.install_herdr_pi_integration
+      end
+    end
+  end
+
+  # pi packages
+
+  def test_install_pi_installs_only_missing_packages
+    calls = []
+    list_output = <<~LIST
+      User packages:
+        https://github.com/kalindudc/pi-minions
+          /h/.pi/agent/git/github.com/kalindudc/pi-minions
+    LIST
+    success = Struct.new(:success?).new(true)
+    sources = %w[https://github.com/kalindudc/pi-minions https://github.com/kalindudc/pi-quests]
+
+    Installer::Utils.stub(:command?, ->(name) { name == 'pi' }) do
+      Open3.stub(:capture3, [list_output, '', success]) do
+        Installer::Utils.stub(:run!, ->(*cmd) { calls << cmd }) do
+          capture_io { Installer::Backends.install('pi', sources) }
+        end
+      end
+    end
+
+    assert_equal [%w[pi install https://github.com/kalindudc/pi-quests --no-approve]], calls
+  end
+
+  def test_install_pi_requires_pi
+    Installer::Utils.stub(:command?, false) do
+      error = assert_raises(Installer::CommandFailed) do
+        capture_io { Installer::Backends.install('pi', ['https://github.com/kalindudc/pi-quests']) }
+      end
+      assert_includes error.message, 'pi is required'
+    end
+  end
+
+  def test_install_pi_fails_when_pi_list_fails
+    failure = Struct.new(:success?).new(false)
+
+    Installer::Utils.stub(:command?, true) do
+      Open3.stub(:capture3, ['', 'boom', failure]) do
+        error = assert_raises(Installer::CommandFailed) do
+          capture_io { Installer::Backends.install('pi', ['https://github.com/kalindudc/pi-quests']) }
+        end
+        assert_includes error.message, 'pi list'
+      end
+    end
   end
 
   def test_atuin_config_tracks_only_non_secret_settings
@@ -264,11 +356,7 @@ class TestInstaller < Minitest::Test
   end
 
   def test_shared_backends
-    shared = %w[npm pipx custom]
-    assert_equal 3, shared.length
-    assert_includes shared, 'npm'
-    assert_includes shared, 'pipx'
-    assert_includes shared, 'custom'
+    assert_equal %w[npm pi pipx custom], Installer::OS::SHARED_BACKENDS
   end
 
   def test_unknown_os_is_not_supported_and_has_no_shared_backends
@@ -285,6 +373,14 @@ class TestInstaller < Minitest::Test
 
     assert_operator backends.index('custom_bootstrap'), :<, backends.index('npm')
     assert_operator backends.index('apt'), :<, backends.index('custom_bootstrap')
+  end
+
+  # npm installs the pi CLI, which the pi backend then uses
+  def test_backend_order_installs_pi_packages_after_npm
+    backends = Installer::OS.backends_for('macos')
+
+    assert_operator backends.index('npm'), :<, backends.index('pi')
+    assert_operator backends.index('pi'), :<, backends.index('custom')
   end
 
   # bash_bootstrap

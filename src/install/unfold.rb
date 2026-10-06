@@ -68,7 +68,7 @@ module Installer
       path.delete_prefix("#{base}/")
     end
 
-    AGENT_COMMANDS = %w[pi claude].freeze
+    AGENT_COMMANDS = %w[pi].freeze
 
     # Uses the full process list: macOS pgrep leaves out the caller's ancestors,
     # so it would miss a pi session that runs this migration from its own shell.
@@ -93,11 +93,8 @@ module Installer
     # For every marker directory, children tracked in git stay in the repo (stow
     # links them), children that are entirely gitignored move out of the repo into
     # the real directory in home, and anything untracked but not ignored stops the
-    # migration so in-progress work is never moved by accident. EVICT lists whole
-    # top-level directories the repo should stop owning entirely.
+    # migration so in-progress work is never moved by accident.
     class Migration
-      EVICT = %w[.claude].freeze
-
       Step = Struct.new(:action, :path, :link_target, keyword_init: true) do
         def to_h = { "action" => action.to_s, "path" => path, "link_target" => link_target }.compact
 
@@ -108,13 +105,12 @@ module Installer
 
       attr_reader :repo_dir, :package_dir, :home, :manifest_path
 
-      def initialize(repo_dir:, home:, manifest_path: Unfold.default_manifest_path, evict: EVICT,
+      def initialize(repo_dir:, home:, manifest_path: Unfold.default_manifest_path,
                      running_agents: -> { Unfold.default_running_agents }, out: $stdout)
         @repo_dir = repo_dir
         @package_dir = File.join(repo_dir, "home")
         @home = home
         @manifest_path = manifest_path
-        @evict = evict
         @running_agents = running_agents
         @out = out
       end
@@ -145,16 +141,6 @@ module Installer
             else
               plan_move(child, unfolding, steps, errors)
             end
-          end
-        end
-
-        @evict.each do |rel|
-          next unless File.exist?(File.join(package_dir, rel))
-
-          if tracked?(rel) || untracked?(rel)
-            errors << "#{rel} still has files that are not ignored; it cannot be evicted"
-          else
-            plan_move(rel, unfolding, steps, errors)
           end
         end
 
