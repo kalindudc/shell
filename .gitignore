@@ -16,79 +16,32 @@ data
 .vim/plugged/
 
 home/.gitconfig
-home/.config/zsh/completions/
 vendor/
 .bundle/
 .tmp/
 tmp/
 test-manual.sh
 node_modules/
-home/bin/cortex
 
+# Tool-installed skills, pi runtime state and credentials live in real directories
+# in $HOME, not here (see .stow-unfold in docs/architecture.md). The rules below
+# cover files written inside directories that are still linked into the repo.
+
+# private interview material must never be committed
 home/.agents/**/*interview*
-
-# ignore home/.pi files, with some exceptions
-# NOTE: use home/.pi/* (not home/.pi/) so git recurses into the directory
-# and honors un-ignore rules for nested paths
-home/.pi/*
-!home/.pi/agent/
-home/.pi/agent/*
-!home/.pi/agent/extensions/
-!home/.pi/agent/agents/
-!home/.pi/agent/skills/
-!home/.pi/agent/prompts/
-!home/.pi/agent/themes/
-!home/.pi/agent/docs/
-!home/.pi/agent/README.md
-!home/.pi/agent/AGENTS.md
 home/.pi/agent/**/*interview*
 
-home/.pi/agent/extensions/shopify-proxy
-home/.pi/agent/extensions/pkg
-home/.pi/agent/extensions/no-sleep-while-working
-home/.pi/agent/extensions/observe
-home/.pi/agent/extensions/retitle
-home/.pi/agent/extensions/slack
-home/.pi/agent/extensions/vault
-home/.pi/agent/extensions/guard
-home/.pi/agent/extensions/pi-sieve
-home/.pi/agent/extensions/rtk-rewrite
-home/.pi/agent/extensions/data-portal
-home/.pi/agent/extensions/cortex
-home/.pi/agent/extensions/pi-tool-gateway-extension
-home/.pi/agent/extensions/atuin.ts
-home/.pi/agent/extensions/herdr*
-!home/.pi/agent/extensions/herdr-label/
-home/.pi/agent/extensions/shopify*
-home/.pi/agent/extensions/pi-rtk-optimizer
-
 # SKILL_NOTES.md files are local observations, bootstrapped by src/scripts/bootstrap-skill-notes.sh
-home/.pi/agents/skills/*/SKILL_NOTES.md
 home/.agents/skills/*/SKILL_NOTES.md
-home/.agents/skills/quick/
-home/.agents/skills/cortex/
-home/.agents/skills/cortex-*/
-home/.agents/skills/tuicr/
-home/.agents/skills/herdr/
-# Shopify-owned skills installed with the `skills` CLI (skills.quick.shopify.io)
-home/.agents/skills/architecture-diagram/
-# the `skills` CLI also symlinks global installs into ~/.pi/agent/skills
-home/.pi/agent/skills/architecture-diagram
 # impact-review org pack (internal forms, ids, adapters); the generic skill is tracked
 home/.agents/skills/impact-review/private/
 __pycache__/
 
 home/.config/ghostty/config-os
 
-# herdr runtime state (plugin installs, lockfile) — only config.toml is tracked
-home/.config/herdr/plugins/
-home/.config/herdr/plugins.json
-home/.config/herdr/.plugins.lock
-
+# safety net for private keys; ~/.gnupg is a real directory
 home/.gnupg/*
 !home/.gnupg/gpg-agent.conf
-
-home/bin/ejson
 
 # stow markers that keep shared $HOME directories real (see docs/architecture.md)
 !.stow-unfold
