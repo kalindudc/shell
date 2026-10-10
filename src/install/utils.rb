@@ -33,7 +33,9 @@ module Installer
     end
 
     def command?(name)
-      system("command", "-v", name, out: File::NULL, err: File::NULL)
+      # `command` is a shell builtin, so the check must go through a shell;
+      # passing it as an argv list makes Ruby exec a (nonexistent) `command` binary.
+      system("command -v #{Shellwords.escape(name)} >/dev/null 2>&1", out: File::NULL, err: File::NULL)
     end
 
     def root?
