@@ -140,6 +140,8 @@ brew_cask:
   - visual-studio-code
   - google-chrome
   - discord
+  # bb.yml holds its marketplaces, plugins and settings
+  - bb
 
 snap:
   - name: code

@@ -7,7 +7,8 @@ module Installer
     def parse_args(args)
       options = {
         verbose: false,
-        stow_only: false
+        stow_only: false,
+        bb_only: false
       }
 
       args.each do |arg|
@@ -16,6 +17,8 @@ module Installer
           options[:verbose] = true
         when "--stow"
           options[:stow_only] = true
+        when "--bb"
+          options[:bb_only] = true
         when "--help", "-h"
           show_help
           exit 0
@@ -31,6 +34,7 @@ module Installer
       puts "OPTIONS:"
       puts "  --trace    Enable verbose output"
       puts "  --stow     Run stow only and exit"
+      puts "  --bb       Apply bb.yml to the running bb and exit"
       puts "  --help     Show this help message"
     end
   end

@@ -28,6 +28,12 @@ tasks:
       # Goes through the installer so .stow-unfold directories are created before stow runs
       - ruby src/install.rb --stow
 
+  # bb
+  bb:
+    desc: "Apply bb.yml to the running bb (marketplaces, plugins, settings)"
+    cmds:
+      - ruby src/install.rb --bb
+
   # Clean everything
   clean:
     desc: "Clean all generated files and state"
@@ -99,6 +105,7 @@ tasks:
         echo "Running Ruby installer unit tests..."
         bundle exec ruby test/unit/test_installer.rb
         bundle exec ruby test/unit/test_unfold.rb
+        bundle exec ruby test/unit/test_bb.rb
         echo "✓ Ruby installer tests passed"
       - |
         BUN="${HOME}/.bun/bin/bun"

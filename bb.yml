@@ -1,0 +1,38 @@
+# Desired bb state, applied with the bb CLI by `task bb` and at the end of ./install.sh.
+# bb stores these in its database, so they are applied rather than stowed. The step only
+# adds and changes what is listed here; it never removes plugins, marketplaces or settings.
+
+marketplaces:
+  - name: kalindudc
+    source: git:github.com/kalindudc/bb-marketplace@main
+
+# <id>@<marketplace>; an installed plugin is left as it is, whatever its source
+plugins:
+  - follow-thinking@kalindudc
+  - agent-graph@bb-community
+  - bb-sidebar@bb-community
+
+# plugins bundled with bb that should be on
+enable:
+  - workflows
+
+# Settings → General keys, as `bb settings show --json` names them under generalSettings
+settings:
+  defaultProviderId: pi
+  managedBranchPrefix: kalindudc/
+
+theme: gruvbox
+
+# Extra state for one machine profile: SHELL_MACHINE_PROFILE, or a hostname listed under
+# machine_profiles in packages.yml. Lists add to the ones above; settings and theme override.
+profiles:
+  shopify:
+    marketplaces:
+      - name: shopify
+        source: git:github.com/shopify-playground/bb-marketplace@main
+    plugins:
+      - pr-desk@shopify
+      - shopify-ai@shopify
+      - slack-bridge@shopify
+      - thread-spend@shopify
+      - world-tree@shopify

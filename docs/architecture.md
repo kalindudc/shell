@@ -11,6 +11,7 @@ install.sh                    # Bash bootstrap: installs git + ruby, execs Ruby 
 src/install.rb                # Ruby entry point: parses CLI, loads stdlib-only installer runtime
 src/install/{main,*.rb}       # Orchestrator, OS, backend, state, dependency, and post-setup modules
 packages.yml                  # Declarative package-manager, machine-profile, and backend manifest
+bb.yml                        # Desired bb state (marketplaces, plugins, settings), applied with the bb CLI
 ```
 
 ## Installation Flow
@@ -27,6 +28,7 @@ packages.yml                  # Declarative package-manager, machine-profile, an
    - Ensure required package managers exist first (Homebrew can be installed on macOS)
    - Resolve `machine_profiles` by `SHELL_MACHINE_PROFILE`, hostname, then `default`
    - Run package-manager bootstrap, profile dependencies, system update, backend packages, then post-install
+   - Apply `bb.yml` to a running bb (`src/install/bb.rb`); skipped with a warning when bb or its CLI is not available yet
    - Record reboot/login-session requirements in `~/.local/state/shell/install.json`
 
 ## Package Manifest (`packages.yml`)

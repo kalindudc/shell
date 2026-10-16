@@ -301,4 +301,7 @@ if [[ -n "$GHOSTTY_RESOURCES_DIR" ]]; then
   precmd_functions+=(__ghostty_fix_cwd_host)
 fi
 
-printf 'Start time %.4fs\n' $(echo "($ENDTIME - $STARTTIME)/1000" | bc -l)
+# Tools that read the environment through `zsh -ilc` (bb, editors) parse stdout, so report only to a terminal.
+if [[ -t 1 ]]; then
+  printf 'Start time %.4fs\n' $(echo "($ENDTIME - $STARTTIME)/1000" | bc -l)
+fi

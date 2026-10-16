@@ -45,3 +45,5 @@ home/.gnupg/*
 
 # stow markers that keep shared $HOME directories real (see docs/architecture.md)
 !.stow-unfold
+
+home/.config/zsh/completions/

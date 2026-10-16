@@ -34,6 +34,9 @@ The installer uses a two-stage design:
 # Run stow only (skip package installation)
 ./install.sh --stow
 
+# Apply bb.yml to the running bb only (same as `task bb`)
+ruby src/install.rb --bb
+
 # Non-interactive
 NONINTERACTIVE=1 ./install.sh
 ```
@@ -104,6 +107,27 @@ GIT_SIGNING_KEY=YOUR_GPG_KEY_ID
 ```
 
 If `.env` is missing, git config values are used as fallbacks.
+
+## bb
+
+On macOS the installer adds the bb app (the `bb` cask). `bb.yml` declares what bb should
+have on every machine: plugin marketplaces, plugins as `<id>@<marketplace>`, bundled plugins
+to enable, Settings → General values and the theme. bb keeps these in its own database, so
+they are applied through the bb CLI rather than stowed.
+
+The last install step applies `bb.yml` when bb is running. On a new machine, open bb, turn on
+its command line tool (Settings → General → Command line), then run:
+
+```bash
+task bb
+```
+
+The step only adds and changes what `bb.yml` lists; it never removes plugins, marketplaces
+or settings. Machine-specific state goes under `profiles:` in `bb.yml`, selected like
+`machine_profiles`: `SHELL_MACHINE_PROFILE` (for example `SHELL_MACHINE_PROFILE=shopify` in
+`.env`), then a hostname listed under `machine_profiles` in `packages.yml`, then `default`.
+
+The plugins themselves live in [kalindudc/bb-marketplace](https://github.com/kalindudc/bb-marketplace).
 
 ## After Install
 

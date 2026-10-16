@@ -9,6 +9,7 @@ require_relative "os"
 require_relative "backends"
 require_relative "custom"
 require_relative "post_setup"
+require_relative "bb"
 
 module Installer
   class Runner
@@ -28,6 +29,12 @@ module Installer
         return
       end
 
+      if @options[:bb_only]
+        PostSetup.load_env_file
+        Bb.apply!(profile: Dependencies.new(load_packages, nil).profile_name)
+        return
+      end
+
       start_sudo_keepalive
 
       resume_after_reboot = @state.reboot_required?
@@ -43,6 +50,7 @@ module Installer
       Backends.system_update!(os)
       install_packages!(packages, backends)
       run_post_setup!
+      apply_bb_state(dependencies.profile_name)
       @state.clear_reboot! if resume_after_reboot
 
       Utils.success("Installation complete!")
@@ -109,6 +117,14 @@ module Installer
         pkgs = packages[backend]
         Backends.install(backend, pkgs)
       end
+    end
+
+    # Optional during an install: a new machine has bb installed but not opened yet.
+    def apply_bb_state(profile)
+      Bb.apply!(profile: profile)
+    rescue Installer::CommandFailed => e
+      Utils.warn("Skipped bb setup: #{e.message}")
+      Utils.warn("Open bb, then run: task bb")
     end
 
     def run_post_setup!
