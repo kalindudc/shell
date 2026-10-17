@@ -107,7 +107,7 @@ class TestInstaller < Minitest::Test
 
     assert packages.is_a?(Array), "pi packages should be an array"
     assert_includes packages, 'https://github.com/kalindudc/pi-minions', "pi should include pi-minions"
-    assert_includes packages, 'https://github.com/kalindudc/pi-quests', "pi should include pi-quests"
+    assert_includes packages, 'https://github.com/kalindudc/quests', "pi should include pi-quests"
   end
 
   def test_packages_yml_custom_packages
@@ -180,7 +180,7 @@ class TestInstaller < Minitest::Test
           /h/.pi/agent/git/github.com/kalindudc/pi-minions
     LIST
     success = Struct.new(:success?).new(true)
-    sources = %w[https://github.com/kalindudc/pi-minions https://github.com/kalindudc/pi-quests]
+    sources = %w[https://github.com/kalindudc/pi-minions https://github.com/kalindudc/quests]
 
     Installer::Utils.stub(:command?, ->(name) { name == 'pi' }) do
       Open3.stub(:capture3, [list_output, '', success]) do
@@ -190,13 +190,13 @@ class TestInstaller < Minitest::Test
       end
     end
 
-    assert_equal [%w[pi install https://github.com/kalindudc/pi-quests --no-approve]], calls
+    assert_equal [%w[pi install https://github.com/kalindudc/quests --no-approve]], calls
   end
 
   def test_install_pi_requires_pi
     Installer::Utils.stub(:command?, false) do
       error = assert_raises(Installer::CommandFailed) do
-        capture_io { Installer::Backends.install('pi', ['https://github.com/kalindudc/pi-quests']) }
+        capture_io { Installer::Backends.install('pi', ['https://github.com/kalindudc/quests']) }
       end
       assert_includes error.message, 'pi is required'
     end
@@ -208,7 +208,7 @@ class TestInstaller < Minitest::Test
     Installer::Utils.stub(:command?, true) do
       Open3.stub(:capture3, ['', 'boom', failure]) do
         error = assert_raises(Installer::CommandFailed) do
-          capture_io { Installer::Backends.install('pi', ['https://github.com/kalindudc/pi-quests']) }
+          capture_io { Installer::Backends.install('pi', ['https://github.com/kalindudc/quests']) }
         end
         assert_includes error.message, 'pi list'
       end
