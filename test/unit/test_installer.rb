@@ -106,7 +106,7 @@ class TestInstaller < Minitest::Test
     packages = content['pi']
 
     assert packages.is_a?(Array), "pi packages should be an array"
-    assert_includes packages, 'https://github.com/kalindudc/pi-minions', "pi should include pi-minions"
+    assert_includes packages, 'https://github.com/kalindudc/minions', "pi should include pi-minions"
     assert_includes packages, 'https://github.com/kalindudc/quests', "pi should include pi-quests"
   end
 
@@ -176,11 +176,11 @@ class TestInstaller < Minitest::Test
     calls = []
     list_output = <<~LIST
       User packages:
-        https://github.com/kalindudc/pi-minions
-          /h/.pi/agent/git/github.com/kalindudc/pi-minions
+        https://github.com/kalindudc/minions
+          /h/.pi/agent/git/github.com/kalindudc/minions
     LIST
     success = Struct.new(:success?).new(true)
-    sources = %w[https://github.com/kalindudc/pi-minions https://github.com/kalindudc/quests]
+    sources = %w[https://github.com/kalindudc/minions https://github.com/kalindudc/quests]
 
     Installer::Utils.stub(:command?, ->(name) { name == 'pi' }) do
       Open3.stub(:capture3, [list_output, '', success]) do

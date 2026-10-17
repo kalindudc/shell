@@ -53,7 +53,7 @@ npm:
   - "@earendil-works/pi-coding-agent"
 
 pi:
-  - https://github.com/kalindudc/pi-minions
+  - https://github.com/kalindudc/minions
 
 custom_bootstrap:
   - install_fnm_curl
