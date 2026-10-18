@@ -3,6 +3,7 @@
 require "fileutils"
 require "shellwords"
 require "tempfile"
+require_relative "bb_app"
 
 module Installer
   module Custom
@@ -194,6 +195,11 @@ module Installer
       fonts.each do |font|
         Installer::Utils.try_run("brew", "install", "--cask", font)
       end
+    end
+
+    # macOS gets bb from the `bb` cask
+    def install_bb_appimage
+      Installer::BbApp.install_appimage!
     end
 
     def install_nvm_curl

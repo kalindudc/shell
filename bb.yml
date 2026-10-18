@@ -6,33 +6,66 @@ marketplaces:
   - name: kalindudc
     source: git:github.com/kalindudc/bb-marketplace@main
 
-# <id>@<marketplace>; an installed plugin is left as it is, whatever its source
+# <id>@<marketplace>, or an id and source for a plugin that no marketplace lists.
+# An installed plugin is left as it is, whatever its source.
 plugins:
   - follow-thinking@kalindudc
+  - session-log@kalindudc
+  - switchboard@kalindudc
   - agent-graph@bb-community
-  - bb-sidebar@bb-community
+  - bb-autoresearch@bb-community
+  - tokyo-night@bb-community
+  - id: pi-minions
+    source: git:https://github.com/kalindudc/minions
+  - id: pi-quests
+    source: git:https://github.com/kalindudc/quests
 
-# plugins bundled with bb that should be on
+# plugins bundled with bb that start turned off
 enable:
+  - agent-annotations
+  - ask-user-question
+  - bb--prompt-library
+  - browser-automation
+  - monaco-editor
   - workflows
+
+# plugins bundled with bb that start turned on
+disable:
+  - provider-claude-code
+  - provider-codex
+
+# per-plugin values, as `bb plugin config <id> --json` names them
+plugin_settings:
+  ask-user-question:
+    questionTimeout: 3 days
+  session-log:
+    thinkingLines: 20
+  switchboard:
+    snoozeHour: 10
 
 # Settings → General keys, as `bb settings show --json` names them under generalSettings
 settings:
   defaultProviderId: pi
   managedBranchPrefix: kalindudc/
+  keepHistoryAfterContextClear: true
+
+# how each provider shows a finished turn: collapse or flat
+completed_turns:
+  pi: flat
+
+experiments:
+  changelogPreview: true
+
+# sidebar preferences, as `bb settings ui list` names them
+ui:
+  sidebar.threadListProvider: switchboard/switchboard
+  sidebar.hiddenFooterItems: ["builtin:mobile"]
+  sidebar.pluginPanelOrder: ["__bb__/new-thread", "__bb__/search-threads", "__bb__/extensions", "__bb__/skills", "__bb__/automations"]
+  sidebar.visiblePluginPanels: ["__bb__/new-thread", "__bb__/extensions", "__bb__/skills", "__bb__/automations", "__bb__/search-threads"]
 
 theme: gruvbox
 
-# Extra state for one machine profile: SHELL_MACHINE_PROFILE, or a hostname listed under
-# machine_profiles in packages.yml. Lists add to the ones above; settings and theme override.
-profiles:
-  shopify:
-    marketplaces:
-      - name: shopify
-        source: git:github.com/shopify-playground/bb-marketplace@main
-    plugins:
-      - pr-desk@shopify
-      - shopify-ai@shopify
-      - slack-bridge@shopify
-      - thread-spend@shopify
-      - world-tree@shopify
+# Extra state for one machine profile goes under `profiles: { <name>: { ... } }`, selected by
+# SHELL_MACHINE_PROFILE or a hostname listed under machine_profiles in packages.yml. Lists add
+# to the ones above; maps (plugin_settings, settings, completed_turns, experiments, ui) and
+# theme override them key by key.

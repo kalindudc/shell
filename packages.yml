@@ -140,7 +140,7 @@ brew_cask:
   - visual-studio-code
   - google-chrome
   - discord
-  # bb.yml holds its marketplaces, plugins and settings
+  # Linux gets the AppImage from install_bb_appimage; bb.yml holds its plugins and settings
   - bb
 
 snap:
@@ -165,6 +165,8 @@ custom_bootstrap:
 
 npm:
   - "@earendil-works/pi-coding-agent"
+  # builds cortex from source (src/install/cortex.rb)
+  - pnpm
 
 # pi packages, added with `pi install` once npm has installed pi
 pi:
@@ -190,3 +192,4 @@ custom:
   - install_herdr_pi_integration
   - install_nerd_fonts_brew
   - install_nvm_curl
+  - install_bb_appimage

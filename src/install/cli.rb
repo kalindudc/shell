@@ -8,7 +8,8 @@ module Installer
       options = {
         verbose: false,
         stow_only: false,
-        bb_only: false
+        bb_only: false,
+        cortex_only: false
       }
 
       args.each do |arg|
@@ -19,6 +20,8 @@ module Installer
           options[:stow_only] = true
         when "--bb"
           options[:bb_only] = true
+        when "--cortex"
+          options[:cortex_only] = true
         when "--help", "-h"
           show_help
           exit 0
@@ -34,7 +37,8 @@ module Installer
       puts "OPTIONS:"
       puts "  --trace    Enable verbose output"
       puts "  --stow     Run stow only and exit"
-      puts "  --bb       Apply bb.yml to the running bb and exit"
+      puts "  --bb       Start bb if needed, apply bb.yml and exit"
+      puts "  --cortex   Install cortex and its agent skills, pi extension and bb plugin, then exit"
       puts "  --help     Show this help message"
     end
   end

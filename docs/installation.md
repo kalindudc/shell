@@ -34,8 +34,11 @@ The installer uses a two-stage design:
 # Run stow only (skip package installation)
 ./install.sh --stow
 
-# Apply bb.yml to the running bb only (same as `task bb`)
+# Start bb if needed and apply bb.yml only (same as `task bb`)
 ruby src/install.rb --bb
+
+# Install cortex and its agent integrations only (same as `task cortex`)
+ruby src/install.rb --cortex
 
 # Non-interactive
 NONINTERACTIVE=1 ./install.sh
@@ -110,13 +113,26 @@ If `.env` is missing, git config values are used as fallbacks.
 
 ## bb
 
-On macOS the installer adds the bb app (the `bb` cask). `bb.yml` declares what bb should
-have on every machine: plugin marketplaces, plugins as `<id>@<marketplace>`, bundled plugins
-to enable, Settings → General values and the theme. bb keeps these in its own database, so
-they are applied through the bb CLI rather than stowed.
+The installer adds the bb app: the `bb` cask on macOS, and on x86_64 Linux the official
+AppImage at `~/Applications/bb.AppImage`, with FUSE 2 and a desktop entry. bb updates
+itself after that.
 
-The last install step applies `bb.yml` when bb is running. On a new machine, open bb, turn on
-its command line tool (Settings → General → Command line), then run:
+`bb.yml` declares what bb should have on every machine:
+
+- plugin marketplaces;
+- plugins, as `<id>@<marketplace>`, or as an `id` and a git `source` for a plugin that no
+  marketplace lists;
+- bundled plugins to turn on or off;
+- per-plugin settings, Settings → General values, how each provider shows finished turns,
+  experiments, sidebar preferences (such as Switchboard as the thread list) and the theme.
+
+bb keeps these in its own database, so they are applied through the bb CLI rather than
+stowed. Work-only plugins and settings stay out of this public file.
+
+The bb step runs near the end of the install. When bb is not running, the step starts it in
+the background and waits up to two minutes for it to answer. It then puts the `bb` command on
+PATH (Settings → General → Command line) and applies `bb.yml`. If bb does not start, for
+example over SSH without a display, the step is skipped with a warning; open bb, then run:
 
 ```bash
 task bb
@@ -124,10 +140,29 @@ task bb
 
 The step only adds and changes what `bb.yml` lists; it never removes plugins, marketplaces
 or settings. Machine-specific state goes under `profiles:` in `bb.yml`, selected like
-`machine_profiles`: `SHELL_MACHINE_PROFILE` (for example `SHELL_MACHINE_PROFILE=shopify` in
+`machine_profiles`: `SHELL_MACHINE_PROFILE` (for example `SHELL_MACHINE_PROFILE=work` in
 `.env`), then a hostname listed under `machine_profiles` in `packages.yml`, then `default`.
 
-The plugins themselves live in [kalindudc/bb-marketplace](https://github.com/kalindudc/bb-marketplace).
+My own plugins live in [kalindudc/bb-marketplace](https://github.com/kalindudc/bb-marketplace).
+
+## cortex
+
+After the bb step, the installer sets up cortex, a task tracker in the private
+`kalindudc/cortex` repository:
+
+1. If `cortex` is not installed, it clones the repository next to this one with `gh` and
+   builds it with `pnpm run deploy`, which copies the binary to `~/bin/cortex`. An existing
+   checkout is built as it is and never pulled.
+2. `cortex init` creates the database when there is none.
+3. `cortex agents install` writes cortex's agent skills, its pi extension and, because bb is
+   running by then, its bb plugin.
+
+The clone needs `gh auth login` first, and the build needs pnpm (installed by the `npm`
+backend). When either is missing the step is skipped with a warning. To run it again:
+
+```bash
+task cortex
+```
 
 ## After Install
 

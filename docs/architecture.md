@@ -11,7 +11,7 @@ install.sh                    # Bash bootstrap: installs git + ruby, execs Ruby 
 src/install.rb                # Ruby entry point: parses CLI, loads stdlib-only installer runtime
 src/install/{main,*.rb}       # Orchestrator, OS, backend, state, dependency, and post-setup modules
 packages.yml                  # Declarative package-manager, machine-profile, and backend manifest
-bb.yml                        # Desired bb state (marketplaces, plugins, settings), applied with the bb CLI
+bb.yml                        # Desired bb state (marketplaces, plugins, plugin and app settings), applied with the bb CLI
 ```
 
 ## Installation Flow
@@ -28,7 +28,8 @@ bb.yml                        # Desired bb state (marketplaces, plugins, setting
    - Ensure required package managers exist first (Homebrew can be installed on macOS)
    - Resolve `machine_profiles` by `SHELL_MACHINE_PROFILE`, hostname, then `default`
    - Run package-manager bootstrap, profile dependencies, system update, backend packages, then post-install
-   - Apply `bb.yml` to a running bb (`src/install/bb.rb`); skipped with a warning when bb or its CLI is not available yet
+   - Start bb when it is not running (`src/install/bb_app.rb`), then apply `bb.yml` with the bb CLI (`src/install/bb.rb`); skipped with a warning when bb does not start
+   - Install cortex from its private repository and run `cortex agents install` (`src/install/cortex.rb`); skipped with a warning without `gh` sign-in or pnpm
    - Record reboot/login-session requirements in `~/.local/state/shell/install.json`
 
 ## Package Manifest (`packages.yml`)

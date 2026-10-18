@@ -10,6 +10,7 @@ require_relative "backends"
 require_relative "custom"
 require_relative "post_setup"
 require_relative "bb"
+require_relative "cortex"
 
 module Installer
   class Runner
@@ -35,6 +36,11 @@ module Installer
         return
       end
 
+      if @options[:cortex_only]
+        Cortex.install!
+        return
+      end
+
       start_sudo_keepalive
 
       resume_after_reboot = @state.reboot_required?
@@ -51,6 +57,8 @@ module Installer
       install_packages!(packages, backends)
       run_post_setup!
       apply_bb_state(dependencies.profile_name)
+      # after bb, so `cortex agents install` finds bb running and installs its bb plugin
+      setup_cortex
       @state.clear_reboot! if resume_after_reboot
 
       Utils.success("Installation complete!")
@@ -119,12 +127,19 @@ module Installer
       end
     end
 
-    # Optional during an install: a new machine has bb installed but not opened yet.
+    # Optional during an install: bb may not have started, or may not answer yet.
     def apply_bb_state(profile)
       Bb.apply!(profile: profile)
     rescue Installer::CommandFailed => e
       Utils.warn("Skipped bb setup: #{e.message}")
       Utils.warn("Open bb, then run: task bb")
+    end
+
+    def setup_cortex
+      Cortex.install!
+    rescue Installer::CommandFailed => e
+      Utils.warn("Skipped cortex setup: #{e.message}")
+      Utils.warn("Fix the error above, then run: task cortex")
     end
 
     def run_post_setup!

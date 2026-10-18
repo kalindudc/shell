@@ -30,9 +30,14 @@ tasks:
 
   # bb
   bb:
-    desc: "Apply bb.yml to the running bb (marketplaces, plugins, settings)"
+    desc: "Start bb if needed and apply bb.yml (marketplaces, plugins, settings)"
     cmds:
       - ruby src/install.rb --bb
+
+  cortex:
+    desc: "Install cortex, then its agent skills, pi extension and bb plugin"
+    cmds:
+      - ruby src/install.rb --cortex
 
   # Clean everything
   clean:
@@ -106,6 +111,8 @@ tasks:
         bundle exec ruby test/unit/test_installer.rb
         bundle exec ruby test/unit/test_unfold.rb
         bundle exec ruby test/unit/test_bb.rb
+        bundle exec ruby test/unit/test_bb_app.rb
+        bundle exec ruby test/unit/test_cortex.rb
         echo "✓ Ruby installer tests passed"
       - |
         BUN="${HOME}/.bun/bin/bun"
