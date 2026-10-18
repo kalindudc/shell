@@ -170,6 +170,50 @@ class TestInstaller < Minitest::Test
     end
   end
 
+  # docker
+
+  def test_install_docker_post_skips_usermod_when_already_member
+    calls = []
+    Installer::Utils.stub(:command?, ->(name) { name == 'systemctl' }) do
+      Installer::Utils.stub(:root?, false) do
+        Installer::Custom.stub(:docker_group_member?, true) do
+          Installer::Utils.stub(:sudo!, ->(*cmd) { calls << cmd }) do
+            Installer::Utils.stub(:reboot_required!, ->(_reason) { flunk 'must not require reboot' }) do
+              Installer::Custom.install_docker_post
+            end
+          end
+        end
+      end
+    end
+
+    assert_equal [%w[systemctl enable --now docker]], calls
+  end
+
+  def test_install_docker_post_requires_reboot_when_not_member
+    calls = []
+    reboot_calls = []
+    Installer::Utils.stub(:command?, ->(name) { name == 'systemctl' }) do
+      Installer::Utils.stub(:root?, false) do
+        Installer::Custom.stub(:docker_group_member?, false) do
+          Installer::Utils.stub(:sudo!, ->(*cmd) { calls << cmd }) do
+            Installer::Utils.stub(:reboot_required!, ->(reason) { reboot_calls << reason }) do
+              Installer::Custom.install_docker_post
+            end
+          end
+        end
+      end
+    end
+
+    assert_equal [%w[systemctl enable --now docker], ['usermod', '-aG', 'docker', ENV['USER']]], calls
+    assert_equal ['Docker group membership requires a new login session'], reboot_calls
+  end
+
+  def test_docker_group_member_returns_false_when_group_missing
+    Etc.stub(:getgrnam, ->(_name) { raise ArgumentError, 'not found' }) do
+      assert_equal false, Installer::Custom.docker_group_member?
+    end
+  end
+
   # pi packages
 
   def test_install_pi_installs_only_missing_packages

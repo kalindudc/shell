@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "etc"
 require "fileutils"
 require "shellwords"
 require "tempfile"
@@ -17,8 +18,20 @@ module Installer
       Installer::Utils.sudo!("systemctl", "enable", "--now", "docker")
       return if Installer::Utils.root?
 
-      Installer::Utils.sudo!("usermod", "-aG", "docker", ENV.fetch("USER"))
-      Installer::Utils.reboot_required!("Docker group membership requires a new login session")
+      # Only require a reboot if the user is not already in the docker group.
+      # Checking this prevents an infinite loop where the installer keeps asking
+      # to reboot even after the user has rebooted and the group is applied.
+      unless docker_group_member?
+        Installer::Utils.sudo!("usermod", "-aG", "docker", ENV.fetch("USER"))
+        Installer::Utils.reboot_required!("Docker group membership requires a new login session")
+      end
+    end
+
+    def docker_group_member?
+      Etc.getgrnam("docker").mem.include?(ENV.fetch("USER"))
+    rescue ArgumentError
+      # The docker group does not exist yet, so the user cannot be a member.
+      false
     end
 
     def install_pyenv
