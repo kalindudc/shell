@@ -9,6 +9,7 @@ marketplaces:
 # <id>@<marketplace>, or an id and source for a plugin that no marketplace lists.
 # An installed plugin is left as it is, whatever its source.
 plugins:
+  - agent-commands@kalindudc
   - follow-thinking@kalindudc
   - session-log@kalindudc
   - switchboard@kalindudc
