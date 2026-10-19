@@ -1,6 +1,6 @@
 ---
 name: pr-reviewer
-description: Multi-model critic consensus reviews -- bugs only, false-positive filtered, with structured severity and go/no-go verdicts. Targets GitHub PRs (ending in an approval-gated GitHub review with inline comments; re-reviews re-validate prior findings and post a new review) or local WIP/branch reviews via tuicr annotation sessions, both with a cortex findings ledger
+description: Multi-model critic consensus reviews -- bugs only, false-positive filtered, with structured severity and go/no-go verdicts. Targets GitHub PRs, one at a time or as a batch with one reviewer per PR (ending in an approval-gated GitHub review with inline comments; PRs the user already approved are skipped; re-reviews re-validate prior findings and post a new review) or local WIP/branch reviews via tuicr annotation sessions, both with a cortex findings ledger
 # extended: multi-stage pipeline with multi-model critic consensus and embedded evaluation criteria
 ---
 
@@ -21,6 +21,15 @@ Two targets: GitHub PRs (default flow below; re-reviews follow `PR re-review rou
 ### Stage 1: Fetch PR context
 
 MODE FORK: if the review target is LOCAL work (WIP, uncommitted changes, or a feature branch, with no PR source), skip this stage's `gh` retrieval and follow `Local review sessions with tuicr` below for scope and session mint; stages 2-4 apply with 'the PR' meaning the review-scope diff, and intent comes from the user's request, branch name, and commit messages instead of a PR description.
+
+PRIOR-APPROVAL GATE (PR mode): run this before the re-review fork, Stage 2, any delegation, and any Cortex write. An approval the posting identity already gave stands until the PR's own patch changes, so a verdict that has not changed NEVER needs a second review or post. GitHub is the source of truth here, including approvals given outside this skill and missing from the ledger.
+
+1. Read the posting identity (`gh api --method GET user --jq .login`), the revisions (`gh pr view <source> --json headRefOid,baseRefOid`), and the reviews (`gh api --method GET repos/{owner}/{repo}/pulls/{number}/reviews --paginate`). Take that login's latest review whose state is not `COMMENTED`; a later comment does not withdraw an approval.
+2. `APPROVED` at the current head: STOP. No analysis, critics, Cortex writes, or GitHub draft. Report that the PR is already approved at that head, with the review URL and any `open` findings in its review task.
+3. `APPROVED` at an older commit: compare the PR's own patch then and now. `git diff <base-oid>...<approved-commit> | git patch-id --stable` and the same for the head give equal ids when only the base moved (a rebase); fetch the approved commit by SHA if it is not local. Equal ids: STOP as in step 2 and say the patch is unchanged since the approval. Different ids, or no comparison possible: review only what changed since the approval (`git range-diff <base-oid> <approved-commit> <head>`), through `PR re-review rounds` when a review task exists. No new surviving finding means the approval stands: post nothing; if a review task exists, add the round's log line and return it to `done`. Surviving findings go in a Stage 6 draft that carries only those findings, as `COMMENT` or `REQUEST_CHANGES`, never a second `APPROVE`.
+4. `DISMISSED`, `CHANGES_REQUESTED`, or no such review: continue normally. A dismissed approval no longer counts on GitHub, so a PASS round still drafts a new `APPROVE`.
+
+For several PRs, follow `Batch PR reviews`, which runs this gate for each PR before any reviewer starts and lists the skipped PRs with their approval links. Review an approved PR in full only when the user explicitly asks for a fresh review of that PR.
 
 RE-REVIEW FORK: if the user asks to re-review a PR or check its fixes, or the PR already has a `PR Review #<number>:` cortex task, follow `PR re-review rounds` below; this stage still runs against the new head.
 
@@ -186,11 +195,11 @@ e.g., "This PR moves cache eviction into the request path. Two critical bugs blo
 (only dimensions evaluated: x = good, ~ = n/a, - = concern noted in findings)
 ```
 
-Omit empty finding subsections (except for PASS with no findings). Clearly distinguish consensus-filtered findings from directly verified findings whose consensus was unavailable/below quorum. Use the Cortex persistence section for the configured durable product unless the user explicitly requested answer-only/no external records; that mode returns the review inline without Cortex or clipboard writes. For GitHub PRs, the cortex body also carries the findings ledger and round log (see `PR re-review rounds`), and the review ALWAYS continues to Stage 6.
+Omit empty finding subsections (except for PASS with no findings). Clearly distinguish consensus-filtered findings from directly verified findings whose consensus was unavailable/below quorum. Use the Cortex persistence section for the configured durable product unless the user explicitly requested answer-only/no external records; that mode returns the review inline without Cortex or clipboard writes. For GitHub PRs, the cortex body also carries the findings ledger and round log (see `PR re-review rounds`), and the review ALWAYS continues to Stage 6 (which drafts nothing when the prior-approval gate says the approval stands).
 
 ### Stage 6: GitHub review draft, approval, and posting
 
-PR mode only -- local tuicr reviews end at their own Stage 5. This is the FINAL step of every GitHub PR review and re-review round, including PASS (an `APPROVE` review with no inline comments). Nothing is written to the PR until the user explicitly approves the exact draft presented. In explicit answer-only mode, present the draft inline and stop: posting and Cortex close-out are external records.
+PR mode only -- local tuicr reviews end at their own Stage 5. This is the FINAL step of every GitHub PR review and re-review round, including PASS (an `APPROVE` review with no inline comments), unless the Stage 1 prior-approval gate found that the posting identity's approval stands; then nothing is drafted or posted. Nothing is written to the PR until the user explicitly approves the exact draft presented. In explicit answer-only mode, present the draft inline and stop: posting and Cortex close-out are external records.
 
 1. SELECT: one inline comment per surviving finding (CERTAIN/LIKELY; consensus-filtered, or labeled not consensus-filtered), anchored on lines the PR changed at the pinned head (`side: "RIGHT"`; add `start_line` + `start_side` for ranges). Findings without a changed-line anchor (unchanged code, whole-PR concerns) go in the review body. Filtered findings never appear; praise stays to one line in the body. Fewer, better comments.
 2. ANCHOR CHECK: from the pinned revision-scoped diff, confirm every `line`/`start_line` falls on the new side of one hunk of that file (added or context line; a range stays within one hunk) and that the source line there is the code the finding describes. A single out-of-diff line makes GitHub reject the whole review (422).
@@ -204,6 +213,8 @@ PR mode only -- local tuicr reviews end at their own Stage 5. This is the FINAL 
      > github-review-draft.json
    ```
    Validate before presenting: `jq` parses the file and `grep -c utm_` returns 0.
+
+   The summary ALWAYS travels as this payload's `body`, next to its `event`, so the verdict and its explanation are ONE review. GitHub shows an approval with a body as "<login> approved these changes" with the body in a nested "<login> left a comment" card; that card is part of the review, not a separate comment. NEVER post the summary as an issue comment, or as a second review next to a body-less approval.
 5. RECOMMEND the event from the verdict; the user makes the final call:
    - PASS -> `APPROVE` (body only)
    - GO WITH FIXES -> `APPROVE` with the non-blocking comments, or `COMMENT`
@@ -220,11 +231,13 @@ PR mode only -- local tuicr reviews end at their own Stage 5. This is the FINAL 
      --jq '.[] | select(.pull_request_review_id == <review-id>) | {path, start_line, line, side, position, html_url}'
    ```
    Each drafted comment must appear with its drafted `path`/`line`/`side` and a non-null `position`. Do NOT check anchors with `GET .../reviews/<review-id>/comments`: its legacy schema returns null `line`/`side` even for correctly anchored comments.
+
+   Then confirm the post created exactly one item: one new review by the posting identity at `commit_id` in `GET repos/<owner>/<repo>/pulls/<n>/reviews`, and no new issue comment by it in `GET repos/<owner>/<repo>/issues/<n>/comments`.
 10. CLOSE OUT only after step 9 passes: record the review URL, event, and each finding's comment URL in the ledger and round log, then `cortex_update` with status `done` and a message carrying the review URL and event, and confirm with `cortex show <id> --json`. If the user declines or defers posting, post nothing and leave the task `draft`; findings the user drops from the draft become `wontfix` with the user's rationale.
 
 ## PR re-review rounds
 
-MODE TRIGGER: the user asks to re-review a PR or check the author's fixes, or the PR already has a `PR Review #<number>:` cortex task. One review task per PR: its body is the findings ledger and the ONLY cross-round memory, as in local mode. Locating that task by PR number is not plan discovery -- plans are still linked only when the user names one.
+MODE TRIGGER: the user asks to re-review a PR or check the author's fixes, or the PR already has a `PR Review #<number>:` cortex task. One review task per PR: its body is the findings ledger and the ONLY cross-round memory, as in local mode. Locating that task by PR number is not plan discovery -- plans are still linked only when the user names one. The Stage 1 prior-approval gate runs before this section and can end the round before step 1.
 
 LEDGER: every PR review body, round 1 included, carries the `Findings ledger` table and `Round log` defined in `The cortex findings ledger`, plus a `github thread` column holding each finding's posted comment URL (`body` when raised only in the review body; `-` until posted). Round-log lines record head, verdict, event, and review URL, e.g. `r1 @66bf050: NEEDS REVIEW, COMMENT, <review-url>`.
 
@@ -233,7 +246,22 @@ LEDGER: every PR review body, round 1 included, carries the `Findings ledger` ta
 3. RE-VALIDATE every `open` finding against the new head as a full re-check with fresh evidence -- NEVER carry-over: `fixed` (record the fixing commit), still present (re-verify the failure path, re-anchor at the current line), `outdated` (the referenced code is gone), or `wontfix` (the user accepts the author's rationale). Weigh author pushback on its merits: withdraw the finding with the reason when the pushback holds; otherwise keep it and surface the disagreement to the user.
 4. NEW CHANGES: review the commits since the last reviewed head (`gh api --method GET repos/<owner>/<repo>/compare/<old-head>...<new-head>`, `git diff` when objects are local, or the full PR diff when the old head was force-pushed away) through Stages 2-4 with full-PR context. A candidate matching a ledger finding's essence IS that finding. Send only new or changed findings to Stage 3; reuse prior critic consensus when a finding and its code region are unchanged.
 5. OUTPUT: update the same task body (this round's review template, ledger statuses and locations, round log) via anchor-based edits or a `--body-file` rewrite.
-6. NEW GITHUB REVIEW through Stage 6; NEVER edit, dismiss, resolve, or reply to prior reviews or threads unless the user explicitly asks. The body lists fixed findings (with fixing commits), still-present findings (linking their existing threads), and new findings. Inline comments go to new findings and to still-present findings whose prior thread is outdated (re-anchored, linking the prior thread); a still-present finding with a live thread is referenced in the body only, to avoid duplicate threads. Recommend the event from the round verdict (e.g. every finding fixed -> `APPROVE`). Approval, pre-post check, posting, verification, and close-out to `done` follow Stage 6 unchanged.
+6. NEW GITHUB REVIEW through Stage 6, unless the prior-approval gate says the posting identity's approval stands; NEVER edit, dismiss, resolve, or reply to prior reviews or threads unless the user explicitly asks. The body lists fixed findings (with fixing commits), still-present findings (linking their existing threads), and new findings. Inline comments go to new findings and to still-present findings whose prior thread is outdated (re-anchored, linking the prior thread); a still-present finding with a live thread is referenced in the body only, to avoid duplicate threads. Recommend the event from the round verdict (e.g. every finding fixed -> `APPROVE`). Approval, pre-post check, posting, verification, and close-out to `done` follow Stage 6 unchanged.
+
+## Batch PR reviews
+
+MODE TRIGGER: the user asks for reviews of two or more PRs in one request (a list of numbers, an author's PR list, or a stack). Every PR gets the same gate, the same reviewer instructions, the same output files, one shared critic round and one approval table, so verdicts are comparable within and across batches. This is the only mode that delegates whole reviews; a single PR uses the normal flow.
+
+1. RESOLVE: review exactly the PRs the user named; a linked PR list scopes the lookup but never adds PRs. Capture `number,title,author,state,isDraft,baseRefName,baseRefOid,headRefName,headRefOid,additions,deletions,changedFiles,url` for each. A PR whose base branch is another PR's head branch is stacked: review only its own base..head. Ask once about closed, merged or missing PRs.
+2. GATE: run the Stage 1 prior-approval gate for every PR. A skipped PR gets no reviewer, no Cortex write and no draft; gate case 3 gets a DELTA reviewer.
+3. LOCATE each remaining PR's review task (`PR re-review rounds` step 1). A task means RE-REVIEW mode; reopen it to `draft` now.
+4. SOURCE: when a local clone of the repository exists, fetch each head into its own ref and verify it: `git fetch origin refs/pull/<n>/head:refs/pr-review/<n>-<head12>`, then confirm `git rev-parse` equals `headRefOid`, and fetch any missing base commit. This changes no branch or working tree. NEVER clone, check out, or reuse a ref that points at another commit. Without a clone, use the template's GH-ONLY source block. Note which runtimes are present or absent for the template's tooling note.
+5. DISPATCH: fill `batch-reviewer-task.md` (in this skill's directory) once per PR, choosing one mode block and one source block and changing nothing else. Spawn every reviewer in one `spawn` call (waves of eight), all on this thread's model unless the user names one. Artifacts go to `<storage>/pr-reviews/pr<n>/`, where `<storage>` is `$BB_THREAD_STORAGE` when set, else one `mktemp -d` for the batch. Do not poll while they run.
+6. CHECK each report before trusting it: `candidates.json` parses, every candidate has `anchor_verified: true` and evidence, and Coverage accounts for every file in the diff. Re-dispatch a failed or incomplete reviewer once with the same task; report a second failure instead of filling the gap yourself. Re-read each candidate's decisive lines at the pinned head, and rerun its reproduction when cheap, before the critic round.
+7. CRITICS: run ONE Stage 3 round for the whole batch: one task per configured critic model carrying every candidate from every PR, grouped by PR with its pinned revisions and diff paths. Zero candidates across the batch skips the round. Check critics' factual side claims against source before repeating them.
+8. FINALIZE each PR: write the critic results into `review.md` (filtered candidates move to Filtered) and recompute the verdict with Stage 5's rules. Refresh the head and `gh pr checks`: a moved head sends that PR back to step 5, and CI statements in `body.md` that are now stale get corrected. Persist with the Cortex recipe (new task or the reopened one) and attribute each with its verdict.
+9. PRESENT: build each payload with Stage 6 steps 1-5, then show ONE table (PR, head, mode, verdict, Cortex task, recommended event, inline comment count) with links to every body and comment file, followed by the skipped PRs and why. Every row is a real proposal; NEVER list optional or redundant drafts. A blanket approval such as "post them" covers exactly the rows in the table; any other mix is named by PR number.
+10. POST each approved PR in turn through Stage 6 steps 7-10: pre-post check, post once, verify, close out. Finish with one table of review URLs and events, plus the findings left open.
 
 ## Local review sessions with tuicr
 
@@ -370,14 +398,14 @@ When durable output is authorized, PR reviews live in Cortex—not substitute fi
 
 8. LOCAL MODE LIFECYCLE. For tuicr local reviews the same task holds the findings ledger and round log. Status flow: `draft` while annotating round 1 -> `review` when handed to the human -> `open` when the user signals a new round (their signal IS the explicit confirmation to edit the task) -> `review` again after the round's ledger update -> `done` on user acceptance. Title local tasks `Local Review: <branch>@<head-sha> -- round N`; in the body template replace the `Author: <author> | <base> -> <head>` line with `Scope: <base>..HEAD + worktree | lane: <lane>`. Ledger updates while the task sits in `review` during an ACTIVE local-review loop are pre-authorized (user standing rule); the generic never-edit-`review`-status rule applies only outside an active loop.
 
-9. PR MODE LIFECYCLE. Status flow: `draft` from `cortex add` through the Stage 6 approval -> `done` once the approved review is posted and verified (Stage 6 step 10) -> a re-review request reopens `done` -> `draft` (the request IS the explicit confirmation) -> `done` again after that round's review is posted and verified. A declined or deferred post leaves the task `draft`. PR-mode tasks never sit in `review`, so ledger and body updates during an active PR round need no further confirmation.
+9. PR MODE LIFECYCLE. Status flow: `draft` from `cortex add` through the Stage 6 approval -> `done` once the approved review is posted and verified (Stage 6 step 10) -> a re-review request reopens `done` -> `draft` (the request IS the explicit confirmation) -> `done` again after that round's review is posted and verified. A declined or deferred post leaves the task `draft`. A PR that the prior-approval gate stops leaves its task unchanged: do not reopen it. PR-mode tasks never sit in `review`, so ledger and body updates during an active PR round need no further confirmation.
 
 ## Output Format
 
 - For authorized durable output, persist the review per the recipe above (repo lane, `draft`, `pr-review` plus supplied-plan tags except reserved `plan`); leave priority unset unless explicitly requested.
 - Report the created task ID only after persistence succeeds; its body is viewable via `cortex show <review-id>`. For explicit answer-only mode, return the structured review inline instead.
 - Copy to clipboard only within the requested output scope and when the capability is available.
-- For GitHub PRs, finish by presenting the Stage 6 draft for approval; after an approved post, report the review URL, event, and verified anchors, and the closed-out task ID.
+- For GitHub PRs, finish by presenting the Stage 6 draft for approval, or by reporting that the prior-approval gate skipped the PR and why; after an approved post, report the review URL, event, and verified anchors, and the closed-out task ID.
 
 ## Self-Improvement
 
@@ -397,9 +425,12 @@ Cortex-specific rules below apply to authorized durable output, not explicit ans
 - ALWAYS post a `@<PLAN_ID>` linking update on the review task when the user supplied a plan id; SKIP the linking update otherwise
 - NEVER edit a `review`-status cortex task without explicit user confirmation
 - NEVER write to the PR (reviews, comments, replies, resolutions, dismissals) without explicit user approval of the exact drafted payload; post ONLY that payload, ONCE, after the Stage 6 pre-post check
-- ALWAYS end a GitHub PR review or re-review round with the Stage 6 draft (an `APPROVE` body for PASS); verify anchors before presenting and again after posting
+- ALWAYS run the Stage 1 prior-approval gate before any analysis, delegation, or Cortex write; the posting identity's approval stands until the PR's own patch changes, and a verdict that has not changed NEVER gets a second review or post
+- ALWAYS end a GitHub PR review or re-review round with the Stage 6 draft (an `APPROVE` body for PASS), unless the prior-approval gate says the existing approval stands; verify anchors before presenting and again after posting
+- ALWAYS send the summary as the `body` of the same review that carries the `event`; NEVER as a separate issue comment or a second review
+- ALWAYS run batches through `Batch PR reviews`: reviewer tasks come from `batch-reviewer-task.md` with only placeholders and block choices filled, one critic round covers the whole batch, and one approval table lists only real proposals
 - ALWAYS close out the cortex review task (`done`) only after the posted review is verified; leave it `draft` when posting is declined or deferred
-- ALWAYS post a NEW GitHub review each PR re-review round; NEVER edit, dismiss, resolve, or reply to prior reviews or threads unless the user explicitly asks
+- When a PR re-review round posts, ALWAYS post a NEW GitHub review; NEVER edit, dismiss, resolve, or reply to prior reviews or threads unless the user explicitly asks
 - NEVER `:submit`/export tuicr annotations to a forge -- local drafts only
 - ALWAYS mirror every tuicr annotation in the cortex ledger under a stable finding id; NEVER track findings by line number alone
 - NEVER mutate or delete old tuicr sessions -- they are read-only archives; the cortex ledger is the only cross-round memory
