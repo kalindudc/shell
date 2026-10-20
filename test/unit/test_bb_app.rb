@@ -9,7 +9,7 @@ require 'tmpdir'
 
 require_relative '../../src/install/utils'
 require_relative '../../src/install/errors'
-require_relative '../../src/install/custom'
+require_relative '../../src/install/tools'
 require_relative '../../src/install/bb_app'
 
 class TestBbApp < Minitest::Test
@@ -142,10 +142,8 @@ class TestBbApp < Minitest::Test
     end
   end
 
-  def test_packages_yml_runs_the_appimage_installer
-    packages = YAML.load_file(File.expand_path('../../packages.yml', __dir__))
-
-    assert_includes packages['custom'], 'install_bb_appimage'
-    assert_respond_to Installer::Custom, :install_bb_appimage
+  def test_tools_runs_the_appimage_installer
+    assert_includes Installer::Tools::ALL, :install_bb_appimage
+    assert_respond_to Installer::Tools, :install_bb_appimage
   end
 end

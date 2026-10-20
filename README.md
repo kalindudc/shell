@@ -19,7 +19,7 @@ See [`home/.zshrc`](home/.zshrc) for aliases and [`home/bin/`](home/bin/) for sc
 
 ## Quick Start
 
-**Prerequisites**: For the curl installer, `curl` is required to download the script. After the repository is available, `install.sh` bootstraps missing `git` and `ruby` with the platform package manager and runs without Bundler.
+**Prerequisites**: For the curl installer, `curl` is required to download the script. After the repository is available, `install.sh` bootstraps Homebrew on macOS and any missing `git` and Ruby, and runs without Bundler.
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install.sh)"
@@ -28,10 +28,12 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/ins
 This automatically:
 1. Downloads the installation script
 2. Clones the repository to `~/src/github.com/kalindudc/shell`
-3. Installs missing bootstrap tools and package managers
-4. Installs packages, generates configs, stows dotfiles, and records any reboot/login-session requirement in `~/.local/state/shell/install.json`
+3. Installs Homebrew on macOS, then git and Ruby
+4. Installs packages and tools, generates configs, stows dotfiles, sets up bb and cortex, and lists anything that needs a new login
 
 **Supported platforms**: macOS (Intel & Apple Silicon), Ubuntu/Debian, Arch Linux
+
+After that, everything is a task: `task install` (or one step, such as `task install:bb`), `task generate`, `task stow`, `task up`, `task test` and `task build`.
 
 For detailed installation options, see **[Installation Guide](docs/installation.md)**.
 
@@ -44,8 +46,8 @@ Shell startup times on modern hardware:
 
 ## Documentation
 
-- **[Installation Guide](docs/installation.md)** - Installation options, package categories, reboot continuation, and customization
-- **[Architecture](docs/architecture.md)** - System design, package-manager bootstrap, state management, and directory structure
+- **[Installation Guide](docs/installation.md)** - Installation steps and commands, package lists, tools, and customization
+- **[Architecture](docs/architecture.md)** - Installer steps, platforms, package lists, generated configs, and stow
 - **[Development](docs/development.md)** - Development setup, testing, and available tasks
 - **[Contributing](docs/contributing.md)** - Code standards and testing requirements
 - **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions

@@ -14,7 +14,7 @@ services:
         cp -r . /tmp/shell-install &&
         cd /tmp/shell-install &&
         NONINTERACTIVE=1 ./install.sh &&
-        NONINTERACTIVE=1 ./install.sh --stow
+        NONINTERACTIVE=1 ./install.sh stow
       "
     environment:
       - NONINTERACTIVE=1
@@ -41,7 +41,7 @@ services:
         cp -r . /tmp/shell-install &&
         cd /tmp/shell-install &&
         NONINTERACTIVE=1 ./install.sh &&
-        NONINTERACTIVE=1 ./install.sh --stow
+        NONINTERACTIVE=1 ./install.sh stow
       "
     environment:
       - NONINTERACTIVE=1
@@ -68,7 +68,7 @@ services:
         cp -r . /tmp/shell-install &&
         cd /tmp/shell-install &&
         NONINTERACTIVE=1 ./install.sh &&
-        NONINTERACTIVE=1 ./install.sh --stow
+        NONINTERACTIVE=1 ./install.sh stow
       "
     environment:
       - NONINTERACTIVE=1
@@ -95,7 +95,7 @@ services:
         cp -r . /tmp/shell-install &&
         cd /tmp/shell-install &&
         NONINTERACTIVE=1 ./install.sh &&
-        NONINTERACTIVE=1 ./install.sh --stow
+        NONINTERACTIVE=1 ./install.sh stow
       "
     environment:
       - NONINTERACTIVE=1
@@ -120,7 +120,7 @@ services:
         cp -r . /tmp/shell-install &&
         cd /tmp/shell-install &&
         NONINTERACTIVE=1 ./install.sh &&
-        NONINTERACTIVE=1 ./install.sh --stow
+        NONINTERACTIVE=1 ./install.sh stow
       "
     environment:
       - NONINTERACTIVE=1

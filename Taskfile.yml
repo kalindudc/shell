@@ -1,11 +1,5 @@
 version: '3'
 
-vars:
-  # Resolved once per run. Points at the user gem bin so bundle/rubocop are
-  # always found without root and without needing rbenv initialised.
-  GEM_BIN:
-    sh: ruby -e 'puts Gem.user_dir + "/bin"'
-
 tasks:
   # Development setup
   up:
@@ -13,31 +7,41 @@ tasks:
     cmds:
       - ./src/scripts/up.sh
 
-  # Installation
+  # Installation: every task goes through install.sh, which picks a Ruby that can run src/install
   install:
-    desc: "Run the installation script"
+    desc: "Install everything: packages, tools, setup, generated configs, stow, bb and cortex"
     cmds:
       - ./install.sh
 
-  # Stow dotfiles
-  stow:
-    desc: "Re-stow the home directory"
-    deps:
-      - generate:ghostty
+  install:packages:
+    desc: "Install the packages.yml lists for this platform, plus npm, pi and pipx packages"
     cmds:
-      # Goes through the installer so .stow-unfold directories are created before stow runs
-      - ruby src/install.rb --stow
+      - ./install.sh packages
 
-  # bb
-  bb:
-    desc: "Start bb if needed and apply bb.yml (marketplaces, plugins, settings)"
+  install:tools:
+    desc: "Install tools no package manager provides: zsh plugins, starship, herdr, the bb app on Linux, ..."
     cmds:
-      - ruby src/install.rb --bb
+      - ./install.sh tools
 
-  cortex:
+  install:setup:
+    desc: "Set up installed tools: docker, GPG signing key, herdr plugins, pi extension dependencies, default shell"
+    cmds:
+      - ./install.sh setup
+
+  install:bb:
+    desc: "Start bb if needed and apply bb.yml"
+    cmds:
+      - ./install.sh bb
+
+  install:cortex:
     desc: "Install cortex, then its agent skills, pi extension and bb plugin"
     cmds:
-      - ruby src/install.rb --cortex
+      - ./install.sh cortex
+
+  stow:
+    desc: "Link home/ into $HOME"
+    cmds:
+      - ./install.sh stow
 
   # Clean everything
   clean:
@@ -108,11 +112,7 @@ tasks:
     cmds:
       - |
         echo "Running Ruby installer unit tests..."
-        bundle exec ruby test/unit/test_installer.rb
-        bundle exec ruby test/unit/test_unfold.rb
-        bundle exec ruby test/unit/test_bb.rb
-        bundle exec ruby test/unit/test_bb_app.rb
-        bundle exec ruby test/unit/test_cortex.rb
+        ruby -e 'Dir.glob("test/unit/test_*.rb").sort.each { |f| require File.expand_path(f) }'
         echo "✓ Ruby installer tests passed"
       - |
         BUN="${HOME}/.bun/bin/bun"
@@ -131,7 +131,7 @@ tasks:
     desc: "Run home/bin/ tool tests (BATS + Ruby)"
     cmds:
       - bats home/bin/test/bats/*.bats
-      - bundle exec ruby -e "Dir.glob('home/bin/test/**/*.rb').sort.each { |f| require_relative f }"
+      - ruby -rbundler/setup -e "Dir.glob('home/bin/test/**/*.rb').sort.each { |f| require_relative f }"
 
   test:integration:
     desc: "Run integration tests with Docker (requires 'task build' first). Use CLI_ARGS to specify platforms: task test:integration -- ubuntu-22 debian"
@@ -151,23 +151,21 @@ tasks:
 
   # Generate configs
   generate:
-    desc: "Generate .zshrc, .gitconfig, and ghostty config"
-    deps:
-      - generate:zsh
-      - generate:gitconfig
-      - generate:ghostty
+    desc: "Write home/.zshrc, home/.gitconfig and the ghostty font-size config"
+    cmds:
+      - ./install.sh generate
 
   generate:zsh:
-    desc: "Re-generate .zshrc and completions"
+    desc: "Write home/.zshrc and zsh completions"
     cmds:
-      - $HOME/src/github.com/kalindudc/shell/src/generate_zshrc.rb
+      - ./install.sh generate zsh
 
-  generate:gitconfig:
-    desc: "Re-generate .gitconfig"
+  generate:git:
+    desc: "Write home/.gitconfig"
     cmds:
-      - ruby $HOME/src/github.com/kalindudc/shell/src/generate_gitconfig.rb
+      - ./install.sh generate git
 
   generate:ghostty:
-    desc: "Generate OS-specific ghostty font-size override config"
+    desc: "Write the OS-specific ghostty font-size config"
     cmds:
-      - $HOME/src/github.com/kalindudc/shell/src/generate_ghostty_config.rb
+      - ./install.sh generate ghostty

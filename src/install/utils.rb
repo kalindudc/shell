@@ -46,8 +46,34 @@ module Installer
       ENV["CI"] || ENV["NONINTERACTIVE"]
     end
 
-    def state=(state)
-      @state = state
+    # A variable already set in the environment wins over .env.
+    def load_env!(file = File.expand_path("../../.env", __dir__))
+      if File.exist?(file)
+        File.readlines(file).each do |line|
+          line = line.strip
+          next if line.empty? || line.start_with?("#")
+
+          if line =~ /^(\w+)=(.*)$/
+            key = Regexp.last_match(1)
+            value = Regexp.last_match(2).delete('"').delete("'")
+            ENV[key] = value if ENV[key].to_s.empty?
+          end
+        end
+      end
+
+      ENV["GIT_EMAIL"] = `git config --global user.email 2>/dev/null`.strip if ENV["GIT_EMAIL"].to_s.strip.empty?
+      ENV["GIT_NAME"] = `git config --global user.name 2>/dev/null`.strip if ENV["GIT_NAME"].to_s.strip.empty?
+      return unless ENV["GIT_SIGNING_KEY"].to_s.strip.empty?
+
+      ENV["GIT_SIGNING_KEY"] = `git config --global user.signingkey 2>/dev/null`.strip
+    end
+
+    def login_required(reason)
+      login_reasons << reason unless login_reasons.include?(reason)
+    end
+
+    def login_reasons
+      @login_reasons ||= []
     end
 
     def run!(*cmd, **opts)
@@ -71,29 +97,8 @@ module Installer
       run!("sudo", *cmd)
     end
 
-    def try_sudo(*cmd)
-      return try_run(*cmd) if root?
-
-      try_run("sudo", *cmd)
-    end
-
-    def reboot_required!(reason)
-      @state&.require_reboot(reason)
-      raise Installer::RebootRequired, reason
-    end
-
     def command_line(cmd)
       Shellwords.join(Array(cmd).map(&:to_s))
-    end
-
-    def run(*cmd, **opts)
-      try_run(*cmd, **opts)
-    end
-
-    def sudo(*cmd)
-      return run(*cmd) if root?
-
-      run("sudo", *cmd)
     end
   end
 end

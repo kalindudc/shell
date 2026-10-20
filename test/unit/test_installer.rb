@@ -10,15 +10,11 @@ require 'tempfile'
 
 require_relative '../../src/install/utils'
 require_relative '../../src/install/errors'
-require_relative '../../src/install/state'
-require_relative '../../src/install/os'
-require_relative '../../src/install/backends'
-require_relative '../../src/install/custom'
-require_relative '../../src/install/dependencies'
-require_relative '../../src/install/post_setup'
-
-# Load the installer script (in a way that doesn't execute main)
-# We need to be careful since install.rb has executable code at the bottom
+require_relative '../../src/install/cli'
+require_relative '../../src/install/platform'
+require_relative '../../src/install/packages'
+require_relative '../../src/install/tools'
+require_relative '../../src/install/setup'
 
 class TestInstaller < Minitest::Test
   def setup
@@ -40,7 +36,7 @@ class TestInstaller < Minitest::Test
 
   def test_packages_yml_has_expected_backends
     content = YAML.load_file(@packages_file)
-    expected_backends = %w[pacman yay apt brew brew_cask snap flatpak npm pi pipx custom]
+    expected_backends = %w[pacman yay apt brew brew_cask snap flatpak npm pi pipx]
 
     expected_backends.each do |backend|
       assert content.key?(backend), "packages.yml should have #{backend} key"
@@ -110,32 +106,14 @@ class TestInstaller < Minitest::Test
     assert_includes packages, 'https://github.com/kalindudc/quests', "pi should include pi-quests"
   end
 
-  def test_packages_yml_custom_packages
-    content = YAML.load_file(@packages_file)
-    packages = content['custom']
-
-    assert packages.is_a?(Array), "custom packages should be an array"
-    assert_includes packages, 'install_zsh_plugins', "custom should include install_zsh_plugins"
-    assert_includes packages, 'install_pyenv', "custom should include install_pyenv"
-    assert_includes packages, 'install_fzf_latest', "custom should include install_fzf_latest"
-    assert_includes packages, 'install_atuin', "custom should include install_atuin"
-    assert_includes packages, 'install_herdr', "custom should include install_herdr"
-    assert_includes packages, 'install_herdr_plus', "custom should include install_herdr_plus"
-    assert_includes packages, 'install_herdr_automatic_rename',
-                    "custom should include install_herdr_automatic_rename"
-    assert_includes packages, 'install_herdr_pi_integration',
-                    "custom should include install_herdr_pi_integration"
-
-    herdr_index = packages.index('install_herdr')
-    herdr_plus_index = packages.index('install_herdr_plus')
-    rename_index = packages.index('install_herdr_automatic_rename')
-    integration_index = packages.index('install_herdr_pi_integration')
-    assert_operator herdr_index, :<, herdr_plus_index,
-                    "install_herdr must run before install_herdr_plus"
-    assert_operator herdr_index, :<, rename_index,
-                    "install_herdr must run before install_herdr_automatic_rename"
-    assert_operator herdr_index, :<, integration_index,
-                    "install_herdr must run before install_herdr_pi_integration"
+  def test_tools_lists_only_tools_methods
+    Installer::Tools::ALL.each do |name|
+      assert_respond_to Installer::Tools, name
+    end
+    assert_includes Installer::Tools::ALL, :install_herdr
+    assert_includes Installer::Tools::ALL, :install_bb_appimage
+    refute_includes Installer::Tools::ALL, :install_nvm_curl
+    refute_includes Installer::Tools::ALL, :install_nerd_fonts_brew
   end
 
   def test_herdr_pi_integration_installs_unless_current
@@ -150,9 +128,9 @@ class TestInstaller < Minitest::Test
       status = "codex: current (v8) (/h/.codex/herdr-agent-state.sh)\n#{pi_line}\n"
 
       Installer::Utils.stub(:command?, ->(name) { name == 'herdr' }) do
-        Installer::Custom.stub(:herdr_integration_status, status) do
+        Installer::Setup.stub(:herdr_integration_status, status) do
           Installer::Utils.stub(:run!, ->(*cmd) { calls << cmd }) do
-            capture_io { Installer::Custom.install_herdr_pi_integration }
+            capture_io { Installer::Setup.install_herdr_pi_integration }
           end
         end
       end
@@ -165,7 +143,7 @@ class TestInstaller < Minitest::Test
   def test_herdr_pi_integration_skips_without_herdr
     Installer::Utils.stub(:command?, false) do
       Installer::Utils.stub(:run!, ->(*cmd) { flunk "must not run #{cmd.join(' ')}" }) do
-        Installer::Custom.install_herdr_pi_integration
+        Installer::Setup.install_herdr_pi_integration
       end
     end
   end
@@ -176,10 +154,10 @@ class TestInstaller < Minitest::Test
     calls = []
     Installer::Utils.stub(:command?, ->(name) { name == 'systemctl' }) do
       Installer::Utils.stub(:root?, false) do
-        Installer::Custom.stub(:docker_group_member?, true) do
+        Installer::Setup.stub(:docker_group_member?, true) do
           Installer::Utils.stub(:sudo!, ->(*cmd) { calls << cmd }) do
-            Installer::Utils.stub(:reboot_required!, ->(_reason) { flunk 'must not require reboot' }) do
-              Installer::Custom.install_docker_post
+            Installer::Utils.stub(:login_required, ->(_reason) { flunk 'must not require a new login' }) do
+              Installer::Setup.install_docker_post
             end
           end
         end
@@ -189,15 +167,15 @@ class TestInstaller < Minitest::Test
     assert_equal [%w[systemctl enable --now docker]], calls
   end
 
-  def test_install_docker_post_requires_reboot_when_not_member
+  def test_install_docker_post_requires_new_login_when_not_member
     calls = []
-    reboot_calls = []
+    login_calls = []
     Installer::Utils.stub(:command?, ->(name) { name == 'systemctl' }) do
       Installer::Utils.stub(:root?, false) do
-        Installer::Custom.stub(:docker_group_member?, false) do
+        Installer::Setup.stub(:docker_group_member?, false) do
           Installer::Utils.stub(:sudo!, ->(*cmd) { calls << cmd }) do
-            Installer::Utils.stub(:reboot_required!, ->(reason) { reboot_calls << reason }) do
-              Installer::Custom.install_docker_post
+            Installer::Utils.stub(:login_required, ->(reason) { login_calls << reason }) do
+              Installer::Setup.install_docker_post
             end
           end
         end
@@ -205,12 +183,12 @@ class TestInstaller < Minitest::Test
     end
 
     assert_equal [%w[systemctl enable --now docker], ['usermod', '-aG', 'docker', ENV['USER']]], calls
-    assert_equal ['Docker group membership requires a new login session'], reboot_calls
+    assert_equal ['Docker group membership requires a new login session'], login_calls
   end
 
   def test_docker_group_member_returns_false_when_group_missing
     Etc.stub(:getgrnam, ->(_name) { raise ArgumentError, 'not found' }) do
-      assert_equal false, Installer::Custom.docker_group_member?
+      assert_equal false, Installer::Setup.docker_group_member?
     end
   end
 
@@ -229,7 +207,7 @@ class TestInstaller < Minitest::Test
     Installer::Utils.stub(:command?, ->(name) { name == 'pi' }) do
       Open3.stub(:capture3, [list_output, '', success]) do
         Installer::Utils.stub(:run!, ->(*cmd) { calls << cmd }) do
-          capture_io { Installer::Backends.install('pi', sources) }
+          capture_io { Installer::Packages.install('pi', sources) }
         end
       end
     end
@@ -237,12 +215,12 @@ class TestInstaller < Minitest::Test
     assert_equal [%w[pi install https://github.com/kalindudc/quests --no-approve]], calls
   end
 
-  def test_install_pi_requires_pi
+  def test_install_pi_skips_without_pi
     Installer::Utils.stub(:command?, false) do
-      error = assert_raises(Installer::CommandFailed) do
-        capture_io { Installer::Backends.install('pi', ['https://github.com/kalindudc/quests']) }
+      Installer::Utils.stub(:run!, ->(*cmd) { flunk "must not run #{cmd.join(' ')}" }) do
+        out, = capture_io { Installer::Packages.install('pi', ['https://github.com/kalindudc/quests']) }
+        assert_includes out, 'skipping pi packages'
       end
-      assert_includes error.message, 'pi is required'
     end
   end
 
@@ -252,7 +230,7 @@ class TestInstaller < Minitest::Test
     Installer::Utils.stub(:command?, true) do
       Open3.stub(:capture3, ['', 'boom', failure]) do
         error = assert_raises(Installer::CommandFailed) do
-          capture_io { Installer::Backends.install('pi', ['https://github.com/kalindudc/quests']) }
+          capture_io { Installer::Packages.install('pi', ['https://github.com/kalindudc/quests']) }
         end
         assert_includes error.message, 'pi list'
       end
@@ -282,12 +260,6 @@ class TestInstaller < Minitest::Test
     assert result, "src/install.rb should have valid Ruby syntax"
   end
 
-  def test_generate_gitconfig_rb_syntax
-    script = File.join(@shell_dir, 'src', 'generate_gitconfig.rb')
-    result = system("ruby -c #{script} > /dev/null 2>&1")
-    assert result, "src/generate_gitconfig.rb should have valid Ruby syntax"
-  end
-
   def test_extract_signing_fingerprint_from_primary_secret_key
     fingerprint = '1234567890ABCDEF1234567890ABCDEF12345678'
     gpg_output = <<~GPG
@@ -295,7 +267,7 @@ class TestInstaller < Minitest::Test
       fpr:::::::::#{fingerprint}
     GPG
 
-    assert_equal fingerprint, Installer::PostSetup.extract_signing_fingerprint(gpg_output)
+    assert_equal fingerprint, Installer::Setup.extract_signing_fingerprint(gpg_output)
   end
 
   def test_extract_signing_fingerprint_from_signing_subkey
@@ -307,14 +279,14 @@ class TestInstaller < Minitest::Test
       fpr:::::::::#{fingerprint}
     GPG
 
-    assert_equal fingerprint, Installer::PostSetup.extract_signing_fingerprint(gpg_output)
+    assert_equal fingerprint, Installer::Setup.extract_signing_fingerprint(gpg_output)
   end
 
   def test_gpg_user_id_uses_git_name_when_present
     old_name = ENV['GIT_NAME']
     ENV['GIT_NAME'] = 'Example User'
 
-    assert_equal 'Example User <user@example.com>', Installer::PostSetup.gpg_user_id('user@example.com')
+    assert_equal 'Example User <user@example.com>', Installer::Setup.gpg_user_id('user@example.com')
   ensure
     ENV['GIT_NAME'] = old_name
   end
@@ -323,13 +295,13 @@ class TestInstaller < Minitest::Test
     success = Struct.new(:success?).new(true)
     failure = Struct.new(:success?).new(false)
 
-    Installer::PostSetup.stub(:ensure_gpg_home_permissions!, nil) do
-      Installer::PostSetup.stub(:capture_command, ['', '', success]) do
-        assert Installer::PostSetup.signing_key_available?('ABC123')
+    Installer::Setup.stub(:ensure_gpg_home_permissions!, nil) do
+      Installer::Setup.stub(:capture_command, ['', '', success]) do
+        assert Installer::Setup.signing_key_available?('ABC123')
       end
 
-      Installer::PostSetup.stub(:capture_command, ['', 'No secret key', failure]) do
-        refute Installer::PostSetup.signing_key_available?('ABC123')
+      Installer::Setup.stub(:capture_command, ['', 'No secret key', failure]) do
+        refute Installer::Setup.signing_key_available?('ABC123')
       end
     end
   end
@@ -343,8 +315,8 @@ class TestInstaller < Minitest::Test
       FileUtils.chmod(0o600, private_dir)
       FileUtils.chmod(0o600, revocation_dir)
 
-      Installer::PostSetup.stub(:gpg_home, dir) do
-        Installer::PostSetup.ensure_gpg_home_permissions!
+      Installer::Setup.stub(:gpg_home, dir) do
+        Installer::Setup.ensure_gpg_home_permissions!
       end
 
       assert_equal 0o700, File.stat(dir).mode & 0o777
@@ -363,11 +335,11 @@ class TestInstaller < Minitest::Test
     configured = []
 
     Installer::Utils.stub(:command?, true) do
-      Installer::PostSetup.stub(:signing_key_available?, ->(key) { key == 'VALIDKEY' }) do
-        Installer::PostSetup.stub(:find_gpg_signing_key, 'VALIDKEY') do
-          Installer::PostSetup.stub(:configure_git_signing, ->(key) { configured << key }) do
-            Installer::PostSetup.stub(:upload_gpg_key_to_github, nil) do
-              _out, err = capture_io { Installer::PostSetup.setup_gpg_key }
+      Installer::Setup.stub(:signing_key_available?, ->(key) { key == 'VALIDKEY' }) do
+        Installer::Setup.stub(:find_gpg_signing_key, 'VALIDKEY') do
+          Installer::Setup.stub(:configure_git_signing, ->(key) { configured << key }) do
+            Installer::Setup.stub(:upload_gpg_key_to_github, nil) do
+              _out, err = capture_io { Installer::Setup.setup_gpg_key }
               assert_empty err
             end
           end
@@ -383,48 +355,65 @@ class TestInstaller < Minitest::Test
     ENV['GIT_SIGNING_KEY'] = old_signing_key
   end
 
-  # os_detection
+  # platform
 
-  def test_os_backends_constant
-    # This test documents the expected OS backend mapping
-    os_backends = {
-      'arch' => %w[pacman yay flatpak],
-      'ubuntu' => %w[apt snap flatpak],
-      'debian' => %w[apt flatpak],
-      'macos' => %w[brew brew_cask]
-    }
-
-    assert_equal %w[pacman yay flatpak], os_backends['arch']
-    assert_equal %w[apt snap flatpak], os_backends['ubuntu']
-    assert_equal %w[brew brew_cask], os_backends['macos']
-  end
-
-  def test_shared_backends
-    assert_equal %w[npm pi pipx custom], Installer::OS::SHARED_BACKENDS
-  end
-
-  def test_unknown_os_is_not_supported_and_has_no_shared_backends
-    refute Installer::OS.supported?('unknown_distro')
-
-    error = assert_raises(Installer::Error) do
-      Installer::OS.backends_for('unknown_distro')
+  def detect_with(os_release)
+    Tempfile.create('os-release') do |f|
+      f.write(os_release)
+      f.flush
+      Installer::Platform.detect(ruby_platform: 'x86_64-linux', os_release: f.path)
     end
-    assert_includes error.message, 'Unsupported operating system'
   end
 
-  def test_backend_order_bootstraps_runtime_before_npm
-    backends = Installer::OS.backends_for('ubuntu')
+  def test_platform_detects_debian_family
+    assert_equal 'debian', detect_with("ID=ubuntu\nID_LIKE=debian\n")
+    assert_equal 'debian', detect_with("ID=debian\n")
+    assert_equal 'debian', detect_with("ID=linuxmint\nID_LIKE=\"ubuntu debian\"\n")
+  end
 
-    assert_operator backends.index('custom_bootstrap'), :<, backends.index('npm')
-    assert_operator backends.index('apt'), :<, backends.index('custom_bootstrap')
+  def test_platform_detects_arch_family
+    assert_equal 'arch', detect_with("ID=arch\n")
+    assert_equal 'arch', detect_with("ID=manjaro\nID_LIKE=arch\n")
+    assert_equal 'arch', detect_with("ID=endeavouros\nID_LIKE=arch\n")
+  end
+
+  def test_platform_does_not_support_other_distributions
+    assert_nil detect_with("ID=fedora\n")
+    assert_nil Installer::Platform.detect(ruby_platform: 'x86_64-linux', os_release: '/nonexistent/os-release')
+  end
+
+  def test_platform_detects_macos
+    assert_equal 'macos', Installer::Platform.detect(ruby_platform: 'arm64-darwin25')
   end
 
   # npm installs the pi CLI, which the pi backend then uses
-  def test_backend_order_installs_pi_packages_after_npm
-    backends = Installer::OS.backends_for('macos')
+  def test_platform_backends_end_with_npm_pi_and_pipx
+    assert_equal %w[apt snap flatpak npm pi pipx], Installer::Platform.backends('debian')
+    assert_equal %w[brew brew_cask npm pi pipx], Installer::Platform.backends('macos')
+    assert_equal %w[pacman yay flatpak npm pi pipx], Installer::Platform.backends('arch')
+  end
 
-    assert_operator backends.index('npm'), :<, backends.index('pi')
-    assert_operator backends.index('pi'), :<, backends.index('custom')
+  def test_platform_backends_reject_an_unknown_platform
+    error = assert_raises(Installer::Error) { Installer::Platform.backends('fedora') }
+    assert_includes error.message, 'Unsupported operating system'
+  end
+
+  # missing package managers
+
+  def test_an_optional_backend_without_its_command_is_skipped
+    Installer::Utils.stub(:command?, false) do
+      Installer::Utils.stub(:run!, ->(*cmd) { flunk "must not run #{cmd.join(' ')}" }) do
+        out, = capture_io { Installer::Packages.install('yay', ['x']) }
+        assert_includes out, 'skipping yay packages'
+      end
+    end
+  end
+
+  def test_a_system_backend_without_its_command_fails
+    Installer::Utils.stub(:command?, false) do
+      error = assert_raises(Installer::CommandFailed) { Installer::Packages.install('apt', ['x']) }
+      assert_includes error.message, 'apt-get is required'
+    end
   end
 
   # bash_bootstrap
@@ -449,41 +438,6 @@ class TestInstaller < Minitest::Test
     install_sh = File.join(@shell_dir, 'install.sh')
 
     refute_includes File.read(install_sh), 'bundle exec ruby'
-  end
-
-  # helper_methods
-
-  def test_detect_os_returns_nil_for_unknown
-    # We can't easily test the actual detect_os without mocking files
-    # but we can verify the logic structure
-
-    # Create a mock os-release file for testing
-    Tempfile.create('os-release') do |f|
-      f.write("ID=unknown_distro\n")
-      f.write("ID_LIKE=unknown\n")
-      f.flush
-
-      # Read and parse as the installer would
-      id = File.readlines(f.path)
-               .find { |line| line.start_with?('ID=') }
-               &.split('=', 2)&.[](1)&.strip&.delete('"')
-
-      assert_equal 'unknown_distro', id
-    end
-  end
-
-  def test_detect_os_arch_variants
-    arch_ids = %w[arch manjaro]
-    arch_ids.each do |id|
-      assert %w[arch manjaro].include?(id), "#{id} should map to arch"
-    end
-  end
-
-  def test_detect_os_debian_variants
-    debian_ids = %w[ubuntu debian]
-    debian_ids.each do |id|
-      assert %w[ubuntu debian].include?(id), "#{id} should map to debian/ubuntu"
-    end
   end
 
   # env_vars
@@ -527,89 +481,43 @@ class TestInstaller < Minitest::Test
     assert_includes output, 'Optional command failed'
   end
 
-  def test_package_manager_bootstrap_runs_before_system_update
-    calls = []
-    dependencies = Minitest::Mock.new
-    dependencies.expect(:package_managers, [{ 'name' => 'apt', 'command' => 'apt-get', 'required' => true }])
-    dependencies.expect(:bootstrap_packages, {})
+  def test_login_required_keeps_one_copy_of_each_reason
+    Installer::Utils.login_reasons.clear
+    2.times { Installer::Utils.login_required('Docker group membership requires a new login session') }
 
-    Installer::Backends.stub(:ensure_package_managers!, ->(_os, _managers) { calls << :package_managers }) do
-      Installer::Backends.stub(:install_bootstrap_dependencies!, ->(_packages) { calls << :bootstrap_dependencies }) do
-        Installer::Backends.stub(:system_update!, ->(_os) { calls << :system_update }) do
-          Installer::Backends.ensure_package_managers!('ubuntu', dependencies.package_managers)
-          Installer::Backends.install_bootstrap_dependencies!(dependencies.bootstrap_packages)
-          Installer::Backends.system_update!('ubuntu')
-        end
-      end
-    end
-
-    assert_equal %i[package_managers bootstrap_dependencies system_update], calls
-    dependencies.verify
+    assert_equal ['Docker group membership requires a new login session'], Installer::Utils.login_reasons
+  ensure
+    Installer::Utils.login_reasons.clear
   end
 
-  def test_macos_homebrew_bootstrap_runs_before_brew_update
-    calls = []
-    managers = [
-      {
-        'name' => 'Homebrew',
-        'command' => 'brew',
-        'required' => true,
-        'install' => ['echo', 'install-homebrew']
-      }
-    ]
-    brew_checks = [false, true]
+  # cli
 
-    Installer::Utils.stub(:command?, ->(command) { command == 'brew' ? brew_checks.shift : true }) do
-      Installer::Utils.stub(:run!, ->(*cmd) { calls << cmd }) do
-        Installer::Backends.stub(:system_update!, ->(_os) { calls << ['brew', 'update'] }) do
-          Installer::Backends.ensure_package_managers!('macos', managers)
-          Installer::Backends.system_update!('macos')
-        end
-      end
-    end
+  def test_no_steps_runs_every_step
+    options = Installer::CLI.parse_args([])
 
-    assert_equal [['echo', 'install-homebrew'], ['brew', 'update']], calls
+    assert_equal Installer::CLI::STEPS, options[:steps]
+    assert options[:all]
   end
 
-  def test_machine_profile_selection_prefers_env_then_hostname_then_default
-    packages = {
-      'machine_profiles' => {
-        'default' => { 'bootstrap' => { 'apt' => ['default-tool'] } },
-        'workstation' => { 'bootstrap' => { 'apt' => ['env-tool'] } },
-        'host-a' => { 'bootstrap' => { 'apt' => ['host-tool'] } }
-      }
-    }
+  def test_steps_run_in_install_order
+    options = Installer::CLI.parse_args(%w[bb stow])
 
-    assert_equal 'workstation', Installer::Dependencies.new(
-      packages, 'ubuntu', env: { 'SHELL_MACHINE_PROFILE' => 'workstation' }, hostname: 'host-a'
-    ).profile_name
-    assert_equal 'host-a', Installer::Dependencies.new(packages, 'ubuntu', env: {}, hostname: 'host-a').profile_name
-    assert_equal 'default', Installer::Dependencies.new(packages, 'ubuntu', env: {}, hostname: 'other').profile_name
+    assert_equal %w[stow bb], options[:steps]
+    refute options[:all]
   end
 
-  def test_dependencies_returns_bootstrap_packages_for_selected_os_backend
-    packages = {
-      'machine_profiles' => {
-        'default' => { 'bootstrap' => { 'apt' => ['curl', 'git'], 'brew' => ['curl'] } }
-      }
-    }
+  def test_generate_takes_targets
+    options = Installer::CLI.parse_args(%w[generate zsh])
 
-    dependencies = Installer::Dependencies.new(packages, 'ubuntu', env: {}, hostname: 'other')
-
-    assert_equal({ 'apt' => ['curl', 'git'] }, dependencies.bootstrap_packages)
+    assert_equal ['generate'], options[:steps]
+    assert_equal ['zsh'], options[:targets]
+    assert_equal Installer::CLI::GENERATE_TARGETS, Installer::CLI.parse_args(['generate'])[:targets]
   end
 
-  def test_state_file_records_and_clears_reboot_required_reasons
-    Dir.mktmpdir do |dir|
-      state = Installer::State.new(File.join(dir, 'install.json'))
-
-      state.require_reboot('Docker group membership requires a new login session')
-      assert state.reboot_required?
-      assert_includes state.data['reboot_required'], 'Docker group membership requires a new login session'
-
-      state.clear_reboot!
-      refute state.reboot_required?
-      assert_empty state.data['reboot_required']
+  def test_unknown_arguments_and_targets_without_generate_exit_2
+    [['zsh'], ['nope']].each do |args|
+      error = assert_raises(SystemExit) { capture_io { Installer::CLI.parse_args(args) } }
+      assert_equal 2, error.status, "for #{args.inspect}"
     end
   end
 
@@ -622,9 +530,10 @@ class TestInstaller < Minitest::Test
     end
 
     assert status.success?, "install.sh --help should exit successfully: #{output}"
-    assert_includes output, '--trace', "Help should mention --trace"
-    assert_includes output, '--stow', "Help should mention --stow"
-    assert_includes output, '--help', "Help should mention --help"
+    %w[packages stow generate --trace].each do |word|
+      assert_includes output, word, "Help should mention #{word}"
+    end
+    refute_includes output, '--stow', 'Help should not mention the old --stow flag'
   end
 
   def test_all_expected_packages_present

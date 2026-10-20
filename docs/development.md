@@ -6,10 +6,8 @@
 git clone https://github.com/kalindudc/shell.git
 cd shell
 
-# Install BATS and ShellCheck (or use task dev:deps)
-# On macOS: brew install bats-core shellcheck
-# On Arch:  pacman -S bats shellcheck
-# On Ubuntu: apt install bats shellcheck
+# Install BATS, ShellCheck, shfmt and the Ruby and npm dev dependencies
+task up
 ```
 
 ## Tasks
@@ -20,15 +18,23 @@ task --list
 
 | Task | Description |
 |------|-------------|
-| `task install` | Run installation |
-| `task stow` | Re-stow dotfiles |
-| `task clean` | Clean integration containers/images and temp logs |
-| `task style` | Run ShellCheck and RuboCop |
+| `task install` | Install everything: packages, tools, setup, generated configs, stow, bb and cortex |
+| `task install:packages` | Install the `packages.yml` lists for this platform, plus npm, pi and pipx packages |
+| `task install:tools` | Install tools no package manager provides |
+| `task install:setup` | Set up docker, the GPG signing key, herdr plugins, pi extension dependencies and the default shell |
+| `task install:bb` | Start bb if needed and apply `bb.yml` |
+| `task install:cortex` | Install cortex and its agent integrations |
+| `task generate` | Write `home/.zshrc`, `home/.gitconfig` and the ghostty font-size config |
+| `task generate:zsh`, `generate:git`, `generate:ghostty` | Write one of them |
+| `task stow` | Link `home/` into `$HOME` |
+| `task up` | Install development dependencies |
 | `task test` | Run default local tests (unit + bin) |
-| `task test:unit` | Run Ruby installer tests and pi extension tests when bun is available |
+| `task test:unit` | Run the Ruby installer tests, and the pi extension tests when bun is available |
+| `task test:bin` | Run the `home/bin/` tool tests |
 | `task test:integration` | Run integration tests separately (requires Docker and `task build`) |
-| `task build` | Build Docker images |
-| `task generate` | Generate configs |
+| `task build` | Build Docker images for the integration tests |
+| `task clean` | Clean integration containers and temp logs |
+| `task style` | Run ShellCheck and RuboCop |
 
 ## Testing
 
@@ -38,7 +44,7 @@ task --list
 task test:unit
 ```
 
-Ruby installer tests use Minitest in `test/unit/test_installer.rb`. Bin tests use BATS and Ruby under `home/bin/test/`.
+Ruby installer tests use Minitest in `test/unit/`. Bin tests use BATS and Ruby under `home/bin/test/`.
 
 ### Integration Tests
 
@@ -54,7 +60,7 @@ Platforms: `ubuntu-22`, `ubuntu-24`, `debian`, `arch`, `ubuntu-minimal`. The min
 
 ```bash
 TRACE=1 ./install.sh 2>&1 | tee install.log
-cat "${XDG_STATE_HOME:-$HOME/.local/state}/shell/install.json"   # Reboot continuation state
+./install.sh --trace packages   # print each command of one step
 ```
 
 ## Adding Packages
@@ -64,18 +70,9 @@ Edit `packages.yml`:
 ```yaml
 apt:
   - new-package
-
-custom_bootstrap:
-  - install_runtime_before_npm
-
-machine_profiles:
-  default:
-    bootstrap:
-      apt:
-        - curl
 ```
 
-Use `package_managers` for required package-manager bootstrap and `machine_profiles` for host/profile-specific prerequisites. Profile selection order is `SHELL_MACHINE_PROFILE`, hostname, then `default`.
+`packages.yml` holds only package lists. A tool that no package manager provides gets an installer method in `src/install/tools.rb`, listed in `Tools::ALL`. Machine-specific bb state goes under `profiles:` in `bb.yml`, selected by `SHELL_MACHINE_PROFILE`.
 
 ## Code Standards
 

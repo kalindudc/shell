@@ -13,7 +13,7 @@ module Installer
     CHECKOUT = File.expand_path("../../../cortex", __dir__)
     # where `pnpm run deploy` copies the binary
     BINARY = File.join(Dir.home, "bin", "cortex")
-    HINT = "then run: task cortex"
+    HINT = "then run: task install:cortex"
 
     module_function
 

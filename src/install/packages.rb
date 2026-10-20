@@ -1,79 +1,69 @@
 # frozen_string_literal: true
 
 require "open3"
+require "yaml"
 require_relative "errors"
+require_relative "platform"
 
 module Installer
-  module Backends
+  # Installs the packages.yml lists for this platform.
+  module Packages
+    FILE = File.expand_path("../../packages.yml", __dir__)
+    COMMANDS = {
+      "brew" => "brew", "brew_cask" => "brew", "pacman" => "pacman", "yay" => "yay",
+      "apt" => "apt-get", "snap" => "snap", "flatpak" => "flatpak", "npm" => "npm", "pi" => "pi",
+      "pipx" => "pipx"
+    }.freeze
+    # Without these the platform has no packages at all; any other backend is skipped when missing.
+    REQUIRED = %w[brew pacman apt].freeze
+
     module_function
 
-    def install(backend, packages)
-      return if packages.nil? || packages.empty?
+    def install!(platform, packages: YAML.load_file(FILE), skip: ENV.fetch("SKIP_BACKENDS", ""))
+      skip_backends = skip.split(",").map(&:strip)
+      system_update!(platform)
 
-      Installer::Utils.log("Installing #{backend} packages...")
-
-      case backend
-      when "pacman" then install_pacman(packages)
-      when "yay" then install_yay(packages)
-      when "apt" then install_apt(packages)
-      when "brew" then install_brew(packages)
-      when "brew_cask" then install_brew_cask(packages)
-      when "snap" then install_snap(packages)
-      when "flatpak" then install_flatpak(packages)
-      when "npm" then install_npm(packages)
-      when "pi" then install_pi(packages)
-      when "pipx" then install_pipx(packages)
-      when "custom_bootstrap" then install_custom(packages)
-      when "custom" then install_custom(packages)
-      else raise Installer::Error, "Unknown package backend: #{backend}"
-      end
-    end
-
-    def ensure_package_managers!(_os, managers)
-      Array(managers).each do |manager|
-        command = manager.fetch("command")
-        next if Installer::Utils.command?(command)
-
-        name = manager.fetch("name", command)
-        install_command = manager["install"]
-        if install_command
-          Installer::Utils.log("Installing #{name} package manager...")
-          Installer::Utils.run!(*Array(install_command))
-          next if Installer::Utils.command?(command)
+      Installer::Platform.backends(platform).each do |backend|
+        if skip_backends.include?(backend)
+          Installer::Utils.log("Skipping #{backend} (SKIP_BACKENDS)")
+          next
         end
 
-        message = "#{name} package manager is required. Install it, then rerun ./install.sh"
-        raise Installer::CommandFailed, message unless manager["required"] == false
-
-        Installer::Utils.warn(message)
+        install(backend, packages[backend])
       end
     end
 
-    def install_bootstrap_dependencies!(packages_by_backend)
-      packages_by_backend.each do |backend, packages|
-        install(backend, packages)
+    def install(backend, list)
+      return if list.nil? || list.empty?
+
+      ensure_node! if backend == "npm"
+      command = COMMANDS.fetch(backend)
+      unless Installer::Utils.command?(command)
+        raise Installer::CommandFailed, "#{command} is required for #{backend} packages" if REQUIRED.include?(backend)
+
+        Installer::Utils.warn("#{command} not found, skipping #{backend} packages")
+        return
       end
+
+      Installer::Utils.log("Installing #{backend} packages...")
+      send("install_#{backend}", list)
     end
 
-    def system_update!(os)
+    def system_update!(platform)
       Installer::Utils.log("Updating system packages...")
 
-      case os
+      case platform
       when "arch"
         Installer::Utils.sudo!("pacman", "-Syu", "--noconfirm")
-      when "ubuntu", "debian"
+      when "debian"
         Installer::Utils.sudo!("apt-get", "update")
         Installer::Utils.sudo!("apt-get", "upgrade", "-y")
       when "macos"
         Installer::Utils.run!("brew", "update")
         Installer::Utils.run!("brew", "upgrade")
       else
-        raise Installer::Error, "Unsupported operating system: #{os}"
+        raise Installer::Error, "Unsupported operating system: #{platform}"
       end
-    end
-
-    def system_update(os)
-      system_update!(os)
     end
 
     def install_pacman(packages)
@@ -111,13 +101,6 @@ module Installer
     end
 
     def install_flatpak(packages)
-      return if packages.empty?
-
-      unless Installer::Utils.command?("flatpak")
-        Installer::Utils.warn("flatpak not found, skipping optional GUI packages")
-        return
-      end
-
       Installer::Utils.try_run("flatpak", "remote-add", "--if-not-exists", "flathub",
                                "https://dl.flathub.org/repo/flathub.flatpakrepo")
 
@@ -127,7 +110,6 @@ module Installer
     end
 
     def install_npm(packages)
-      ensure_npm_available!
       Installer::Utils.run!("npm", "install", "-g", *packages)
     end
 
@@ -135,8 +117,6 @@ module Installer
     # `pi install`. That file stays untracked because it also holds per-machine model choices.
     # --no-approve keeps a project .pi in the current directory out of a global install.
     def install_pi(packages)
-      raise Installer::CommandFailed, "pi is required before installing pi packages" unless Installer::Utils.command?("pi")
-
       installed = installed_pi_packages
       packages.each do |source|
         if installed.include?(source)
@@ -158,28 +138,20 @@ module Installer
     end
 
     def install_pipx(packages)
-      unless Installer::Utils.command?("pipx")
-        raise Installer::CommandFailed, "pipx is required before installing pipx packages"
-      end
-
       packages.each do |pkg|
         Installer::Utils.run!("pipx", "install", pkg)
       end
     end
 
-    def install_custom(packages)
-      packages.each do |method_name|
-        unless Installer::Custom.respond_to?(method_name, true)
-          raise Installer::CommandFailed, "Unknown custom installer: #{method_name}"
-        end
-
-        Installer::Utils.log("Running custom installer: #{method_name}...")
-        Installer::Custom.send(method_name)
-      end
-    end
-
-    def ensure_npm_available!
+    # brew and pacman install fnm; on Debian it comes from its install script, which needs unzip.
+    def ensure_node!
       return true if Installer::Utils.command?("npm")
+
+      unless Installer::Utils.command?("fnm")
+        Installer::Utils.log("Installing fnm...")
+        Installer::Utils.run!("bash", "-c", "curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell")
+        ENV["PATH"] = [File.join(Dir.home, ".local/share/fnm"), ENV.fetch("PATH", "")].join(File::PATH_SEPARATOR)
+      end
 
       unless Installer::Utils.command?("fnm")
         raise Installer::CommandFailed, "npm is required and fnm is not available to install Node.js"

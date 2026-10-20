@@ -6,39 +6,46 @@
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install.sh)"
 ```
 
-Requires: `curl` for the one-line download path. Once the repository is available, `install.sh` bootstraps missing `git` and `ruby` using `apt-get`, `pacman`, or Homebrew, then runs `ruby src/install.rb` without Bundler.
+Requires: `curl` for the one-line download path. Once the repository is available, `install.sh` installs Homebrew on macOS, then any missing `git` and Ruby, and runs `ruby src/install.rb` without Bundler.
 
 ## Architecture
 
 The installer uses a two-stage design:
 
 1. **Bash Bootstrap** (`install.sh`)
-   - If run via curl: clones repo, re-executes from clone
-   - Installs missing git/ruby with the detected platform package manager
+   - If run via curl: clones the repo, re-executes from the clone
+   - macOS: loads Homebrew, or installs it when it is missing
+   - Installs missing git; on macOS switches to Homebrew's Ruby when the Ruby on PATH is older than 3.1, and on Linux installs the distribution's Ruby when it is missing
    - Fails with the exact manual next step when sudo or a package manager is unavailable
    - Hands off with `ruby src/install.rb` (no Bundler at installer runtime)
 
-2. **Ruby Orchestrator** (`src/install.rb`)
-   - Detects only supported OSes (Arch, Ubuntu, Debian, macOS)
-   - Bootstraps required package managers first, including Homebrew on macOS when `brew` is missing
-   - Applies the selected `machine_profiles` bootstrap dependencies from `packages.yml`
-   - Installs packages via detected backends with required/optional command semantics
-   - Generates configs, stows dotfiles, sets up shell, and records reboot/login-session continuation state
+2. **Ruby Installer** (`src/install.rb`) runs these steps in order, or only the ones you name:
 
-## Options
+   | Step | What it does |
+   |------|--------------|
+   | `packages` | Updates system packages, then installs the `packages.yml` lists for this platform, plus npm, pi and pipx packages |
+   | `tools` | Installs tools no package manager provides (zsh plugins, starship, herdr, the bb app on Linux, ...) |
+   | `setup` | Sets up docker, the GPG signing key, herdr plugins, pi extension dependencies, skill notes and zsh as the login shell |
+   | `generate` | Writes `home/.zshrc` with zsh completions, `home/.gitconfig` and the ghostty font-size config |
+   | `stow` | Links `home/` into `$HOME` |
+   | `bb` | Starts bb if needed and applies `bb.yml` |
+   | `cortex` | Installs cortex, then its agent skills, pi extension and bb plugin |
+
+Supported platforms: macOS, Arch Linux and its derivatives, and Ubuntu, Debian and their derivatives.
+
+## Commands
 
 ```bash
-# Verbose output
-./install.sh --trace
+task install                  # everything, in the order above
+task install:packages         # one step: also install:tools, install:setup, install:bb, install:cortex
+task generate                 # zsh, git and ghostty configs
+task generate:zsh             # one config: also generate:git, generate:ghostty
+task stow                     # link home/ into $HOME
 
-# Run stow only (skip package installation)
-./install.sh --stow
-
-# Start bb if needed and apply bb.yml only (same as `task bb`)
-ruby src/install.rb --bb
-
-# Install cortex and its agent integrations only (same as `task cortex`)
-ruby src/install.rb --cortex
+# The same through install.sh, which takes any number of steps
+./install.sh [--trace] [STEP...]
+./install.sh generate zsh ghostty
+./install.sh --help
 
 # Non-interactive
 NONINTERACTIVE=1 ./install.sh
@@ -69,35 +76,32 @@ Backends are organized by package manager, not by OS:
 | `pacman` | System packages | Arch |
 | `yay` | AUR packages | Arch |
 | `apt` | System packages | Ubuntu, Debian |
-| `snap` | Snap packages | Ubuntu |
+| `snap` | Snap packages | Ubuntu, Debian |
 | `flatpak` | Flatpak apps | Linux |
 | `brew` | Homebrew formulas | macOS |
 | `brew_cask` | Homebrew casks | macOS |
-| `custom_bootstrap` | Runtime bootstrap installers such as fnm | All |
 | `npm` | Global npm packages | All |
 | `pi` | pi packages, added with `pi install` (skips ones `pi list` already shows) | All |
 | `pipx` | Python CLI tools | All |
-| `custom` | Special installers | All |
 
-## Custom Installers
+`brew`, `pacman` and `apt` must exist. Any other backend is skipped with a warning when its command is missing, so on Arch list a package under `yay` only when the official repositories lack it.
 
-Packages in `custom_bootstrap:` run before npm, pi and pipx so runtime managers exist first. Packages in the `custom:` section run after shared package backends and call Ruby methods for complex installations:
+## Tools
 
-- `install_docker_post` — enable docker service, add user to docker group
+`src/install/tools.rb` installs what no package list provides. `Tools::ALL` lists the installers in the order they run, and each one returns early when its tool is already installed:
+
 - `install_pyenv` — install pyenv via curl
-- `install_gum` — install charmbracelet/gum via go
+- `install_gum` — install charmbracelet/gum via go, where no package provides it
 - `install_zsh_plugins` — clone zsh plugins used by the generated config
 - `install_fzf_latest` — download latest fzf from GitHub
 - `install_atuin` — install Atuin history search/sync via the official installer fallback
-- `install_delta_deb` — download git-delta .deb for Ubuntu
+- `install_delta_deb` — download git-delta .deb for Ubuntu and Debian
 - `install_zoxide_curl` — install zoxide via curl
 - `install_starship_curl` — install starship via curl
-- `install_fnm_curl` — install fnm via curl (listed in `custom_bootstrap`)
-- `install_nerd_fonts_brew` — install all nerd fonts via brew
-- `install_nvm_curl` — install nvm via curl (fallback)
-- `install_herdr_pi_integration` — install herdr's pi integration, which reports agent state to the herdr sidebar; reinstalled when outdated
+- `install_herdr` — install herdr via curl
+- `install_bb_appimage` — install the bb AppImage on x86_64 Linux
 
-To add a custom installer, add the method name to `custom:` in `packages.yml` and define the method in `src/install/custom.rb`.
+To add a tool, define the method in `src/install/tools.rb` and add its name to `Tools::ALL`. Setup that needs an installed tool (herdr plugins, the herdr pi integration, docker group) goes in `src/install/setup.rb`.
 
 ## Environment Configuration
 
@@ -109,7 +113,7 @@ GIT_NAME=Your Name
 GIT_SIGNING_KEY=YOUR_GPG_KEY_ID
 ```
 
-If `.env` is missing, git config values are used as fallbacks.
+A variable already set in the environment wins over `.env`. When `GIT_*` is missing, git's global `user.name`, `user.email` and `user.signingkey` are used.
 
 ## bb
 
@@ -135,13 +139,13 @@ PATH (Settings → General → Command line) and applies `bb.yml`. If bb does no
 example over SSH without a display, the step is skipped with a warning; open bb, then run:
 
 ```bash
-task bb
+task install:bb
 ```
 
 The step only adds and changes what `bb.yml` lists; it never removes plugins, marketplaces
-or settings. Machine-specific state goes under `profiles:` in `bb.yml`, selected like
-`machine_profiles`: `SHELL_MACHINE_PROFILE` (for example `SHELL_MACHINE_PROFILE=work` in
-`.env`), then a hostname listed under `machine_profiles` in `packages.yml`, then `default`.
+or settings. Machine-specific state goes under `profiles:` in `bb.yml`, selected by
+`SHELL_MACHINE_PROFILE` from the environment or `.env` (for example `SHELL_MACHINE_PROFILE=work`),
+otherwise `default`.
 
 My own plugins live in [kalindudc/bb-marketplace](https://github.com/kalindudc/bb-marketplace).
 
@@ -161,7 +165,7 @@ The clone needs `gh auth login` first, and the build needs pnpm (installed by th
 backend). When either is missing the step is skipped with a warning. To run it again:
 
 ```bash
-task cortex
+task install:cortex
 ```
 
 ## After Install
@@ -187,13 +191,13 @@ Only non-secret Atuin client config is tracked in this repo. Atuin secrets and s
 
 ## Troubleshooting
 
-**Installation interrupted?** Just re-run `./install.sh` — phases are designed to be idempotent.
+**Installation interrupted?** Just re-run `task install` — every step is safe to run again.
 
-**Reboot or new login required?** The installer records reasons in `~/.local/state/shell/install.json`, exits 0, and asks you to reboot or log out/in. Run `./install.sh` again after that; the marker is cleared after post-setup continues successfully.
+**New login needed?** Joining the docker group and switching the login shell to zsh only take effect in a new login session. The install still runs every step, then lists what needs you to log out and back in.
 
 **Need to skip slow backends?** Set `SKIP_BACKENDS`:
 ```bash
 SKIP_BACKENDS=snap,npm ./install.sh
 ```
 
-**Want to see what's happening?** Use `--trace` for verbose output.
+**Want to see what's happening?** Use `./install.sh --trace` for verbose output.

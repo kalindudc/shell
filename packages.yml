@@ -1,34 +1,8 @@
-package_managers:
-  arch:
-    - name: pacman
-      command: pacman
-      required: true
-  ubuntu:
-    - name: apt
-      command: apt-get
-      required: true
-  debian:
-    - name: apt
-      command: apt-get
-      required: true
-  macos:
-    - name: Homebrew
-      command: brew
-      required: true
-      install:
-        - /bin/bash
-        - -c
-        - $(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)
-
-machine_profiles:
-  default:
-    bootstrap:
-      apt:
-        - curl
-      pacman:
-        - curl
-      brew:
-        - curl
+# Packages for `task install:packages`, listed per package manager. src/install/platform.rb
+# picks the lists: macOS brew and brew_cask; Arch pacman, yay and flatpak; Ubuntu and Debian
+# apt, snap and flatpak; then npm, pi and pipx everywhere. yay, snap and flatpak are skipped
+# when they are not installed, so only list in yay what the Arch repositories lack.
+# src/install/tools.rb installs what no list has.
 
 pacman:
   - git
@@ -52,13 +26,12 @@ pacman:
   - base-devel
   - xclip
   - flatpak
-
-yay:
+  - gum
+  - python-pipx
   - github-cli
-  - go-task-bin
+  - go-task
   - git-delta
   - zoxide
-  - visual-studio-code-bin
   - ghostty
   - starship
   - kubectl
@@ -70,6 +43,11 @@ yay:
   - ttf-jetbrains-mono-nerd
   - ttf-meslo-nerd
   - ttf-sourcecodepro-nerd
+  - ttf-cascadia-mono-nerd
+
+# Microsoft's build; the Arch repositories only have the open-source `code`
+yay:
+  - visual-studio-code-bin
 
 apt:
   - git
@@ -103,6 +81,7 @@ apt:
   - libffi-dev
   - liblzma-dev
   - python3-pipx
+  - unzip
   - flatpak
 
 brew:
@@ -134,6 +113,7 @@ brew:
   - kubectl
   - helm
   - herdr
+  - gum
 
 brew_cask:
   - docker
@@ -142,6 +122,12 @@ brew_cask:
   - discord
   # Linux gets the AppImage from install_bb_appimage; bb.yml holds its plugins and settings
   - bb
+  - font-hack-nerd-font
+  - font-fira-code-nerd-font
+  - font-jetbrains-mono-nerd-font
+  - font-meslo-lg-nerd-font
+  - font-sauce-code-pro-nerd-font
+  - font-caskaydia-mono-nerd-font
 
 snap:
   - name: code
@@ -160,9 +146,6 @@ flatpak:
   - com.discordapp.Discord
   - com.spotify.Client
 
-custom_bootstrap:
-  - install_fnm_curl
-
 npm:
   - "@earendil-works/pi-coding-agent"
   # builds cortex from source (src/install/cortex.rb)
@@ -175,21 +158,3 @@ pi:
 
 pipx:
   - dunk
-
-custom:
-  - install_docker_post
-  - install_pyenv
-  - install_gum
-  - install_zsh_plugins
-  - install_fzf_latest
-  - install_atuin
-  - install_delta_deb
-  - install_zoxide_curl
-  - install_starship_curl
-  - install_herdr
-  - install_herdr_plus
-  - install_herdr_automatic_rename
-  - install_herdr_pi_integration
-  - install_nerd_fonts_brew
-  - install_nvm_curl
-  - install_bb_appimage

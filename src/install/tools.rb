@@ -1,37 +1,25 @@
 # frozen_string_literal: true
 
-require "etc"
 require "fileutils"
 require "shellwords"
 require "tempfile"
+require "tmpdir"
 require_relative "bb_app"
 
 module Installer
-  module Custom
+  # Tools that no package list provides. Each installer skips when its command is already there.
+  module Tools
     FZF_MIN_VERSION = "0.59.0"
+    ALL = %i[
+      install_pyenv install_gum install_zsh_plugins install_fzf_latest install_atuin
+      install_delta_deb install_zoxide_curl install_starship_curl install_herdr install_bb_appimage
+    ].freeze
 
     module_function
 
-    def install_docker_post
-      return unless Installer::Utils.command?("systemctl")
-
-      Installer::Utils.sudo!("systemctl", "enable", "--now", "docker")
-      return if Installer::Utils.root?
-
-      # Only require a reboot if the user is not already in the docker group.
-      # Checking this prevents an infinite loop where the installer keeps asking
-      # to reboot even after the user has rebooted and the group is applied.
-      unless docker_group_member?
-        Installer::Utils.sudo!("usermod", "-aG", "docker", ENV.fetch("USER"))
-        Installer::Utils.reboot_required!("Docker group membership requires a new login session")
-      end
-    end
-
-    def docker_group_member?
-      Etc.getgrnam("docker").mem.include?(ENV.fetch("USER"))
-    rescue ArgumentError
-      # The docker group does not exist yet, so the user cannot be a member.
-      false
+    def install!
+      Installer::Utils.log("Installing tools...")
+      ALL.each { |name| send(name) }
     end
 
     def install_pyenv
@@ -41,8 +29,14 @@ module Installer
       Installer::Utils.run!("bash", "-c", "curl -fsSL https://pyenv.run | bash")
     end
 
+    # brew and pacman ship gum; apt has neither gum nor go
     def install_gum
       return if Installer::Utils.command?("gum")
+
+      unless Installer::Utils.command?("go")
+        Installer::Utils.warn("gum skipped: go is not installed")
+        return
+      end
 
       Installer::Utils.log("Installing gum...")
       Installer::Utils.run!("go", "install", "github.com/charmbracelet/gum@latest")
@@ -162,64 +156,9 @@ module Installer
       Installer::Utils.run!("bash", "-c", "curl -fsSL https://herdr.dev/install.sh | sh")
     end
 
-    def install_herdr_plus
-      return unless Installer::Utils.command?("herdr")
-      return if `herdr plugin list 2>/dev/null`.include?("cloudmanic.herdr-plus")
-
-      Installer::Utils.log("Installing herdr-plus plugin...")
-      Installer::Utils.run!("herdr", "plugin", "install", "cloudmanic/herdr-plus", "--yes")
-    end
-
-    def install_herdr_automatic_rename
-      return unless Installer::Utils.command?("herdr")
-      return if `herdr plugin list 2>/dev/null`.include?("herdr-automatic-rename")
-
-      Installer::Utils.log("Installing herdr-automatic-rename plugin...")
-      Installer::Utils.run!("herdr", "plugin", "install", "qu8n/herdr-automatic-rename", "--yes")
-    end
-
-    # Reports pi agent state (working, idle, waiting) to the herdr sidebar. herdr owns the
-    # file it writes (~/.pi/agent/extensions/herdr-agent-state.ts) and overwrites it on reinstall,
-    # so an outdated integration is reinstalled too.
-    def install_herdr_pi_integration
-      return unless Installer::Utils.command?("herdr")
-      return if herdr_integration_status.lines.any? { |line| line.start_with?("pi: current") }
-
-      Installer::Utils.log("Installing herdr pi integration...")
-      Installer::Utils.run!("herdr", "integration", "install", "pi")
-    end
-
-    def herdr_integration_status
-      `herdr integration status 2>/dev/null`
-    end
-
-    def install_fnm_curl
-      return if Installer::Utils.command?("fnm")
-
-      Installer::Utils.log("Installing fnm...")
-      Installer::Utils.run!("bash", "-c", "curl -fsSL https://fnm.vercel.app/install | bash")
-    end
-
-    def install_nerd_fonts_brew
-      return unless Installer::Utils.command?("brew")
-
-      Installer::Utils.log("Installing nerd fonts...")
-      fonts = `brew search nerd-font`.lines.map(&:strip).select { |f| f.include?("nerd-font") }
-      fonts.each do |font|
-        Installer::Utils.try_run("brew", "install", "--cask", font)
-      end
-    end
-
     # macOS gets bb from the `bb` cask
     def install_bb_appimage
       Installer::BbApp.install_appimage!
-    end
-
-    def install_nvm_curl
-      return if Installer::Utils.command?("nvm") || Installer::Utils.command?("fnm")
-
-      Installer::Utils.log("Installing nvm...")
-      Installer::Utils.run!("bash", "-c", "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash")
     end
   end
 end

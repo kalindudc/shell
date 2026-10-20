@@ -13,7 +13,7 @@ module Installer
   module Bb
     CONFIG_FILE = File.expand_path("../../bb.yml", __dir__)
     PLUGIN_ENTRY = /\A(?<id>[a-z0-9][a-z0-9-]*)@[a-z0-9][a-z0-9-]*\z/
-    CLI_HINT = "open bb, then run: task bb"
+    CLI_HINT = "open bb, then run: task install:bb"
     LIST_KEYS = %w[marketplaces plugins enable disable].freeze
     MAP_KEYS = %w[settings completed_turns experiments ui].freeze
 

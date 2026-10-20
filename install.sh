@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Shell Dotfiles Installation Bootstrap
-# Minimal bash bootstrap that installs git + ruby, then hands off to Ruby orchestrator
+# Minimal bash bootstrap: Homebrew on macOS, git and ruby, then hands off to src/install.rb
 
 set -euo pipefail
 
@@ -47,6 +47,23 @@ install_bootstrap_package() {
   fi
 }
 
+# brew shellenv sets PATH and HOMEBREW_PREFIX
+load_homebrew() {
+  local brew_bin
+  for brew_bin in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+    [[ -x "${brew_bin}" ]] || continue
+    eval "$("${brew_bin}" shellenv)"
+    return 0
+  done
+  return 1
+}
+
+if [[ "$(uname -s)" == "Darwin" ]] && ! load_homebrew; then
+  echo "===> Installing Homebrew..."
+  /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  load_homebrew
+fi
+
 install_bootstrap_package git
 
 # bootstrap
@@ -90,7 +107,16 @@ SHELL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Ensure ruby is available using the detected platform package manager.
 # Do not use Bundler for installer runtime; Gemfile remains dev/test-only.
 # If sudo/package manager is unavailable, install_bootstrap_package prints the exact next step.
-install_bootstrap_package ruby
+# macOS ships Ruby 2.6, which cannot parse src/install
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  if ! ruby -e 'exit(Gem::Version.new(RUBY_VERSION) >= Gem::Version.new("3.1"))' 2>/dev/null; then
+    BREW_RUBY_DIR="$(brew --prefix)/opt/ruby/bin"
+    [[ -x "${BREW_RUBY_DIR}/ruby" ]] || brew install ruby
+    export PATH="${BREW_RUBY_DIR}:${PATH}"
+  fi
+else
+  install_bootstrap_package ruby
+fi
 
 # Execute Ruby orchestrator
 exec ruby "${SHELL_DIR}/src/install.rb" "$@"

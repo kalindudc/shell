@@ -2,49 +2,69 @@
 
 ## Overview
 
-Unified installer with a minimal bash bootstrap and Ruby orchestrator reading declarative package manifests.
+One entry point, `install.sh`, runs a small Ruby installer that works through seven steps. Each step lives in one file under `src/install/`, and the Taskfile only maps task names onto `./install.sh <step>`.
 
 ## Components
 
 ```
-install.sh                    # Bash bootstrap: installs git + ruby, execs Ruby orchestrator without Bundler
-src/install.rb                # Ruby entry point: parses CLI, loads stdlib-only installer runtime
-src/install/{main,*.rb}       # Orchestrator, OS, backend, state, dependency, and post-setup modules
-packages.yml                  # Declarative package-manager, machine-profile, and backend manifest
-bb.yml                        # Desired bb state (marketplaces, plugins, plugin and app settings), applied with the bb CLI
+install.sh                    # Bash bootstrap: Homebrew on macOS, git and a Ruby that can run src/install, then src/install.rb
+src/install.rb                # Parses the step names, then runs them (stdlib only, no Bundler)
+src/install/cli.rb            # Step names, generate targets and --help
+src/install/main.rb           # Runner: .env, sudo keepalive, the steps in order, login notices at the end
+src/install/platform.rb       # macos, arch or debian, and each platform's package backends
+src/install/packages.rb       # Step packages: the packages.yml lists
+src/install/tools.rb          # Step tools: installers for what no package list has
+src/install/setup.rb          # Step setup: docker, GPG signing key, herdr plugins, pi extensions, skill notes, default shell
+src/install/generate.rb       # Step generate: home/.zshrc, home/.gitconfig, ghostty font size
+src/install/stow.rb           # Step stow: links home/ into $HOME (with unfold.rb)
+src/install/bb.rb, bb_app.rb  # Step bb: starts bb and applies bb.yml with the bb CLI
+src/install/cortex.rb         # Step cortex: builds cortex and runs `cortex agents install`
+packages.yml                  # Package lists, one per package manager
+bb.yml                        # Desired bb state (marketplaces, plugins, plugin and app settings)
 ```
+
+## Commands
+
+| Task | Runs |
+|------|------|
+| `task install` | `./install.sh`: every step in order |
+| `task install:packages`, `install:tools`, `install:setup`, `install:bb`, `install:cortex` | `./install.sh <step>` |
+| `task generate` | `./install.sh generate`: zsh, git and ghostty |
+| `task generate:zsh`, `generate:git`, `generate:ghostty` | `./install.sh generate <target>` |
+| `task stow` | `./install.sh stow` |
+
+`./install.sh` takes any number of step names and always runs them in the order below, so `./install.sh bb stow` stows first. Every task goes through `install.sh`, even `generate`, because macOS ships Ruby 2.6 and the installer needs a newer one.
 
 ## Installation Flow
 
 1. **Bootstrap** (`install.sh`)
-   - If run via curl: clone repo, re-execute from cloned location
-   - Ensure git is installed
-   - Ensure ruby is installed
-   - Exec `ruby src/install.rb` without Bundler
+   - If run through curl: clone the repo, then re-run from the clone
+   - macOS: load Homebrew, or install it when it is missing
+   - Install git when it is missing
+   - Ruby: on macOS, switch to Homebrew's Ruby only when the Ruby on PATH is older than 3.1; on Linux, install the distribution's Ruby when it is missing
+   - Run `ruby src/install.rb` with the given arguments
 
-2. **Orchestration** (`src/install.rb`)
-   - Detect OS (10 lines: reads `/etc/os-release` or checks `RUBY_PLATFORM`)
-   - Reject unsupported OS IDs before shared backends run
-   - Ensure required package managers exist first (Homebrew can be installed on macOS)
-   - Resolve `machine_profiles` by `SHELL_MACHINE_PROFILE`, hostname, then `default`
-   - Run package-manager bootstrap, profile dependencies, system update, backend packages, then post-install
-   - Start bb when it is not running (`src/install/bb_app.rb`), then apply `bb.yml` with the bb CLI (`src/install/bb.rb`); skipped with a warning when bb does not start
-   - Install cortex from its private repository and run `cortex agents install` (`src/install/cortex.rb`); skipped with a warning without `gh` sign-in or pnpm
-   - Record reboot/login-session requirements in `~/.local/state/shell/install.json`
+2. **Steps** (`src/install/main.rb`), in this order:
+   1. `packages`: update the system packages, then install the lists for this platform
+   2. `tools`: run the installers in `Tools::ALL`; they need curl, git and go from packages
+   3. `setup`: docker service and group, `task` symlink for go-task, GPG signing key, herdr plugins and its pi integration, pi extension dependencies, skill notes, zsh as the login shell
+   4. `generate`: write the generated configs into `home/`; after setup, so `.gitconfig` gets the signing key setup found, and after tools, so lines installers append to `~/.zshrc` are overwritten
+   5. `stow`: link `home/` into `$HOME`
+   6. `bb`: start bb when it is not running, then apply `bb.yml`
+   7. `cortex`: install cortex, then `cortex agents install`; after bb, so it finds bb running and installs its bb plugin
+
+The Runner loads `SHELL_DIR/.env` once before the first step. A variable already set in the environment wins over `.env`. The sudo keepalive starts only when packages, tools or setup runs.
+
+In a full install, a failing bb or cortex step prints a warning and the install goes on, because bb may not start (for example over SSH) and cortex needs `gh auth login`. Run on its own, the same failure fails the command.
 
 ## Package Manifest (`packages.yml`)
 
-Keyed by package manager backend, NOT by OS:
+Package lists are keyed by package manager, not by OS, and hold nothing else:
 
 ```yaml
 pacman:
   - git
-  - curl
   - neovim
-
-yay:
-  - github-cli
-  - visual-studio-code-bin
 
 brew:
   - git
@@ -55,51 +75,34 @@ npm:
 
 pi:
   - https://github.com/kalindudc/minions
-
-custom_bootstrap:
-  - install_fnm_curl
-
-custom:
-  - install_zsh_plugins
-  - install_pyenv
 ```
 
-Backends are executed in order:
-1. Package-manager bootstrap from `package_managers`
-2. Machine-profile bootstrap dependencies
-3. OS-specific backends (system packages first)
-4. `custom_bootstrap` runtime setup
-5. Shared backends (`npm`, `pi`, `pipx`, then `custom`). `pi` comes after `npm` because npm installs the pi CLI.
+`brew`, `pacman` and `apt` are required: when the command is missing, the install fails. Every other backend prints a warning and is skipped when its command is missing, so list in `yay` only what the Arch repositories lack. npm gets Node through fnm first: brew and pacman install fnm, and on Debian or Ubuntu the fnm install script runs (it needs `unzip`). `pi` comes after `npm` because npm installs the pi CLI.
 
-## OS Detection
+`SKIP_BACKENDS=snap,npm` skips backends by name; the integration tests use it.
 
-Minimal detection (~10 lines):
-- Read `/etc/os-release` `ID=` field for Linux
-- Check `RUBY_PLATFORM` for Darwin (macOS)
-- Map to backend list via constant hash
+## Platforms
 
-No OS-specific package name mapping — package names are declared per-backend in YAML.
+`/etc/os-release` decides the platform: `arch` when `ID` or `ID_LIKE` names arch, `debian` when they name debian or ubuntu. Darwin is `macos`. Anything else is unsupported.
 
-## Custom Installers
+| Platform | Backends |
+|----------|----------|
+| macOS | brew, brew_cask, npm, pi, pipx |
+| Arch and derivatives | pacman, yay, flatpak, npm, pi, pipx |
+| Ubuntu, Debian and derivatives | apt, snap, flatpak, npm, pi, pipx |
 
-The `custom_bootstrap:` and `custom:` backends call Ruby methods for packages needing special logic:
-- `install_docker_post` — enable docker service, add user to docker group
-- `install_pyenv` — curl installer
-- `install_zsh_plugins` — git clone plugin repos
-- `install_fzf_latest` — GitHub releases download
-- `install_delta_deb` — GitHub .deb download
-- `install_zoxide_curl` — curl installer
-- `install_starship_curl` — curl installer
-- `install_fnm_curl` — curl installer used before npm
-- `install_nerd_fonts_brew` — brew search + install
-- `install_nvm_curl` — curl installer (fallback)
-- `install_herdr_pi_integration` — `herdr integration install pi`, skipped when already current
+## Tools
+
+`Tools::ALL` in `src/install/tools.rb` lists, in order, the installers for tools that no package list provides: pyenv, gum (through go, when the platform has no package), zsh plugins, a recent fzf, Atuin, git-delta on Debian, zoxide, starship, herdr and the bb AppImage on x86_64 Linux. Each one returns early when its command already exists. To add one, write the method and add its name to `ALL`.
 
 ## Configuration Generation
 
-ERB template generation unchanged:
-- `generate_zshrc.rb` — generates `.zshrc`
-- `generate_tempate.rb` — generates `.gitconfig` from template
+`src/install/generate.rb` renders the ERB templates in `src/templates/`:
+- zsh: `.zshrc.erb` with the `*.sh.erb` parts, written to `home/.zshrc`, plus zsh completions for `todo` and `task`
+- git: `.gitconfig.erb`, written to `home/.gitconfig` with `GIT_NAME`, `GIT_EMAIL` and `GIT_SIGNING_KEY`
+- ghostty: `home/.config/ghostty/config-os` with the font size for this OS
+
+Generating never creates GPG keys or talks to GitHub; `setup` does that. Stow links the generated files into `$HOME`.
 
 ## Dotfile Symlinking
 
@@ -108,7 +111,7 @@ ERB template generation unchanged:
 stow home -d $SHELL_DIR -t $HOME --adopt
 ```
 
-Run it through `./install.sh --stow` or `task stow`, not by hand, because of the step below.
+Run it through `task stow`, not by hand, because of the step below.
 
 ### Directories that stay real
 
@@ -129,20 +132,11 @@ ruby src/scripts/unfold-home.rb --revert   # undo using that manifest
 
 ## Sudo Handling
 
-Sudo is requested once at startup and kept alive via background process:
+When packages, tools or setup runs, sudo is requested once at the start and kept alive by a background process:
 - `sudo -v` to prompt
 - Background loop: `while true; do sudo -n true; sleep 50; done`
-- `at_exit` kills the background process
+- The Runner kills the loop when it finishes
 
-## State Management
+## New Login Sessions
 
-Minimal continuation state is stored at `~/.local/state/shell/install.json` (or `$XDG_STATE_HOME/shell/install.json`). It records completed phases and reboot/login-session reasons. When a task such as Docker group membership or default shell change requires a new session, the installer saves the reason, prints it, exits 0, and expects a later `./install.sh` run to continue. There are no lock files and no `--continue`, `--reset-state`, or `--show-state` flags.
-
-## Supported Platforms
-
-| OS | Backends |
-|----|----------|
-| Arch Linux | pacman, yay, flatpak, custom_bootstrap, npm, pi, pipx, custom |
-| Ubuntu | apt, snap, flatpak, custom_bootstrap, npm, pi, pipx, custom |
-| Debian | apt, flatpak, custom_bootstrap, npm, pi, pipx, custom |
-| macOS | brew, brew_cask, custom_bootstrap, npm, pi, pipx, custom |
+Joining the docker group and switching the login shell to zsh only take effect in a new login session. The install does not stop for them: every step runs, and the install ends with a list of what needs you to log out and back in. Nothing is saved between runs. The docker group is checked first, so a rerun after logging in does not ask again.

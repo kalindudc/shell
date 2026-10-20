@@ -15,7 +15,7 @@
 
 require_relative "../install/utils"
 require_relative "../install/unfold"
-require_relative "../install/post_setup"
+require_relative "../install/stow"
 
 mode = ARGV.first || "--dry-run"
 unless %w[--dry-run --apply --revert].include?(mode)
@@ -32,7 +32,7 @@ begin
     result = migration.dry_run
     exit(result.errors.empty? ? 0 : 1)
   when "--apply"
-    migration.apply!(stow: -> { Installer::PostSetup.stow_dotfiles! })
+    migration.apply!(stow: -> { Installer::Stow.run! })
   when "--revert"
     migration.revert!
   end

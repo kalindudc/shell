@@ -84,8 +84,7 @@ class TestCortex < Minitest::Test
     assert_includes @out, 'pnpm'
   end
 
-  def test_cli_cortex_flag_runs_only_the_cortex_step
-    assert Installer::CLI.parse_args(['--cortex'])[:cortex_only]
-    refute Installer::CLI.parse_args([])[:cortex_only]
+  def test_cli_cortex_step_runs_only_the_cortex_step
+    assert_equal ['cortex'], Installer::CLI.parse_args(['cortex'])[:steps]
   end
 end

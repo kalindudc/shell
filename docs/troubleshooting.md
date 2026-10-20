@@ -51,23 +51,15 @@ echo $PATH
 which command-name
 ```
 
-## Reboot Continuation State
+## New Login Needed
 
-```bash
-# View reboot/session continuation state
-cat "${XDG_STATE_HOME:-$HOME/.local/state}/shell/install.json"
-
-# Remove only if you deliberately want to discard a saved reboot prompt
-rm -f "${XDG_STATE_HOME:-$HOME/.local/state}/shell/install.json"
-```
-
-Docker group membership and default shell changes require a new login session. When that happens, the installer saves the reason, exits 0, and asks you to reboot or log out/in. Run `./install.sh` again afterward; the marker is cleared after post-setup continues successfully.
+Docker group membership and default shell changes only take effect in a new login session. The install still runs every step, then ends with a list of what needs you to log out and back in. Nothing is saved between runs; after logging in, `task install` does not ask again.
 
 ## Platform-Specific
 
 ### macOS: Homebrew Not Found
 
-The Ruby installer bootstraps Homebrew when `brew` is missing. If Homebrew is installed but not on PATH, load it manually and rerun:
+`install.sh` loads Homebrew from `/opt/homebrew` or `/usr/local`, and installs it when neither exists. If Homebrew lives somewhere else, load it manually and rerun:
 
 ```bash
 eval "$(/opt/homebrew/bin/brew shellenv)"  # Apple Silicon
@@ -82,6 +74,8 @@ sudo apt-get install gnupg
 ```
 
 ### Arch: AUR Issues
+
+The install skips the `yay` list with a warning until yay is installed. Only packages missing from the official repositories are listed there.
 
 ```bash
 # Install yay first

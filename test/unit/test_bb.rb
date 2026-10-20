@@ -73,9 +73,8 @@ class TestBb < Minitest::Test
     assert_includes packages['brew_cask'], 'bb'
   end
 
-  def test_cli_bb_flag_runs_only_the_bb_step
-    assert Installer::CLI.parse_args(['--bb'])[:bb_only]
-    refute Installer::CLI.parse_args([])[:bb_only]
+  def test_cli_bb_step_runs_only_the_bb_step
+    assert_equal ['bb'], Installer::CLI.parse_args(['bb'])[:steps]
   end
 
   # desired state
@@ -225,7 +224,7 @@ class TestBb < Minitest::Test
     Installer::BbApp.stub(:ensure_running!, false) do
       Installer::Utils.stub(:run!, ->(*cmd) { flunk "must not run #{cmd.join(' ')}" }) do
         out, = capture_io { refute Installer::Bb.apply!(config: CONFIG, profile: 'default') }
-        assert_includes out, 'task bb'
+        assert_includes out, 'task install:bb'
       end
     end
   end
