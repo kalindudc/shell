@@ -1,0 +1,39 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# journal - helpers for an agent-written daily journal kept in cortex
+#
+# Usage: journal carryover <previous-task-id> <new-body.md>
+#        journal render <data.json> <out.html>
+#
+# carryover lists open items in the previous journal that the new body drops;
+# it exits 1 when any are missing. render writes the themed HTML briefing.
+
+ENV.delete('BUNDLE_GEMFILE')
+
+require_relative 'lib/journal'
+
+def usage(code)
+  puts(File.readlines(__FILE__)[3..9].map { |line| line.sub(/^# ?/, '') })
+  puts("\nrender's JSON:\n#{Journal::Render::SCHEMA}") if code.zero?
+  exit code
+end
+
+command, *args = ARGV
+usage(0) if ['-h', '--help', nil].include?(command)
+
+case command
+when 'carryover'
+  usage(2) unless args.size == 2
+  total, missing = Journal.missing_items(Journal.cortex_body(args[0]), Journal.read(args[1]))
+  puts("checked #{total} open items from @#{args[0]}; #{missing.size} not carried over or resolved")
+  missing.each { |item| puts("- [#{item[:section]}] #{item[:line]}") }
+  exit(missing.empty? ? 0 : 1)
+when 'render'
+  usage(2) unless args.size == 2
+  page = Journal::Render.page(JSON.parse(Journal.read(args[0])))
+  File.write(args[1], page, encoding: 'UTF-8')
+  puts("wrote #{args[1]} (#{page.bytesize} bytes)")
+else
+  usage(2)
+end

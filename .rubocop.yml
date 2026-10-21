@@ -8,6 +8,7 @@ AllCops:
   Include:
     - "home/bin/todo"
     - "home/bin/agent-stats"
+    - "home/bin/journal"
     - "home/bin/lib/**/*.rb"
     - "home/bin/test/**/*.rb"
     - "src/**/*.rb"
