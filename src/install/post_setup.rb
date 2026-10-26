@@ -37,10 +37,6 @@ module Installer
       if ENV["GIT_SIGNING_KEY"].to_s.strip.empty?
         ENV["GIT_SIGNING_KEY"] = `git config --global user.signingkey 2>/dev/null`.strip
       end
-      personal_config = File.join(HOME, ".gitconfig-personal")
-      return unless ENV["GIT_PERSONAL_SIGNING_KEY"].to_s.strip.empty? && File.file?(personal_config)
-
-      ENV["GIT_PERSONAL_SIGNING_KEY"] = `git config --file #{Shellwords.escape(personal_config)} user.signingkey 2>/dev/null`.strip
     end
 
     def setup_go_task_symlink!
@@ -59,37 +55,20 @@ module Installer
         return
       end
 
-      signing_key = usable_signing_key(email, ENV["GIT_SIGNING_KEY"])
-      return if signing_key.empty?
-
-      ENV["GIT_SIGNING_KEY"] = signing_key
-      configure_git_signing(signing_key)
-      upload_gpg_key_to_github(signing_key)
-    end
-
-    # A second identity for repos of the personal GitHub account, used through the includeIf in
-    # .gitconfig. Its key goes into ~/.gitconfig-personal only, never into the global config.
-    def setup_personal_gpg_key
-      email = ENV["GIT_PERSONAL_EMAIL"].to_s.strip
-      return if email.empty? || email == ENV["GIT_EMAIL"].to_s.strip
-
-      signing_key = usable_signing_key(email, ENV["GIT_PERSONAL_SIGNING_KEY"])
-      return if signing_key.empty?
-
-      ENV["GIT_PERSONAL_SIGNING_KEY"] = signing_key
-      upload_gpg_key_to_github(signing_key)
-    end
-
-    def usable_signing_key(email, configured)
       ensure_gpg_home_permissions!
 
-      signing_key = configured.to_s.strip
+      signing_key = ENV["GIT_SIGNING_KEY"].to_s.strip
       unless signing_key.empty? || signing_key_available?(signing_key)
         Installer::Utils.warn("Configured Git signing key #{short_key(signing_key)} is not available locally; finding or creating a usable key")
         signing_key = ""
       end
 
-      signing_key.empty? ? ensure_gpg_signing_key(email) : signing_key
+      signing_key = ensure_gpg_signing_key(email) if signing_key.empty?
+      return if signing_key.empty?
+
+      ENV["GIT_SIGNING_KEY"] = signing_key
+      configure_git_signing(signing_key)
+      upload_gpg_key_to_github(signing_key)
     end
 
     def stow_dotfiles!
@@ -152,13 +131,12 @@ module Installer
     end
 
     def generate_git_config
-      %w[.gitconfig .gitconfig-personal].each do |name|
-        template = File.join(SHELL_DIR, "src", "templates", "#{name}.erb")
-        next unless File.exist?(template)
+      gitconfig_template = File.join(SHELL_DIR, "src", "templates", ".gitconfig.erb")
+      gitconfig_output = File.join(SHELL_DIR, "home", ".gitconfig")
+      return unless File.exist?(gitconfig_template)
 
-        Installer::Utils.run!("ruby", File.join(SHELL_DIR, "src", "generate_tempate.rb"),
-                              "-i", template, "-o", File.join(SHELL_DIR, "home", name))
-      end
+      Installer::Utils.run!("ruby", File.join(SHELL_DIR, "src", "generate_tempate.rb"),
+                            "-i", gitconfig_template, "-o", gitconfig_output)
     end
 
     def ensure_gpg_signing_key(email)

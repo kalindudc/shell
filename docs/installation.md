@@ -111,18 +111,14 @@ The installer reads configuration from `SHELL_DIR/.env`:
 GIT_EMAIL=you@example.com
 GIT_NAME=Your Name
 GIT_SIGNING_KEY=YOUR_GPG_KEY_ID
-GIT_PERSONAL_EMAIL=you@personal.example   # optional
-GIT_PERSONAL_SIGNING_KEY=                 # optional; found or generated
 ```
 
-On a work machine, `GIT_EMAIL` is the work address and `GIT_PERSONAL_EMAIL` the personal
-one. Repos of the personal GitHub account (`kalindudc`) then use the personal email and
-signing key from the generated `~/.gitconfig-personal`. A repo counts as personal when one
-of its remotes is under `github.com/kalindudc`, wherever it is cloned, or when it lives
-under `~/src/github.com/kalindudc/`. Every other repo keeps `GIT_EMAIL` and
-`GIT_SIGNING_KEY`. The installer and `task generate:gitconfig` find a GPG key for the
-personal email, or generate an ed25519 one, and upload it to GitHub when `gh` has the
-`write:gpg_key` scope. Leave `GIT_PERSONAL_EMAIL` empty on a machine with one identity.
+Every repo uses this identity, except the ones that the private
+[kalindudc/shell-private](https://github.com/kalindudc/shell-private) repo switches. The
+generated `.gitconfig` ends by including `git/gitconfig` from that repo (or from
+`SHELL_PRIVATE_DIR`). That file holds conditional includes, matched by remote URL or folder,
+that give work repos the work email and signing key. The rules live there because they name
+work systems. Without the private repo, every repo uses the identity above.
 
 If `.env` is missing, git config values are used as fallbacks.
 

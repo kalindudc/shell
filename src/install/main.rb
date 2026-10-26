@@ -158,7 +158,6 @@ module Installer
       PostSetup.load_git_config_fallbacks
       PostSetup.setup_go_task_symlink!
       PostSetup.setup_gpg_key
-      PostSetup.setup_personal_gpg_key
       PostSetup.generate_configs!
       PostSetup.stow_dotfiles!
       PostSetup.bootstrap_pi_extensions!
