@@ -7,4 +7,5 @@ require_relative "install/post_setup"
 Installer::PostSetup.load_env_file
 Installer::PostSetup.load_git_config_fallbacks
 Installer::PostSetup.setup_gpg_key
+Installer::PostSetup.setup_personal_gpg_key
 Installer::PostSetup.generate_git_config

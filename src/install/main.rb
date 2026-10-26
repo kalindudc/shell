@@ -10,6 +10,7 @@ require_relative "backends"
 require_relative "custom"
 require_relative "post_setup"
 require_relative "bb"
+require_relative "bb_automations"
 require_relative "cortex"
 
 module Installer
@@ -33,6 +34,16 @@ module Installer
       if @options[:bb_only]
         PostSetup.load_env_file
         Bb.apply!(profile: Dependencies.new(load_packages, nil).profile_name)
+        return
+      end
+
+      if @options[:bb_automations_export]
+        BbAutomations.export!
+        return
+      end
+
+      if @options[:bb_automations]
+        BbAutomations.apply!(update: @options[:update])
         return
       end
 
@@ -147,6 +158,7 @@ module Installer
       PostSetup.load_git_config_fallbacks
       PostSetup.setup_go_task_symlink!
       PostSetup.setup_gpg_key
+      PostSetup.setup_personal_gpg_key
       PostSetup.generate_configs!
       PostSetup.stow_dotfiles!
       PostSetup.bootstrap_pi_extensions!

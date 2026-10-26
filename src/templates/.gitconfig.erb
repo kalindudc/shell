@@ -2,6 +2,7 @@
   name = ENV["GIT_NAME"] ||= "Kalindu De Costa"
   email = ENV["GIT_EMAIL"] ||= "kalinduk.decosta@gmail.com"
   signing_key = ENV["GIT_SIGNING_KEY"] ||= ""
+  personal_email = ENV["GIT_PERSONAL_EMAIL"].to_s.strip
 %>
 [user]
 	name = <%= name %>
@@ -53,3 +54,17 @@
   <%- else -%>
   gpgsign = false
   <%- end -%>
+<%- if personal_email != "" && personal_email != email -%>
+
+# Repos of my personal GitHub account use the personal email and signing key in
+# ~/.gitconfig-personal: matched by remote, wherever the clone is, or by folder for a repo
+# that has no remote yet. These come last so they override [user] and [commit] above.
+[includeIf "hasconfig:remote.*.url:https://github.com/kalindudc/**"]
+	path = ~/.gitconfig-personal
+[includeIf "hasconfig:remote.*.url:git@github.com:kalindudc/**"]
+	path = ~/.gitconfig-personal
+[includeIf "hasconfig:remote.*.url:ssh://git@github.com/kalindudc/**"]
+	path = ~/.gitconfig-personal
+[includeIf "gitdir:~/src/github.com/kalindudc/"]
+	path = ~/.gitconfig-personal
+<%- end -%>

@@ -16,6 +16,7 @@ data
 .vim/plugged/
 
 home/.gitconfig
+home/.gitconfig-personal
 vendor/
 .bundle/
 .tmp/

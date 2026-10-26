@@ -1,0 +1,142 @@
+#!/bin/bash
+# Read-only disk usage collector for the weekly disk report. Deletes nothing.
+# Writes one snapshot folder per run and prints its path on the last line.
+# Sizes are KiB; divide by 1048576 for GiB.
+#
+# Machine-specific parts come from an optional overlay folder, by default disk-audit/ in the
+# private companion repo. overlay.sh is sourced first: it may add to PIN_ROOTS and define
+# overlay_report, whose output becomes local.txt. rules.md is copied to local-rules.md.
+#
+# ls output below only lists names for a person to read; nothing parses it as paths.
+# shellcheck disable=SC2012
+set -u
+ROOT="${HOME}/.local/share/disk-audit"
+OVERLAY_DIR="${DISK_AUDIT_OVERLAY_DIR:-${SHELL_PRIVATE_DIR:-${HOME}/src/github.com/kalindudc/shell-private}/disk-audit}"
+PIN_ROOTS=("${HOME}/src")
+if [[ -r "${OVERLAY_DIR}/overlay.sh" ]]; then
+  # shellcheck source=/dev/null
+  . "${OVERLAY_DIR}/overlay.sh"
+fi
+
+SNAP="${ROOT}/snapshots/$(date +%Y-%m-%dT%H%M)"
+mkdir -p "${SNAP}"
+cd "${SNAP}" || exit 1
+MIN_KIB=51200
+USER_TMP=$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null)
+USER_TMP=${USER_TMP%/}
+USER_VAR=$(dirname "${USER_TMP}")
+
+{
+  echo "date: $(date '+%Y-%m-%d %H:%M %Z')"
+  df -k /System/Volumes/Data | awk 'NR==2 {printf "data_used_gib: %.1f\ndata_free_gib: %.1f\n", $3/1048576, $4/1048576}'
+  diskutil info /System/Volumes/Data 2>/dev/null | grep -E "Volume Used Space|Container Free Space" | sed 's/^ *//'
+  echo "data_snapshots: $(diskutil apfs listSnapshots disk3s5 2>/dev/null | grep -c 'Name:')"
+  lsof -nP +L1 2>/dev/null | awk 'NR>1 {s+=$7} END {printf "deleted_but_open_gib: %.2f\n", s/1073741824}'
+  echo "trash: $(($(stat -f %l "${HOME}/.Trash" 2>/dev/null || echo 2) - 2)) folders, last changed $(stat -f %Sm -t '%Y-%m-%d %H:%M' "${HOME}/.Trash" 2>/dev/null) (loose files are not counted; sizes need Full Disk Access)"
+} >summary.txt
+
+# Every folder at least 50 MiB, down to 5 levels under $HOME, one du pass per top-level entry in parallel.
+find "${HOME}" -mindepth 1 -maxdepth 1 ! -name Library -print0 |
+  xargs -0 -P 8 -I{} du -xk -d4 {} 2>/dev/null |
+  awk -v m="${MIN_KIB}" -F'\t' '$1 >= m' >home.tsv
+du -xk -d3 "${HOME}/Library" 2>/dev/null | awk -v m="${MIN_KIB}" -F'\t' '$1 >= m' >>home.tsv
+sort -t$'\t' -k1,1rn home.tsv -o home.tsv
+
+{
+  for d in /Applications /opt /usr/local /Users/Shared /private/tmp "${USER_TMP}" "${USER_VAR}/X" "${USER_VAR}/C"; do du -xk -d1 "${d}" 2>/dev/null; done
+  du -xk -d1 /opt/homebrew/Cellar 2>/dev/null
+} | awk -v m="${MIN_KIB}" -F'\t' '$1 >= m' | sort -t$'\t' -k1,1rn >system.tsv
+
+# Repos under ~/src: size_kib, path, last_activity, changed, untracked, stashes, local_only_commits, worktrees
+find "${HOME}/src" -maxdepth 4 -name .git -prune 2>/dev/null | while read -r g; do
+  r=$(dirname "${g}")
+  lc=$(git -C "${r}" log -1 --format=%cs 2>/dev/null)
+  touch=$(stat -f %Sm -t %Y-%m-%d "${r}/.git/index" 2>/dev/null || stat -f %Sm -t %Y-%m-%d "${g}")
+  last="${lc}"
+  [[ "${touch}" > "${last}" ]] && last="${touch}"
+  changed=$(git -C "${r}" --no-optional-locks status --porcelain --untracked-files=no 2>/dev/null | wc -l | tr -d ' ')
+  untracked=$(git -C "${r}" --no-optional-locks status --porcelain 2>/dev/null | grep -c '^??')
+  stashes=$(git -C "${r}" stash list 2>/dev/null | wc -l | tr -d ' ')
+  local_only=$(git -C "${r}" rev-list --count --branches --not --remotes 2>/dev/null || echo 0)
+  wts=$(git -C "${r}" worktree list 2>/dev/null | wc -l | tr -d ' ')
+  size=$(du -xsk "${r}" 2>/dev/null | cut -f1)
+  printf "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n" "${size}" "${r}" "${last}" "${changed}" "${untracked}" "${stashes}" "${local_only}" "${wts}"
+done | sort -t$'\t' -k1,1rn >repos.tsv
+
+{
+  echo "== ~/.dev/go ($(ls "${HOME}/.dev/go" 2>/dev/null | wc -l | tr -d ' ') versions, newest first)"
+  ls -1t "${HOME}/.dev/go" 2>/dev/null | tr '\n' ' '
+  echo
+  echo "== ~/.dev/cargo and ~/.dev/gem (newest first)"
+  ls -lt "${HOME}/.dev/cargo" "${HOME}/.dev/gem" 2>/dev/null | awk 'NF>=9 {print $6, $7, $8, $9}'
+  echo "== rustup toolchains"
+  rustup toolchain list 2>/dev/null
+  echo "== nvm node versions"
+  ls "${HOME}/.nvm/versions/node" 2>/dev/null | tr '\n' ' '
+  echo
+  echo "== ~/.gem/ruby"
+  ls "${HOME}/.gem/ruby" 2>/dev/null | tr '\n' ' '
+  echo
+  echo "== /opt/rubies"
+  ls /opt/rubies 2>/dev/null | tr '\n' ' '
+  echo
+  echo "== envtest"
+  ls "${HOME}/Library/Application Support/io.kubebuilder.envtest/k8s" 2>/dev/null | tr '\n' ' '
+  echo
+  echo "== elasticsearch in /opt"
+  ls -d /opt/elasticsearch-* 2>/dev/null | tr '\n' ' '
+  echo
+  echo "== version pins in ${PIN_ROOTS[*]}"
+  find "${PIN_ROOTS[@]}" -maxdepth 5 \( -name .ruby-version -o -name rust-toolchain -o -name rust-toolchain.toml -o -name .nvmrc -o -name .node-version -o -name .go-version \) -not -path '*/node_modules/*' 2>/dev/null |
+    while read -r f; do printf "%s\t%s\n" "$(grep -m1 -oE '[0-9]+\.[0-9]+(\.[0-9]+)?|stable|nightly' "${f}" | head -1)" "${f#"${HOME}"/}"; done | sort
+  echo "== brew cleanup estimate"
+  brew cleanup --prune=all -n 2>/dev/null | tail -1
+} >toolchains.txt 2>&1
+
+{
+  echo "== podman machine"
+  podman machine list 2>&1 | head -3
+  ls -ls "${HOME}"/.local/share/containers/podman/machine/*/*.raw 2>/dev/null | awk '{printf "disk file allocated: %.1f GiB  %s\n", $1*512/1073741824, $NF}'
+  echo "== podman system df"
+  podman system df 2>&1 | head -5
+  echo "== podman containers"
+  podman ps -a --format '{{.Names}}\t{{.Image}}\t{{.Status}}' 2>&1 | head -20
+} >containers.txt
+
+{
+  echo "== loom projects"
+  bb loom list 2>&1 | grep -vE 'archived|done'
+  echo "== bb worktrees: size_kib, worktree, thread status"
+  for w in "${HOME}"/.bb/plugins/environment-git-worktree/host-data/worktrees/*; do
+    [[ -d "${w}" ]] || continue
+    t=$(basename "${w}" | sed 's/-[0-9]*$//')
+    st=$(bb thread show "${t}" 2>/dev/null | grep -E '^ *(Status|Archived):' | sed 's/^ *//' | tr '\n' ' ')
+    printf "%s\t%s\t%s\n" "$(du -xsk "${w}" 2>/dev/null | cut -f1)" "${w##*/}" "${st:-unknown}"
+  done | sort -rn
+  echo "== largest thread storage: size_kib, thread, status"
+  du -xsk "${HOME}"/.bb/thread-storage/thr_* 2>/dev/null | sort -rn | head -15 | while IFS=$'\t' read -r s p; do
+    t=${p##*/}
+    printf "%s\t%s\t%s\n" "${s}" "${t}" "$(bb thread show "${t}" 2>/dev/null | grep -E '^ *(Status|Archived|Title):' | sed 's/^ *//' | tr '\n' ' ' | cut -c1-160)"
+  done
+  echo "== ~/.bb/backups"
+  ls -la "${HOME}/.bb/backups" 2>/dev/null | tail -n +4
+} >bb.txt 2>&1
+
+{
+  echo "== /private/tmp entries older than a day: size_kib, path"
+  find /private/tmp -mindepth 1 -maxdepth 1 -user "$(whoami)" ! -newermt '-1 day' -print0 2>/dev/null | xargs -0 du -xsk 2>/dev/null | sort -rn | head -20
+  echo "== user temp dirs older than a day by name pattern"
+  find "${USER_TMP}" -mindepth 1 -maxdepth 1 ! -newermt '-1 day' -print0 2>/dev/null | xargs -0 du -xsk 2>/dev/null |
+    awk -F'\t' '{n=$2; sub(/.*\//, "", n); gsub(/[0-9]+$/, "", n); if (n ~ /^tmp\./) n = "tmp.*"; else if (n ~ /^go-build/) n = "go-build*"; s[n] += $1; c[n]++} END {for (k in s) if (s[k] > 10240) printf "%d\t%d items\t%s\n", s[k], c[k], k}' | sort -rn
+  echo "== open entries in /private/tmp"
+  lsof -nP +D /private/tmp 2>/dev/null | awk 'NR>1 {print $NF}' | sed -E 's#^(/private/tmp/[^/]+).*#\1#' | sort -u
+} >scratch.txt 2>&1
+
+if declare -F overlay_report >/dev/null; then
+  overlay_report >local.txt 2>&1
+fi
+if [[ -r "${OVERLAY_DIR}/rules.md" ]]; then
+  cp "${OVERLAY_DIR}/rules.md" local-rules.md
+fi
+
+echo "${SNAP}"

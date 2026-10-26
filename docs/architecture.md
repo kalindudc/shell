@@ -12,6 +12,7 @@ src/install.rb                # Ruby entry point: parses CLI, loads stdlib-only 
 src/install/{main,*.rb}       # Orchestrator, OS, backend, state, dependency, and post-setup modules
 packages.yml                  # Declarative package-manager, machine-profile, and backend manifest
 bb.yml                        # Desired bb state (marketplaces, plugins, plugin and app settings), applied with the bb CLI
+bb/automations/               # Public bb automations; the rest live in the private kalindudc/shell-private repo
 ```
 
 ## Installation Flow

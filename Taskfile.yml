@@ -34,6 +34,21 @@ tasks:
     cmds:
       - ruby src/install.rb --bb
 
+  bb:automations:
+    desc: "Restore saved bb automations from bb/automations and the private repo; -- --update also overwrites changed ones"
+    cmds:
+      - ruby src/install.rb --bb-automations {{.CLI_ARGS}}
+
+  bb:automations:export:
+    desc: "Save every bb automation: already-public ones to bb/automations, the rest to the private repo"
+    cmds:
+      - ruby src/install.rb --bb-automations-export
+
+  check:leaks:
+    desc: "Fail if the public bb automation backup holds personal ids, tokens or work terms"
+    cmds:
+      - ruby src/scripts/check-leaks.rb
+
   cortex:
     desc: "Install cortex, then its agent skills, pi extension and bb plugin"
     cmds:
@@ -112,6 +127,10 @@ tasks:
         bundle exec ruby test/unit/test_unfold.rb
         bundle exec ruby test/unit/test_bb.rb
         bundle exec ruby test/unit/test_bb_app.rb
+        bundle exec ruby test/unit/test_bb_automations.rb
+        bundle exec ruby test/unit/test_leak_check.rb
+        bundle exec ruby test/unit/test_git_identity.rb
+        ruby src/scripts/check-leaks.rb
         bundle exec ruby test/unit/test_cortex.rb
         echo "✓ Ruby installer tests passed"
       - |

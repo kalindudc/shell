@@ -1,0 +1,3 @@
+#!/bin/sh
+# Blocks a commit while the public bb automation backup holds something private.
+exec ruby "$(git rev-parse --show-toplevel)/src/scripts/check-leaks.rb"

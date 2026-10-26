@@ -1,0 +1,13 @@
+# bb automation, saved by `task bb:automations:export` and restored by `task bb:automations`.
+name: Weekly disk report
+project: shell
+enabled: true
+schedule:
+  cron: 0 14 * * 5
+  timezone: America/Toronto
+agent:
+  provider: pi
+  model: anthropic/claude-opus-5-5
+  reasoning: high
+  permission_mode: full
+  environment: "~/src/github.com/kalindudc/shell"

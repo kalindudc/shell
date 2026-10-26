@@ -52,4 +52,7 @@ fi
 echo "Setup NPM"
 $NPM_COMMAND install
 
+# The pre-commit hook blocks commits that would publish private details from the bb automation backup
+git -C "$(dirname "$0")/../.." config core.hooksPath .githooks
+
 echo "✓ Development dependencies installed"

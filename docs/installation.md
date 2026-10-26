@@ -37,6 +37,10 @@ The installer uses a two-stage design:
 # Start bb if needed and apply bb.yml only (same as `task bb`)
 ruby src/install.rb --bb
 
+# Restore or save bb automations (same as `task bb:automations` and `task bb:automations:export`)
+ruby src/install.rb --bb-automations [--update]
+ruby src/install.rb --bb-automations-export
+
 # Install cortex and its agent integrations only (same as `task cortex`)
 ruby src/install.rb --cortex
 
@@ -107,7 +111,18 @@ The installer reads configuration from `SHELL_DIR/.env`:
 GIT_EMAIL=you@example.com
 GIT_NAME=Your Name
 GIT_SIGNING_KEY=YOUR_GPG_KEY_ID
+GIT_PERSONAL_EMAIL=you@personal.example   # optional
+GIT_PERSONAL_SIGNING_KEY=                 # optional; found or generated
 ```
+
+On a work machine, `GIT_EMAIL` is the work address and `GIT_PERSONAL_EMAIL` the personal
+one. Repos of the personal GitHub account (`kalindudc`) then use the personal email and
+signing key from the generated `~/.gitconfig-personal`. A repo counts as personal when one
+of its remotes is under `github.com/kalindudc`, wherever it is cloned, or when it lives
+under `~/src/github.com/kalindudc/`. Every other repo keeps `GIT_EMAIL` and
+`GIT_SIGNING_KEY`. The installer and `task generate:gitconfig` find a GPG key for the
+personal email, or generate an ed25519 one, and upload it to GitHub when `gh` has the
+`write:gpg_key` scope. Leave `GIT_PERSONAL_EMAIL` empty on a machine with one identity.
 
 If `.env` is missing, git config values are used as fallbacks.
 
@@ -144,6 +159,39 @@ or settings. Machine-specific state goes under `profiles:` in `bb.yml`, selected
 `.env`), then a hostname listed under `machine_profiles` in `packages.yml`, then `default`.
 
 My own plugins live in [kalindudc/bb-marketplace](https://github.com/kalindudc/bb-marketplace).
+
+### bb automations
+
+bb keeps automations (scheduled agent prompts and scripts) in its database too. They are backed up
+as one folder per automation: `automation.yml` with the schedule, provider, model and environment,
+plus `prompt.md` or the script. Ids, run history and stored paths are left out, projects are named,
+and paths start at `~`, so a folder restores on any machine.
+
+Most automations name work systems or people, so the backup is split across two repos:
+
+- `bb/automations/` in this public repo holds only automations already tracked here. Today that is
+  the weekly disk report, whose script is `home/bin/disk-audit`.
+- The private [kalindudc/shell-private](https://github.com/kalindudc/shell-private) repo, cloned to
+  `~/src/github.com/kalindudc/shell-private` (or `SHELL_PRIVATE_DIR`), holds every other automation,
+  copies of the helper folders they call, the work-only overlay for `disk-audit`, and the leak
+  check's denylist of work terms and names.
+
+```bash
+task bb:automations:export          # save every automation, then review and commit both repos
+task bb:automations                 # restore: create missing automations and helper files
+task bb:automations -- --update     # also make changed automations match the saved files
+task check:leaks                    # scan the public backup for ids, paths, tokens and work terms
+```
+
+The export writes a new automation to the private repo, never to this one; making one public means
+moving its folder here on purpose. Before it writes a public folder, the export runs the leak check
+and refuses on any hit. The same check runs in `task test:unit` and in the pre-commit hook
+(`.githooks/pre-commit`, turned on by `task up` with `git config core.hooksPath .githooks`). Without
+the private repo it checks only the generic patterns.
+
+Restoring is never automatic: it creates automations that then run on their own, so run it on
+purpose and pause the copies on any machine that should not run them. It never deletes an
+automation, and it leaves one that differs from its files alone unless you pass `--update`.
 
 ## cortex
 
