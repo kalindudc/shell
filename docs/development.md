@@ -3,13 +3,11 @@
 ## Setup
 
 ```bash
-git clone https://github.com/kalindudc/shell.git
+git clone --recurse-submodules https://github.com/kalindudc/shell.git
 cd shell
 
-# Install BATS and ShellCheck (or use task dev:deps)
-# On macOS: brew install bats-core shellcheck
-# On Arch:  pacman -S bats shellcheck
-# On Ubuntu: apt install bats shellcheck
+nix develop   # bats, go-task, nixfmt, ruby, shellcheck and shfmt
+task up       # Ruby gems, npm packages and the pre-commit hook
 ```
 
 ## Tasks
@@ -20,62 +18,47 @@ task --list
 
 | Task | Description |
 |------|-------------|
-| `task install` | Run installation |
-| `task stow` | Re-stow dotfiles |
-| `task clean` | Clean integration containers/images and temp logs |
-| `task style` | Run ShellCheck and RuboCop |
-| `task test` | Run default local tests (unit + bin) |
-| `task test:unit` | Run Ruby installer tests and pi extension tests when bun is available |
-| `task test:integration` | Run integration tests separately (requires Docker and `task build`) |
-| `task build` | Build Docker images |
-| `task generate` | Generate configs |
+| `task install` | Set up the machine (`./install.sh`) |
+| `task switch` | Apply the flake |
+| `task update` | Update `flake.lock` |
+| `task check` | Evaluate every configuration and build this system's checks |
+| `task tools`, `task setup`, `task bb`, `task cortex` | Run one step of `src/install.rb` |
+| `task clean` | Remove test logs |
+| `task style` | Run ShellCheck, shfmt, RuboCop and `nix fmt` |
+| `task test` | Run the local tests (unit + bin) |
+| `task test:unit` | Run the Ruby installer tests, and the pi extension tests when bun is available |
 
 ## Testing
 
-### Unit Tests
-
 ```bash
-task test:unit
+task test:unit   # Ruby installer tests (Minitest) in test/unit/
+task test:bin    # home/bin tests (BATS and Ruby) in home/bin/test/
+task check       # nix flake check
 ```
 
-Ruby installer tests use Minitest in `test/unit/test_installer.rb`. Bin tests use BATS and Ruby under `home/bin/test/`.
-
-### Integration Tests
+Before a switch, build the configuration without applying it:
 
 ```bash
-task build                    # First time
-task test:integration         # All platforms
-task test:integration -- ubuntu-22  # Single platform
+nix build .#darwinConfigurations.personal.system                  # macOS
+nix build .#homeConfigurations.linux-x86_64.activationPackage     # Linux
 ```
 
-Platforms: `ubuntu-22`, `ubuntu-24`, `debian`, `arch`, `ubuntu-minimal`. The minimal Ubuntu image starts without Ruby or Bundler so `install.sh` bootstrap assumptions stay covered.
+`result/home-files` (Linux) shows every file Home Manager would write. CI runs
+`nix flake check` on macOS and Ubuntu, and applies the Linux configuration for a test user
+on Ubuntu (`.github/workflows/check.yml`). A weekly workflow opens a pull request that
+updates `flake.lock`.
 
 ## Debugging
 
 ```bash
 TRACE=1 ./install.sh 2>&1 | tee install.log
-cat "${XDG_STATE_HOME:-$HOME/.local/state}/shell/install.json"   # Reboot continuation state
+nix eval .#darwinConfigurations.personal.config.homebrew.casks          # read any option
+nix eval --raw .#homeConfigurations.linux-x86_64.config.home.file.".zshrc".text
 ```
 
 ## Adding Packages
 
-Edit `packages.yml`:
-
-```yaml
-apt:
-  - new-package
-
-custom_bootstrap:
-  - install_runtime_before_npm
-
-machine_profiles:
-  default:
-    bootstrap:
-      apt:
-        - curl
-```
-
-Use `package_managers` for required package-manager bootstrap and `machine_profiles` for host/profile-specific prerequisites. Profile selection order is `SHELL_MACHINE_PROFILE`, hostname, then `default`.
+See "Adding Packages" in [installation.md](installation.md).
 
 ## Code Standards
 
@@ -83,3 +66,4 @@ Use `package_managers` for required package-manager bootstrap and `machine_profi
 - Quote variables: `"$var"`
 - Use `[[ ]]` for tests
 - Pass ShellCheck: `task style`
+- Format Nix with `nix fmt`

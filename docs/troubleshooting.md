@@ -15,15 +15,27 @@ The installer has no lock file and no `--continue`, `--reset-state`, or `--show-
 ## Package Fails
 
 ```bash
-# Update package manager first
-brew update          # macOS
-sudo apt-get update  # Ubuntu
-sudo pacman -Syu     # Arch
+# A Nix package: build the configuration to see the error
+nix build .#darwinConfigurations.personal.system                # macOS
+nix build .#homeConfigurations.linux-x86_64.activationPackage   # Linux
 
-# Try manually
-brew install package-name
+# A Homebrew cask that nix-darwin installs
+brew install --cask package-name
+
+# A Linux system package from src/scripts/linux-system.sh
 sudo apt-get install package-name
 sudo pacman -S package-name
+```
+
+## Undo a Switch
+
+```bash
+# macOS: activate the previous system generation
+sudo darwin-rebuild --rollback
+
+# Linux: list Home Manager generations, then run the activate script of an older one
+home-manager generations
+/nix/store/<hash>-home-manager-generation/activate
 ```
 
 ## Shell Not Zsh
@@ -51,17 +63,10 @@ echo $PATH
 which command-name
 ```
 
-## Reboot Continuation State
+## A Login Is Needed
 
-```bash
-# View reboot/session continuation state
-cat "${XDG_STATE_HOME:-$HOME/.local/state}/shell/install.json"
-
-# Remove only if you deliberately want to discard a saved reboot prompt
-rm -f "${XDG_STATE_HOME:-$HOME/.local/state}/shell/install.json"
-```
-
-Docker group membership and default shell changes require a new login session. When that happens, the installer saves the reason, exits 0, and asks you to reboot or log out/in. Run `./install.sh` again afterward; the marker is cleared after post-setup continues successfully.
+On Linux, joining the docker group and switching the login shell to zsh take effect after a
+new login. `./install.sh` lists them at the end; log out and back in.
 
 ## Platform-Specific
 
@@ -156,27 +161,28 @@ sudo update-grub
 This locks GRUB to the GOP output the BIOS handed it (now the RTX 3080) rather than
 resetting the display mode at handover.
 
-## Stow fails with "is a symlink, so files tools write there would land in the repo"
+## Home Manager says a file "would be clobbered"
 
-The machine still has folded stow links from before `.stow-unfold` markers existed (see "Directories that stay real" in [architecture.md](architecture.md)). Close every pi session, then run the one-time migration:
+A file Home Manager wants to link already exists, and so does its `.before-nix` backup from an
+earlier switch. Check both, delete the backup, then run `task switch` again.
 
-```bash
-ruby src/scripts/unfold-home.rb           # review the plan
-ruby src/scripts/unfold-home.rb --apply
-```
+## Old stow links
+
+`task switch` removes links that point into `home/` from the old stow layout
+(`src/scripts/unstow.sh`). It keeps the old `~/.gitconfig` as `~/.gitconfig.before-nix` and
+moves only the lines tools added after the generated part into the new `~/.gitconfig`.
 
 ## Complete Uninstall
 
 ```bash
-# Remove stowed files (real directories such as ~/.pi keep the files tools wrote there)
-stow -D -v -d . -t ~ home
+# macOS: remove nix-darwin and everything it installed (Home Manager links included)
+sudo darwin-uninstaller
 
-# Remove configs
-rm -rf ~/.oh-my-zsh ~/.config/starship.toml
+# Linux: remove Home Manager's links and packages
+home-manager uninstall
 
-# Reset shell
+# Reset the login shell (Linux)
 chsh -s /bin/bash
 
-# Remove repo
-rm -rf ~/src/github.com/kalindudc/shell
+# Then delete the checkout at ~/src/github.com/kalindudc/shell
 ```

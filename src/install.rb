@@ -1,9 +1,11 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
+# The setup steps that Nix does not manage. install.sh runs them after the first switch;
+# the Taskfile runs one at a time (task tools, task setup, task bb, task cortex).
+
 require_relative 'install/cli'
 
-# constants
 $VERBOSE = false
 
 # Parse CLI args before loading installer dependencies so `--help` remains
@@ -11,11 +13,6 @@ $VERBOSE = false
 options = Installer::CLI.parse_args(ARGV)
 $VERBOSE = options[:verbose]
 
-require 'yaml'
-require_relative 'install/errors'
-require_relative 'install/state'
-require_relative 'install/dependencies'
 require_relative 'install/main'
 
-# Run installer
 Installer::Runner.new(options).run

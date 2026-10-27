@@ -46,10 +46,6 @@ module Installer
       ENV["CI"] || ENV["NONINTERACTIVE"]
     end
 
-    def state=(state)
-      @state = state
-    end
-
     def run!(*cmd, **opts)
       puts "  $ #{command_line(cmd)}" if $VERBOSE
       return true if system(*cmd, **opts)
@@ -71,29 +67,8 @@ module Installer
       run!("sudo", *cmd)
     end
 
-    def try_sudo(*cmd)
-      return try_run(*cmd) if root?
-
-      try_run("sudo", *cmd)
-    end
-
-    def reboot_required!(reason)
-      @state&.require_reboot(reason)
-      raise Installer::RebootRequired, reason
-    end
-
     def command_line(cmd)
       Shellwords.join(Array(cmd).map(&:to_s))
-    end
-
-    def run(*cmd, **opts)
-      try_run(*cmd, **opts)
-    end
-
-    def sudo(*cmd)
-      return run(*cmd) if root?
-
-      run("sudo", *cmd)
     end
   end
 end

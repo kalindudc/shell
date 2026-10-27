@@ -1,96 +1,173 @@
 #!/usr/bin/env bash
 
-# Shell Dotfiles Installation Bootstrap
-# Minimal bash bootstrap that installs git + ruby, then hands off to Ruby orchestrator
+# Sets up a machine, and is safe to run again: installs Nix (and Homebrew on macOS),
+# applies the flake (nix-darwin on macOS, Home Manager on Linux), then runs the setup
+# steps that Nix does not manage (src/install.rb: tools, setup, bb, cortex).
 
 set -euo pipefail
 
-# Enable debug mode if TRACE is set
 if [[ "${TRACE-0}" == "1" ]]; then
   set -x
 fi
 
-run_as_root() {
-  local manual_command="$1"
-  shift
+REPO_URL="https://github.com/kalindudc/shell.git"
+REPO_DIR="${HOME}/src/github.com/kalindudc/shell"
 
+usage() {
+  cat <<'EOF'
+Usage: ./install.sh [personal|work]
+
+Installs Nix (and Homebrew on macOS), applies the flake with nix-darwin on macOS or
+Home Manager on Linux, then runs src/install.rb (tools, setup, bb, cortex).
+
+On macOS the profile defaults to work when Tec is installed, otherwise personal.
+On Linux the profile argument is ignored.
+
+Environment:
+  TRACE=1             print every command
+  SHELL_BRANCH=name   the branch the curl bootstrap clones (default: main)
+  SHELL_SKIP_STEPS=1  apply the flake only, without src/install.rb
+  SHELL_HEADLESS=1    on Linux, skip the desktop apps (server or container)
+EOF
+}
+
+case "${1-}" in
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  "" | personal | work) ;;
+  *)
+    usage >&2
+    exit 2
+    ;;
+esac
+
+run_as_root() {
   if [[ "${EUID}" -eq 0 ]]; then
     "$@"
-  elif command -v sudo >/dev/null 2>&1; then
+  else
     sudo "$@"
-  else
-    echo "Error: sudo is required to install dependencies automatically."
-    echo "Install sudo or run this command as root, then retry: ${manual_command}"
-    exit 1
   fi
 }
 
-install_bootstrap_package() {
-  local package="$1"
+# Only git and curl are needed before Nix; the distribution installs the rest of its
+# part in src/scripts/linux-system.sh.
+install_linux_bootstrap() {
+  local missing=()
+  command -v git >/dev/null 2>&1 || missing+=(git)
+  command -v curl >/dev/null 2>&1 || missing+=(curl)
+  [[ ${#missing[@]} -eq 0 ]] && return 0
 
-  if command -v "${package}" >/dev/null 2>&1; then
-    return 0
-  fi
-
-  echo "===> Installing ${package}..."
+  echo "===> Installing ${missing[*]}..."
   if command -v apt-get >/dev/null 2>&1; then
-    run_as_root "apt-get update && apt-get install -y ${package}" apt-get update -qq
-    run_as_root "apt-get install -y ${package}" apt-get install -y "${package}"
+    run_as_root apt-get update -qq
+    run_as_root apt-get install -y "${missing[@]}"
   elif command -v pacman >/dev/null 2>&1; then
-    run_as_root "pacman -Sy --noconfirm ${package}" pacman -Sy --noconfirm "${package}"
-  elif command -v brew >/dev/null 2>&1; then
-    brew install "${package}"
+    run_as_root pacman -Sy --needed --noconfirm "${missing[@]}"
   else
-    echo "Error: Unable to install ${package}; no supported package manager was found."
-    echo "Install one of apt-get, pacman, or Homebrew, then run: ./install.sh"
+    echo "Error: install ${missing[*]} with your package manager, then run ./install.sh again."
     exit 1
   fi
 }
 
-install_bootstrap_package git
+# git and the compilers come with the Xcode Command Line Tools.
+ensure_xcode_tools() {
+  xcode-select -p >/dev/null 2>&1 && return 0
 
-# bootstrap
+  echo "===> Installing the Xcode Command Line Tools..."
+  xcode-select --install || true
+  echo "Finish the Command Line Tools installer, then run ./install.sh again."
+  exit 1
+}
 
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  ensure_xcode_tools
+else
+  install_linux_bootstrap
+fi
+
+# bootstrap: `bash -c "$(curl ...)"` has no script file, so clone and run the checkout.
 if [[ "${BASH_SOURCE[0]:-}" == "" ]] || [[ "${BASH_SOURCE[0]}" == "bash" ]]; then
   echo "===> Detected execution via curl, bootstrapping..."
-
-  BOOTSTRAP_CLONE_DIR="${SHELL_INSTALL_DIR:-${HOME}/src/github.com/kalindudc}"
-  BOOTSTRAP_SHELL_DIR="${BOOTSTRAP_CLONE_DIR}/shell"
-
-  echo "===> Repository will be cloned to: ${BOOTSTRAP_SHELL_DIR}"
-
-  # Check if directory already exists
-  if [[ -d "${BOOTSTRAP_SHELL_DIR}" ]]; then
-    echo "===> Directory already exists, updating..."
-    cd "${BOOTSTRAP_SHELL_DIR}"
-    if [[ -d .git ]]; then
-      git pull --quiet
-    else
-      echo "Error: ${BOOTSTRAP_SHELL_DIR} exists but is not a git repository"
-      exit 1
-    fi
+  if [[ -d "${REPO_DIR}/.git" ]]; then
+    echo "===> ${REPO_DIR} exists, updating..."
+    git -C "${REPO_DIR}" pull --quiet
+  elif [[ -e "${REPO_DIR}" ]]; then
+    echo "Error: ${REPO_DIR} exists but is not a git repository"
+    exit 1
   else
-    echo "===> Cloning repository..."
-    mkdir -p "${BOOTSTRAP_CLONE_DIR}"
-    git clone --depth 1 https://github.com/kalindudc/shell.git "${BOOTSTRAP_SHELL_DIR}"
+    echo "===> Cloning into ${REPO_DIR}..."
+    mkdir -p "$(dirname "${REPO_DIR}")"
+    git clone --recurse-submodules --branch "${SHELL_BRANCH:-main}" "${REPO_URL}" "${REPO_DIR}"
   fi
+  exec bash "${REPO_DIR}/install.sh" "$@"
+fi
 
-  echo "===> Re-executing from cloned repository..."
-  cd "${BOOTSTRAP_SHELL_DIR}"
-  exec bash "${BOOTSTRAP_SHELL_DIR}/install.sh" "$@"
+SHELL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 
-  echo "Error: Failed to execute cloned script"
+# The flake links $HOME to files in this checkout by absolute path (nix/home/dotfiles.nix).
+if [[ "${SHELL_DIR}" != "$(cd "${REPO_DIR}" 2>/dev/null && pwd -P)" ]]; then
+  echo "Error: the checkout must be at ${REPO_DIR}, not ${SHELL_DIR}."
   exit 1
 fi
 
-# main
+NOTICES_FILE="$(mktemp)"
+export SHELL_NOTICES_FILE="${NOTICES_FILE}"
+trap 'rm -f "${NOTICES_FILE}"' EXIT
 
-SHELL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+git -C "${SHELL_DIR}" submodule update --init --quiet
 
-# Ensure ruby is available using the detected platform package manager.
-# Do not use Bundler for installer runtime; Gemfile remains dev/test-only.
-# If sudo/package manager is unavailable, install_bootstrap_package prints the exact next step.
-install_bootstrap_package ruby
+if [[ "$(uname -s)" == "Linux" ]]; then
+  "${SHELL_DIR}/src/scripts/linux-system.sh"
+fi
 
-# Execute Ruby orchestrator
-exec ruby "${SHELL_DIR}/src/install.rb" "$@"
+ensure_nix() {
+  if ! command -v nix >/dev/null 2>&1 &&
+    [[ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]]; then
+    # shellcheck disable=SC1091
+    . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+  fi
+  command -v nix >/dev/null 2>&1 && return 0
+
+  echo "===> Installing Nix (Determinate Systems installer)..."
+  curl -fsSL https://install.determinate.systems/nix | sh -s -- install --no-confirm
+  # shellcheck disable=SC1091
+  . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+}
+
+ensure_homebrew() {
+  [[ -x /opt/homebrew/bin/brew ]] && return 0
+
+  echo "===> Installing Homebrew..."
+  NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+}
+
+ensure_nix
+
+flake_user="$(nix eval --raw "${SHELL_DIR}#lib.user.username")"
+if [[ "${flake_user}" != "$(id -un)" ]]; then
+  echo "Error: the flake is for the user ${flake_user}, but you are $(id -un). Change nix/user.nix first."
+  exit 1
+fi
+
+if [[ "$(uname -s)" == "Darwin" ]]; then
+  ensure_homebrew
+  "${SHELL_DIR}/src/scripts/switch.sh" "$@"
+  export PATH="/etc/profiles/per-user/${USER}/bin:/run/current-system/sw/bin:${PATH}"
+else
+  "${SHELL_DIR}/src/scripts/switch.sh"
+  export PATH="${HOME}/.nix-profile/bin:${XDG_STATE_HOME:-${HOME}/.local/state}/nix/profile/bin:${PATH}"
+fi
+
+if [[ "${SHELL_SKIP_STEPS-0}" != "1" ]]; then
+  ruby "${SHELL_DIR}/src/install.rb"
+fi
+
+echo ""
+echo "✓ Installation complete. Open a new terminal to load the new shell."
+if [[ -s "${NOTICES_FILE}" ]]; then
+  echo ""
+  echo "! Log out and back in to finish:"
+  sed 's/^/  - /' "${NOTICES_FILE}"
+fi

@@ -2,148 +2,141 @@
 
 ## Overview
 
-Unified installer with a minimal bash bootstrap and Ruby orchestrator reading declarative package manifests.
+A Nix flake describes each machine. On macOS, nix-darwin applies the system part (Homebrew
+casks, fonts, Touch ID for sudo) and runs Home Manager for the user. On Linux, Home Manager
+runs on its own and the distribution keeps the system part. Home Manager installs the
+command-line tools, writes `~/.zshrc` and the git config, and links the files in `home/`
+into `$HOME`. A small Ruby program then does what Nix cannot: it installs npm, pi and pipx
+packages, sets up the GPG key, and applies bb and cortex state.
+
+```mermaid
+flowchart LR
+  I[install.sh] --> L[linux-system.sh<br/>Linux only]
+  I --> N[Nix + Homebrew]
+  I --> S[switch.sh]
+  S --> U[unstow.sh]
+  S --> D[nix-darwin<br/>macOS]
+  S --> H[Home Manager<br/>Linux]
+  D --> HM[Home Manager<br/>nix/home]
+  I --> R[src/install.rb<br/>tools, setup, bb, cortex]
+```
 
 ## Components
 
 ```
-install.sh                    # Bash bootstrap: installs git + ruby, execs Ruby orchestrator without Bundler
-src/install.rb                # Ruby entry point: parses CLI, loads stdlib-only installer runtime
-src/install/{main,*.rb}       # Orchestrator, OS, backend, state, dependency, and post-setup modules
-packages.yml                  # Declarative package-manager, machine-profile, and backend manifest
-bb.yml                        # Desired bb state (marketplaces, plugins, plugin and app settings), applied with the bb CLI
-bb/automations/               # Public bb automations; the rest live in the private kalindudc/shell-private repo
+flake.nix                     # Inputs (nixpkgs, nix-darwin, Home Manager) and the configurations
+flake.lock                    # Pinned input versions; `task update` refreshes it
+nix/user.nix                  # User name, full name and email, shared by every machine
+nix/unfree.nix                # The unfree packages the flake may install
+nix/darwin/default.nix        # macOS: Homebrew casks, fonts, Touch ID sudo, Home Manager wiring
+nix/home/default.nix          # Home Manager entry point for every machine
+nix/home/packages.nix         # Command-line tools
+nix/home/dotfiles.nix         # Links home/ into $HOME
+nix/home/zsh.nix              # Builds ~/.zshrc from nix/home/zsh/*.zsh
+nix/home/git.nix              # ~/.config/git/config
+nix/home/ghostty.nix          # Ghostty's per-OS font size
+nix/home/linux.nix            # Standalone Home Manager settings for Linux
+nix/checks/git-identity.nix   # `nix flake check`: the main and work git identities
+install.sh                    # Bootstrap: Nix, Homebrew, switch, then src/install.rb
+src/scripts/switch.sh         # `task switch`: applies the flake
+src/scripts/unstow.sh         # Removes links left by the old stow layout
+src/scripts/linux-system.sh   # Linux packages and settings Home Manager cannot manage
+src/install.rb                # The steps Nix does not manage (src/install/*.rb)
+packages.yml                  # npm, pi and pipx packages
+bb.yml                        # Desired bb state
+home/                         # Dotfiles, linked into $HOME
 ```
 
-## Installation Flow
+## Configurations
 
-1. **Bootstrap** (`install.sh`)
-   - If run via curl: clone repo, re-execute from cloned location
-   - Ensure git is installed
-   - Ensure ruby is installed
-   - Exec `ruby src/install.rb` without Bundler
+| Output | Machine | Applied by |
+|--------|---------|------------|
+| `darwinConfigurations.personal` | A Mac without Tec | nix-darwin |
+| `darwinConfigurations.work` | The Shopify Mac, where Tec supplies Nix, git, gh, Ruby, Node and pnpm | nix-darwin |
+| `homeConfigurations.linux-x86_64` | Arch, Ubuntu or Debian on x86_64 | Home Manager |
+| `homeConfigurations.linux-aarch64` | The same on ARM | Home Manager |
 
-2. **Orchestration** (`src/install.rb`)
-   - Detect OS (10 lines: reads `/etc/os-release` or checks `RUBY_PLATFORM`)
-   - Reject unsupported OS IDs before shared backends run
-   - Ensure required package managers exist first (Homebrew can be installed on macOS)
-   - Resolve `machine_profiles` by `SHELL_MACHINE_PROFILE`, hostname, then `default`
-   - Run package-manager bootstrap, profile dependencies, system update, backend packages, then post-install
-   - Start bb when it is not running (`src/install/bb_app.rb`), then apply `bb.yml` with the bb CLI (`src/install/bb.rb`); skipped with a warning when bb does not start
-   - Install cortex from its private repository and run `cortex agents install` (`src/install/cortex.rb`); skipped with a warning without `gh` sign-in or pnpm
-   - Record reboot/login-session requirements in `~/.local/state/shell/install.json`
+The two Mac profiles differ only in `profile == "work"` checks in `nix/home/packages.nix` and
+`nix/home/git.nix`. nix-darwin writes the profile to `/etc/shell-profile`, so `task switch`
+applies the same one next time.
 
-## Package Manifest (`packages.yml`)
+## What nix-darwin leaves alone
 
-Keyed by package manager backend, NOT by OS:
+The Mac already has a Nix installation, from the Determinate Systems installer or from Tec.
+Both own the Nix daemon, `/etc/nix` and the Nix lines in `/etc/zshrc` and `/etc/bashrc`, so
+the flake sets `nix.enable = false` and turns off nix-darwin's zsh and bash modules.
+`~/.zshrc` puts the Nix profiles on PATH itself. nix-darwin also leaves
+`/etc/ssl/certs/ca-certificates.crt` alone, because Tec or the MDM may own it and nix-darwin
+stops its first activation on a file it would replace. It still writes new files of its own,
+such as `/etc/pam.d/sudo_local` for Touch ID.
 
-```yaml
-pacman:
-  - git
-  - curl
-  - neovim
+## Dotfile links
 
-yay:
-  - github-cli
-  - visual-studio-code-bin
+`nix/home/dotfiles.nix` reads `home/` from the flake source and links each entry to the
+checkout with `mkOutOfStoreSymlink`, so an edit to a linked file applies at once. The link
+chain is `~/x`, then a store file, then `~/src/github.com/kalindudc/shell/home/x`.
 
-brew:
-  - git
-  - neovim
+Tools write into some directories that also hold tracked files, such as `~/.pi/agent` or
+`~/.agents/skills`. Those are listed in `realDirs`: they stay real directories in `$HOME`,
+and their children are linked one by one. Every other directory is linked as a whole, so
+files written into it (an extension's `node_modules`, `SKILL_NOTES.md`, the impact-review
+private pack) land in the checkout, where `.gitignore` covers them.
 
-npm:
-  - "@earendil-works/pi-coding-agent"
+A flake only sees files that git tracks. After adding a file to `home/`, run `git add` and
+`task switch`. The nvim config is a git submodule, which the flake source leaves out, so it
+is linked by name.
 
-pi:
-  - https://github.com/kalindudc/minions
+## Generated files
 
-custom_bootstrap:
-  - install_fnm_curl
+| File | Source |
+|------|--------|
+| `~/.zshrc` | `nix/home/zsh/zshrc.zsh`, which includes the other `nix/home/zsh/*.zsh` fragments |
+| `~/.config/git/config` | `nix/home/git.nix` |
+| `~/.config/ghostty/config-os` | `nix/home/ghostty.nix` (13 pt on macOS, 11 pt on Linux) |
+| zsh completions | each Nix package's `share/zsh/site-functions`; `_todo` is built from `home/bin/todo` |
 
-custom:
-  - install_zsh_plugins
-  - install_pyenv
-```
+The zsh plugins (evalcache, fast-syntax-highlighting, oh-my-zsh's git plugin,
+zsh-autosuggestions and zsh-completions) come from the Nix store in the same layout the old
+git clones had, through `$ZSH_PLUGIN_DIR`. Each switch clears `~/.zsh-evalcache` and
+`~/.zcompdump`, because both hold store paths that the switch replaces.
 
-Backends are executed in order:
-1. Package-manager bootstrap from `package_managers`
-2. Machine-profile bootstrap dependencies
-3. OS-specific backends (system packages first)
-4. `custom_bootstrap` runtime setup
-5. Shared backends (`npm`, `pi`, `pipx`, then `custom`). `pi` comes after `npm` because npm installs the pi CLI.
+PATH order in `~/.zshrc`: pnpm and Atuin, then the Nix profiles, then Homebrew, then the
+rest. Tec's init runs later and puts Tec first on the work Mac.
 
-## OS Detection
+## Git identity
 
-Minimal detection (~10 lines):
-- Read `/etc/os-release` `ID=` field for Linux
-- Check `RUBY_PLATFORM` for Darwin (macOS)
-- Map to backend list via constant hash
+Git reads `~/.config/git/config` (Home Manager, read-only), then `~/.gitconfig` (writable,
+for tools). The Home Manager file holds the settings and the identity from `nix/user.nix`,
+then includes `~/.config/git/signing` (this machine's key, from `task setup`), then the
+private repo's `git/gitconfig`, which switches work repos to the work identity. The
+`git-identity` flake check tests that order.
 
-No OS-specific package name mapping — package names are declared per-backend in YAML.
+## The Ruby steps
 
-## Custom Installers
+`src/install.rb` runs `tools`, `setup`, `bb` and `cortex`, always in that order:
 
-The `custom_bootstrap:` and `custom:` backends call Ruby methods for packages needing special logic:
-- `install_docker_post` — enable docker service, add user to docker group
-- `install_pyenv` — curl installer
-- `install_zsh_plugins` — git clone plugin repos
-- `install_fzf_latest` — GitHub releases download
-- `install_delta_deb` — GitHub .deb download
-- `install_zoxide_curl` — curl installer
-- `install_starship_curl` — curl installer
-- `install_fnm_curl` — curl installer used before npm
-- `install_nerd_fonts_brew` — brew search + install
-- `install_nvm_curl` — curl installer (fallback)
-- `install_herdr_pi_integration` — `herdr integration install pi`, skipped when already current
+| Step | Module | What it does |
+|------|--------|--------------|
+| `tools` | `src/install/tools.rb` | npm, pi and pipx packages from `packages.yml`; herdr plugins and its pi integration; the bb AppImage on x86_64 Linux |
+| `setup` | `src/install/setup.rb` | GPG signing key and its GitHub upload; `npm install` in each pi extension; SKILL_NOTES.md templates |
+| `bb` | `src/install/bb.rb` | Starts bb and applies `bb.yml` |
+| `cortex` | `src/install/cortex.rb` | Builds cortex if needed and runs `cortex agents install` |
 
-## Configuration Generation
+In a full install, a failing bb or cortex step prints a warning and the install goes on.
+Run on its own, any failing step fails the command.
 
-ERB template generation unchanged:
-- `generate_zshrc.rb` — generates `.zshrc`
-- `generate_tempate.rb` — generates `.gitconfig` from template
+## Checks
 
-## Dotfile Symlinking
-
-`home/` is a stow package linked into `$HOME`:
-```
-stow home -d $SHELL_DIR -t $HOME --adopt
-```
-
-Run it through `./install.sh --stow` or `task stow`, not by hand, because of the step below.
-
-### Directories that stay real
-
-When a directory does not exist in `$HOME` yet, stow "folds" it: it replaces the whole directory with one symlink into the repo. Every file a tool later writes there (installed skills, pi sessions, credentials) then lands in the repo and has to be gitignored.
-
-To prevent this, a directory in `home/` that contains an empty `.stow-unfold` marker is created as a real directory in `$HOME` before stow runs (`src/install/unfold.rb`). Stow then links each tracked child individually, and anything a tool adds next to them stays out of the repo. The markers themselves are excluded in `home/.stow-local-ignore`.
-
-Current markers: `.pi`, `.pi/agent`, `.pi/agent/extensions`, `.agents`, `.agents/skills`, `.config`, `.config/herdr`, `.gnupg`, `bin`.
-
-Add a marker when tools write into a directory that also holds tracked files. The tradeoff: a new top-level item in a marked directory (for example a new skill under `home/.agents/skills/`) needs `task stow` before it shows up in `$HOME`. New files inside an existing skill or extension appear immediately, because those directories are still single links.
-
-The stow step refuses to run when a marked directory is still a folded symlink. Convert an existing machine once with the migration script. It moves gitignored runtime files out of the repo into the real directories, so close every pi session first:
-```
-ruby src/scripts/unfold-home.rb            # dry run: print the plan
-ruby src/scripts/unfold-home.rb --apply    # migrate; writes ~/.local/state/shell/unfold-manifest.json
-ruby src/scripts/unfold-home.rb --revert   # undo using that manifest
-```
-
-## Sudo Handling
-
-Sudo is requested once at startup and kept alive via background process:
-- `sudo -v` to prompt
-- Background loop: `while true; do sudo -n true; sleep 50; done`
-- `at_exit` kills the background process
-
-## State Management
-
-Minimal continuation state is stored at `~/.local/state/shell/install.json` (or `$XDG_STATE_HOME/shell/install.json`). It records completed phases and reboot/login-session reasons. When a task such as Docker group membership or default shell change requires a new session, the installer saves the reason, prints it, exits 0, and expects a later `./install.sh` run to continue. There are no lock files and no `--continue`, `--reset-state`, or `--show-state` flags.
+`nix flake check` (or `task check`) evaluates every configuration and builds this system's
+checks: the Mac systems on macOS, the Home Manager activation package on Linux, and the
+`git-identity` test. CI runs it on macOS and Ubuntu, and also applies the Linux
+configuration for a test user and starts zsh (`.github/workflows/check.yml`).
 
 ## Supported Platforms
 
-| OS | Backends |
-|----|----------|
-| Arch Linux | pacman, yay, flatpak, custom_bootstrap, npm, pi, pipx, custom |
-| Ubuntu | apt, snap, flatpak, custom_bootstrap, npm, pi, pipx, custom |
-| Debian | apt, flatpak, custom_bootstrap, npm, pi, pipx, custom |
-| macOS | brew, brew_cask, custom_bootstrap, npm, pi, pipx, custom |
+| OS | Nix part | Native part |
+|----|----------|-------------|
+| macOS (Apple silicon) | nix-darwin and Home Manager | Homebrew casks (through nix-darwin) |
+| Arch Linux | Home Manager | pacman, yay, flatpak |
+| Ubuntu | Home Manager | apt, snap, flatpak |
+| Debian | Home Manager | apt, flatpak |

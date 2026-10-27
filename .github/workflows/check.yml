@@ -1,0 +1,90 @@
+name: check
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flake:
+    name: nix flake check (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux, os: ubuntu-latest }
+          - { name: darwin, os: macos-latest }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      # The Linux runner also evaluates the Mac configurations.
+      - name: Evaluate every configuration
+        if: matrix.name == 'linux'
+        run: nix flake check --all-systems --no-build
+      - name: Build this system's checks
+        run: nix flake check -L
+
+  linux-switch:
+    name: Apply the Linux configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: DeterminateSystems/nix-installer-action@main
+      # The flake is for the user kalindu, with the checkout in ~/src/github.com/kalindudc/shell.
+      - name: Create the user
+        run: |
+          sudo apt-get install -y -qq zsh >/dev/null
+          sudo useradd -m -s "$(command -v zsh)" kalindu
+          echo 'kalindu ALL=(ALL) NOPASSWD:ALL' | sudo tee /etc/sudoers.d/kalindu >/dev/null
+          sudo mkdir -p /home/kalindu/src/github.com/kalindudc
+          sudo cp -a "$GITHUB_WORKSPACE" /home/kalindu/src/github.com/kalindudc/shell
+          sudo chown -R kalindu:kalindu /home/kalindu
+      # sudo keeps the runner's XDG_* variables, so give the user a clean environment.
+      - name: task switch
+        run: |
+          as_kalindu() { sudo -u kalindu env -i HOME=/home/kalindu USER=kalindu LOGNAME=kalindu TERM=xterm-256color PATH=/usr/local/bin:/usr/bin:/bin "$@"; }
+          as_kalindu bash -c '. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh && ~/src/github.com/kalindudc/shell/src/scripts/switch.sh'
+      - name: Start zsh
+        run: |
+          as_kalindu() { sudo -u kalindu env -i HOME=/home/kalindu USER=kalindu LOGNAME=kalindu TERM=xterm-256color PATH=/usr/local/bin:/usr/bin:/bin "$@"; }
+          as_kalindu zsh -i -c 'source ~/src/github.com/kalindudc/shell/test/smoke/zshrc.zsh'
+      - name: task tools and task setup
+        run: |
+          as_kalindu() { sudo -u kalindu env -i HOME=/home/kalindu USER=kalindu LOGNAME=kalindu TERM=xterm-256color PATH=/usr/local/bin:/usr/bin:/bin "$@"; }
+          as_kalindu zsh -i -c 'cd ~/src/github.com/kalindudc/shell && ruby src/install.rb tools setup'
+      - name: A second switch changes nothing it should not
+        run: |
+          as_kalindu() { sudo -u kalindu env -i HOME=/home/kalindu USER=kalindu LOGNAME=kalindu TERM=xterm-256color PATH=/usr/local/bin:/usr/bin:/bin "$@"; }
+          as_kalindu bash -c '. /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh && ~/src/github.com/kalindudc/shell/src/scripts/switch.sh'
+          as_kalindu zsh -i -c 'source ~/src/github.com/kalindudc/shell/test/smoke/zshrc.zsh'
+
+  tests:
+    name: Unit and bin tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - name: task test
+        run: |
+          # shellcheck disable=SC2016  # expanded by the inner shell
+          nix develop -c bash -c '
+            set -euo pipefail
+            export GEM_HOME="$PWD/.gems" BUNDLE_PATH="$PWD/.bundle-path"
+            export PATH="$GEM_HOME/bin:$PATH"
+            bundle install --quiet
+            task test
+          '

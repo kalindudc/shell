@@ -18,7 +18,7 @@
 ```bash
 task style              # Lint
 task test:unit          # Unit tests
-task test:integration   # Integration tests (requires Docker)
+task check              # Nix configurations
 ```
 
 ## Commit Messages
@@ -40,7 +40,7 @@ Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
 
 ## Adding Platforms
 
-1. Update `src/install/os.rb` - detection and backend mapping
-2. Update `packages.yml` - package-manager, machine-profile, and backend declarations
-3. Add `test/integration/dockerfiles/Dockerfile.{platform}` and compose service wiring
-4. Test: `task build && task test:integration -- platform`
+1. Add a configuration to `flake.nix`: a `darwinConfigurations` entry for a Mac, or a
+   `homeConfigurations` entry for another Linux architecture
+2. For a Linux distribution, add its package manager to `src/scripts/linux-system.sh`
+3. Test: `task check`, then `task switch` on the machine

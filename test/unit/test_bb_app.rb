@@ -9,7 +9,7 @@ require 'tmpdir'
 
 require_relative '../../src/install/utils'
 require_relative '../../src/install/errors'
-require_relative '../../src/install/custom'
+require_relative '../../src/install/tools'
 require_relative '../../src/install/bb_app'
 
 class TestBbApp < Minitest::Test
@@ -142,10 +142,20 @@ class TestBbApp < Minitest::Test
     end
   end
 
-  def test_packages_yml_runs_the_appimage_installer
-    packages = YAML.load_file(File.expand_path('../../packages.yml', __dir__))
+  def test_tools_step_runs_the_appimage_installer
+    calls = []
+    Installer::Tools.stub(:install_npm, nil) do
+      Installer::Tools.stub(:install_pi, nil) do
+        Installer::Tools.stub(:install_pipx, nil) do
+          Installer::Utils.stub(:command?, false) do
+            Installer::BbApp.stub(:install_appimage!, -> { calls << :appimage }) do
+              Installer::Tools.install!(packages: {})
+            end
+          end
+        end
+      end
+    end
 
-    assert_includes packages['custom'], 'install_bb_appimage'
-    assert_respond_to Installer::Custom, :install_bb_appimage
+    assert_equal [:appimage], calls
   end
 end
