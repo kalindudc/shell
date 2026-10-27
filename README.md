@@ -1,6 +1,6 @@
 # shell
 
-> Unified cross-platform shell configuration with automated installation for macOS, Ubuntu/Debian, and Arch Linux.
+> Shell configuration and packages for macOS, Ubuntu/Debian and Arch Linux, declared in a Nix flake: nix-darwin and Home Manager on macOS, Home Manager on Linux.
 
 ## Features
 
@@ -15,23 +15,23 @@ A comprehensive shell environment with:
 - **DevOps tools**: kubectl, helm, docker, docker-compose
 - **Custom utilities**: Aliases, functions, and scripts tailored for productivity
 
-See [`home/.zshrc`](home/.zshrc) for aliases and [`home/bin/`](home/bin/) for scripts.
+See [`nix/home/zsh/`](nix/home/zsh/) for the zsh config and aliases, [`nix/home/packages.nix`](nix/home/packages.nix) for the tools, and [`home/bin/`](home/bin/) for scripts.
 
 ## Quick Start
-
-**Prerequisites**: For the curl installer, `curl` is required to download the script. After the repository is available, `install.sh` bootstraps missing `git` and `ruby` with the platform package manager and runs without Bundler.
 
 ```bash
 bash -c "$(curl -fsSL https://raw.githubusercontent.com/kalindudc/shell/main/install.sh)"
 ```
 
-This automatically:
-1. Downloads the installation script
-2. Clones the repository to `~/src/github.com/kalindudc/shell`
-3. Installs missing bootstrap tools and package managers
-4. Installs packages, generates configs, stows dotfiles, and records any reboot/login-session requirement in `~/.local/state/shell/install.json`
+Only `curl` is needed. The script:
+1. Clones the repository to `~/src/github.com/kalindudc/shell`
+2. Installs Nix, and Homebrew on macOS (on Linux, also the system packages in `src/scripts/linux-system.sh`)
+3. Applies the flake: `darwinConfigurations.personal` or `.work` on macOS, `homeConfigurations.linux-<arch>` on Linux
+4. Installs what Nix does not manage: npm, pi and pipx packages, the GPG signing key, bb and cortex
 
-**Supported platforms**: macOS (Intel & Apple Silicon), Ubuntu/Debian, Arch Linux
+After that, `task switch` applies a change and `task update` updates the pinned packages.
+
+**Supported platforms**: macOS (Apple silicon), Ubuntu/Debian, Arch Linux
 
 For detailed installation options, see **[Installation Guide](docs/installation.md)**.
 
@@ -39,13 +39,12 @@ For detailed installation options, see **[Installation Guide](docs/installation.
 
 Shell startup times on modern hardware:
 - **Apple Silicon Macs** - Under 400ms
-- **Intel Macs (2018+)** - Under 700ms
 - **Linux systems** - Under 200ms
 
 ## Documentation
 
-- **[Installation Guide](docs/installation.md)** - Installation options, package categories, reboot continuation, and customization
-- **[Architecture](docs/architecture.md)** - System design, package-manager bootstrap, state management, and directory structure
+- **[Installation Guide](docs/installation.md)** - What the installer does, profiles, commands, and adding packages
+- **[Architecture](docs/architecture.md)** - The flake, dotfile links, generated files and the Ruby steps
 - **[Development](docs/development.md)** - Development setup, testing, and available tasks
 - **[Contributing](docs/contributing.md)** - Code standards and testing requirements
 - **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions

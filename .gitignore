@@ -24,8 +24,8 @@ test-manual.sh
 node_modules/
 
 # Tool-installed skills, pi runtime state and credentials live in real directories
-# in $HOME, not here (see .stow-unfold in docs/architecture.md). The rules below
-# cover files written inside directories that are still linked into the repo.
+# in $HOME, not here (see realDirs in nix/home/dotfiles.nix). The rules below cover
+# files written inside directories that are linked into the repo as a whole.
 
 # private interview material must never be committed
 home/.agents/**/*interview*
@@ -37,13 +37,10 @@ home/.agents/skills/*/SKILL_NOTES.md
 home/.agents/skills/impact-review/private/
 __pycache__/
 
-home/.config/ghostty/config-os
-
 # safety net for private keys; ~/.gnupg is a real directory
 home/.gnupg/*
 !home/.gnupg/gpg-agent.conf
 
-# stow markers that keep shared $HOME directories real (see docs/architecture.md)
-!.stow-unfold
-
-home/.config/zsh/completions/
+# nix build output
+result
+result-*

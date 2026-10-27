@@ -1,5 +1,5 @@
 # Desired bb state, applied with the bb CLI by `task bb` and at the end of ./install.sh.
-# bb stores these in its database, so they are applied rather than stowed. The step only
+# bb stores these in its database, so they are applied rather than linked. The step only
 # adds and changes what is listed here; it never removes plugins, marketplaces or settings.
 
 marketplaces:
@@ -67,6 +67,6 @@ ui:
 theme: gruvbox
 
 # Extra state for one machine profile goes under `profiles: { <name>: { ... } }`, selected by
-# SHELL_MACHINE_PROFILE or a hostname listed under machine_profiles in packages.yml. Lists add
+# SHELL_MACHINE_PROFILE (in the environment or .env), else `default`. Lists add
 # to the ones above; maps (plugin_settings, settings, completed_turns, experiments, ui) and
 # theme override them key by key.

@@ -43,7 +43,7 @@ class TestBb < Minitest::Test
     theme: 'gruvbox'
   }.freeze
 
-  # bb.yml and packages.yml
+  # bb.yml and the nix-darwin casks
 
   def bb_yml
     YAML.load_file(File.join(SHELL_DIR, 'bb.yml'))
@@ -67,15 +67,12 @@ class TestBb < Minitest::Test
     assert_equal 'switchboard/switchboard', bb_yml.dig('ui', 'sidebar.threadListProvider')
   end
 
-  def test_packages_yml_installs_the_bb_app_on_macos
-    packages = YAML.load_file(File.join(SHELL_DIR, 'packages.yml'))
-
-    assert_includes packages['brew_cask'], 'bb'
+  def test_nix_darwin_installs_the_bb_app_on_macos
+    assert_match(/^\s+"bb"$/, File.read(File.join(SHELL_DIR, 'nix/darwin/default.nix')))
   end
 
-  def test_cli_bb_flag_runs_only_the_bb_step
-    assert Installer::CLI.parse_args(['--bb'])[:bb_only]
-    refute Installer::CLI.parse_args([])[:bb_only]
+  def test_cli_bb_step_runs_only_the_bb_step
+    assert_equal ['bb'], Installer::CLI.parse_args(['bb'])[:steps]
   end
 
   # desired state

@@ -9,30 +9,46 @@ vars:
 tasks:
   # Development setup
   up:
-    desc: "Install development dependencies (dev tools + Ruby gems)"
+    desc: "Install development dependencies (Ruby gems, npm, git hooks); dev tools come from nix develop"
     cmds:
       - ./src/scripts/up.sh
 
   # Installation
   install:
-    desc: "Run the installation script"
+    desc: "Set up this machine: Nix, the flake, then tools, setup, bb and cortex"
     cmds:
-      - ./install.sh
+      - ./install.sh {{.CLI_ARGS}}
 
-  # Stow dotfiles
-  stow:
-    desc: "Re-stow the home directory"
-    deps:
-      - generate:ghostty
+  switch:
+    desc: "Apply the flake (nix-darwin on macOS, Home Manager on Linux); -- personal|work picks the Mac profile"
     cmds:
-      # Goes through the installer so .stow-unfold directories are created before stow runs
-      - ruby src/install.rb --stow
+      - ./src/scripts/switch.sh {{.CLI_ARGS}}
+
+  update:
+    desc: "Update the flake inputs (nixpkgs, nix-darwin, Home Manager), then run task switch"
+    cmds:
+      - nix flake update
+
+  check:
+    desc: "Evaluate every configuration and build this system's checks"
+    cmds:
+      - nix flake check
+
+  tools:
+    desc: "Install npm, pi and pipx packages, herdr plugins, and the bb AppImage on Linux"
+    cmds:
+      - ruby src/install.rb tools
+
+  setup:
+    desc: "Set up the GPG signing key, pi extension dependencies and SKILL_NOTES.md templates"
+    cmds:
+      - ruby src/install.rb setup
 
   # bb
   bb:
     desc: "Start bb if needed and apply bb.yml (marketplaces, plugins, settings)"
     cmds:
-      - ruby src/install.rb --bb
+      - ruby src/install.rb bb
 
   bb:automations:
     desc: "Restore saved bb automations from bb/automations and the private repo; -- --update also overwrites changed ones"
@@ -52,21 +68,20 @@ tasks:
   cortex:
     desc: "Install cortex, then its agent skills, pi extension and bb plugin"
     cmds:
-      - ruby src/install.rb --cortex
+      - ruby src/install.rb cortex
 
   # Clean everything
   clean:
-    desc: "Clean all generated files and state"
+    desc: "Remove test logs"
     cmds:
-      - docker compose -f test/integration/docker-compose.yml down -v 2>/dev/null || true
       - rm -f ./tmp/test-*.log
-      - echo "✓ Cleaned all generated files and state"
+      - echo "✓ Cleaned"
 
   # Style (lint and fix)
   style:
     desc: "Run ShellCheck linting and auto-fix formatting"
     cmds:
-      - shellcheck install.sh home/bin/lib/*.sh
+      - shellcheck install.sh src/scripts/*.sh home/bin/lib/*.sh
       - |
         for f in home/bin/*; do
           [[ -f "$f" ]] || continue
@@ -82,38 +97,12 @@ tasks:
       - echo "✓ All scripts passed ShellCheck"
       - bundle exec rubocop -A src/install.rb
       - echo "✓ All Ruby files passed RuboCop"
-
-  # Build
-  build:
-    desc: "Build Docker images for integration tests"
-    cmds:
-      - |
-        if ! docker compose version >/dev/null 2>&1; then
-          echo "Error: docker compose not available"
-          exit 1
-        fi
-      - echo "Building integration test images..."
-      - docker compose -f test/integration/docker-compose.yml build --parallel
-      - echo "✓ All integration test images built successfully"
-
-  build:clean:
-    desc: "Rebuild Docker images from scratch (no cache)"
-    cmds:
-      - |
-        if ! docker compose version >/dev/null 2>&1; then
-          echo "Error: docker compose not available"
-          exit 1
-        fi
-      - echo "Removing existing images..."
-      - docker compose -f test/integration/docker-compose.yml down --rmi all -v 2>/dev/null || true
-      - docker image rm -f shell-test:ubuntu-22 shell-test:ubuntu-24 shell-test:arch shell-test:debian shell-test:ubuntu-minimal 2>/dev/null || true
-      - echo "Rebuilding all images from scratch..."
-      - docker compose -f test/integration/docker-compose.yml build --no-cache --parallel
-      - echo "✓ All integration test images rebuilt successfully"
+      - nix fmt
+      - echo "✓ Nix files formatted"
 
   # Testing
   test:
-    desc: "Run default local tests (unit + bin); integration is task test:integration"
+    desc: "Run the local tests (unit + bin); `task check` tests the Nix configurations"
     deps:
       - test:unit
       - test:bin
@@ -124,12 +113,10 @@ tasks:
       - |
         echo "Running Ruby installer unit tests..."
         bundle exec ruby test/unit/test_installer.rb
-        bundle exec ruby test/unit/test_unfold.rb
         bundle exec ruby test/unit/test_bb.rb
         bundle exec ruby test/unit/test_bb_app.rb
         bundle exec ruby test/unit/test_bb_automations.rb
         bundle exec ruby test/unit/test_leak_check.rb
-        bundle exec ruby test/unit/test_git_identity.rb
         ruby src/scripts/check-leaks.rb
         bundle exec ruby test/unit/test_cortex.rb
         echo "✓ Ruby installer tests passed"
@@ -151,42 +138,3 @@ tasks:
     cmds:
       - bats home/bin/test/bats/*.bats
       - bundle exec ruby -e "Dir.glob('home/bin/test/**/*.rb').sort.each { |f| require_relative f }"
-
-  test:integration:
-    desc: "Run integration tests with Docker (requires 'task build' first). Use CLI_ARGS to specify platforms: task test:integration -- ubuntu-22 debian"
-    cmds:
-      - |
-        if ! docker compose version >/dev/null 2>&1; then
-          echo "Error: docker compose not available"
-          exit 1
-        fi
-      - |
-        # Check if images exist
-        if ! docker image inspect shell-test:ubuntu-22 >/dev/null 2>&1; then
-          echo "Error: Integration test images not built. Run 'task build' first."
-          exit 1
-        fi
-      - test/integration/run-install-test.sh {{.CLI_ARGS}}
-
-  # Generate configs
-  generate:
-    desc: "Generate .zshrc, .gitconfig, and ghostty config"
-    deps:
-      - generate:zsh
-      - generate:gitconfig
-      - generate:ghostty
-
-  generate:zsh:
-    desc: "Re-generate .zshrc and completions"
-    cmds:
-      - $HOME/src/github.com/kalindudc/shell/src/generate_zshrc.rb
-
-  generate:gitconfig:
-    desc: "Re-generate .gitconfig"
-    cmds:
-      - ruby $HOME/src/github.com/kalindudc/shell/src/generate_gitconfig.rb
-
-  generate:ghostty:
-    desc: "Generate OS-specific ghostty font-size override config"
-    cmds:
-      - $HOME/src/github.com/kalindudc/shell/src/generate_ghostty_config.rb

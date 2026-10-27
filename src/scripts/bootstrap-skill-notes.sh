@@ -17,6 +17,7 @@ if [[ ! -d "${SKILLS_DIR}" ]]; then
 fi
 
 for skill_dir in "${SKILLS_DIR}"/*/; do
+  skill_dir="${skill_dir%/}"
   [[ -d "${skill_dir}" ]] || continue
   [[ -f "${skill_dir}/SKILL.md" ]] || continue
 
@@ -24,6 +25,13 @@ for skill_dir in "${SKILLS_DIR}"/*/; do
   skill_name="$(basename "${skill_dir}")"
 
   if [[ -f "${notes_file}" ]]; then
+    continue
+  fi
+
+  # Some skills are links into directories only root can write to, such as the ones
+  # Omarchy links from /usr/share/omarchy. No agent can add notes there either.
+  if [[ ! -w "${skill_dir}" ]]; then
+    echo "Skipped ${skill_name}: ${skill_dir} is read-only"
     continue
   fi
 

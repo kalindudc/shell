@@ -80,7 +80,7 @@ module Todo
 end
 ```
 
-2. Add to `cli.rb` COMMAND_MODULES array and regenerate completions: `task generate:zsh`
+2. Add to `cli.rb` COMMAND_MODULES array and rebuild the completions: `task switch`
 
 ### Interactive tool dependencies
 
@@ -114,7 +114,7 @@ Note: The `category` field is not stored in task JSON -- it is derived from the 
 task up              # Install dev dependencies (bundle install)
 task test:bin        # Run all tests (BATS + Ruby)
 task style           # ShellCheck + RuboCop with auto-correct
-task generate:zsh    # Regenerate .zshrc + completions
+task switch          # Rebuild .zshrc and the _todo completion
 ```
 
 ### Tests
