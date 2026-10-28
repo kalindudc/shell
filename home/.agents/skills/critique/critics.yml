@@ -1,17 +1,17 @@
 # Add a new critic by adding a model entry. The critique skill reads this file at runtime.
-# Format: <pi provider>/<model id> (see `pi --list-models`). One vendor per critic so votes
-# are independent. Quorum is max(2, floor(N/2)+1) distinct models -- keep N odd.
+# Format: <pi provider>/<model id>[:<thinking>] (see `pi --list-models`). One vendor per critic
+# so votes are independent. Quorum is max(2, floor(N/2)+1) distinct models: N=3 needs 2, but
+# N=2 needs both critics to KEEP.
 #
-# Last reviewed 2026-09-23 against 24h proxy.shopify.ai metrics (p50 time-to-last-token,
-# non-2xx rate) and pi catalog pricing. Picks favour frontier-tier reasoning + low latency:
-#   claude-opus-5-5  5.6s / 0.3% errors  ($4/$20)   -- replaced claude-opus-4-8 (8.6s / 5.8%)
-#   gpt-6-sol        3.9s / 0.5% errors  ($2/$10)   -- replaced gpt-5.6-terra   (3.8s / 3.3%)
-#   grok-4.7         7.0s / 0.1% errors  ($2/$6)    -- replaced grok-4.5        (7.5s, ~no traffic)
-# Quality-over-speed alternatives: anthropic/claude-fable-5-1, openai/gpt-6-astra (both ~9s, $10/$50).
+# Last reviewed 2026-10-28. Two frontier-tier reasoning critics, each pinned to its thinking level:
+#   deepseek-v4p1-flash:high  (fireworks) -- DeepSeek V4.1 Flash, high thinking
+#   gpt-6.1-sol:xhigh         (openai)    -- GPT-6.1 Sol, extra-high thinking
+#
+# The Fireworks model id itself starts with "fireworks:", so the DeepSeek entry is
+# provider/id = fireworks/fireworks:accounts/... . Do not shorten it: the shorter
+# fireworks/accounts/... form still resolves, but silently to the dated -1017 build.
 critics:
-  - model: anthropic/claude-opus-5-5
-    name: Claude
-  - model: xai/grok-4.7
-    name: Grok
-  - model: openai/gpt-6-sol
+  - model: fireworks/fireworks:accounts/fireworks/models/deepseek-v4p1-flash:high
+    name: DeepSeek
+  - model: openai/gpt-6.1-sol:xhigh
     name: GPT
