@@ -145,6 +145,14 @@ tasks:
           (cd "${EXT_DIR}" && "$BUN" install)
         fi
         (cd "${EXT_DIR}" && "$BUN" test test/)
+      - |
+        # pi-web is dependency-free and runs its own tests with node --test.
+        PI_WEB_DIR="home/.pi/agent/extensions/pi-web"
+        if ! command -v node >/dev/null 2>&1; then
+          echo "Warning: node not found, skipping pi-web extension tests"
+          exit 0
+        fi
+        (cd "${PI_WEB_DIR}" && node --import ./test/_pi-resolve.mjs --test 'test/*.test.ts')
 
   test:bin:
     desc: "Run home/bin/ tool tests (BATS + Ruby)"

@@ -11,6 +11,7 @@ marketplaces:
 plugins:
   - agent-commands@kalindudc
   - follow-thinking@kalindudc
+  - forage@kalindudc
   - session-log@kalindudc
   - switchboard@kalindudc
   - agent-graph@bb-community

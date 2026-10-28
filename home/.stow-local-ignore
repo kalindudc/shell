@@ -22,3 +22,8 @@ _darcs
 ^/README.*
 ^/LICENSE.*
 ^/COPYING
+
+# Kept in the repo but not installed. bb's Forage plugin registers web_search and
+# web_fetch for every provider, and a second extension registering those same
+# names makes pi exit with a tool-name conflict.
+\.pi/agent/extensions/pi-web

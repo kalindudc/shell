@@ -7,6 +7,9 @@
  */
 
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 import { type TestServer, html, startServer } from "./_server.ts";
 
@@ -48,6 +51,19 @@ const fakeCtx = {
 	ui: { notify: (message: string, type?: string) => notifications.push({ message, type }) },
 };
 
+/** A fresh registry, for exercising the bb-detection branches without the module-level one. */
+function makeFakePi() {
+	const registered = new Map<string, AnyTool>();
+	return {
+		tools: registered,
+		pi: {
+			registerTool: (t: AnyTool) => registered.set(t.name, t),
+			registerCommand: () => {},
+			on: () => {},
+		},
+	};
+}
+
 /** TUI components pad each line to the render width; trim for assertions. */
 const renderText = (component: { render: (w: number) => string[] }) => component.render(120).map((l) => l.trimEnd()).join("\n");
 
@@ -87,6 +103,49 @@ describe("registration", () => {
 		assert.equal(props.recency?.anyOf, undefined);
 		assert.deepEqual(props.recency?.enum, ["day", "week", "month", "year"]);
 		assert.deepEqual(props.provider?.enum, ["auto", "duckduckgo", "exa", "brave", "searxng"]);
+	});
+});
+
+describe("bb provided tools", () => {
+	it("reads the names bb provides, and survives a missing or malformed file", async () => {
+		const mod = await import("../index.ts");
+		assert.deepEqual([...mod.toolsProvidedByBb({})], []);
+		assert.deepEqual([...mod.toolsProvidedByBb({ PI_BB_TOOLS_FILE: "/nonexistent/pi-tools.json" })], []);
+		const dir = mkdtempSync(join(tmpdir(), "pi-web-tools-"));
+		try {
+			const good = join(dir, "good.json");
+			writeFileSync(good, JSON.stringify([{ name: "web_search" }, { name: "web_fetch" }, { nope: true }, null, "x"]));
+			assert.deepEqual([...mod.toolsProvidedByBb({ PI_BB_TOOLS_FILE: good })].sort(), ["web_fetch", "web_search"]);
+			const bad = join(dir, "bad.json");
+			writeFileSync(bad, "{not json");
+			assert.deepEqual([...mod.toolsProvidedByBb({ PI_BB_TOOLS_FILE: bad })], []);
+			const notArray = join(dir, "object.json");
+			writeFileSync(notArray, JSON.stringify({ name: "web_search" }));
+			assert.deepEqual([...mod.toolsProvidedByBb({ PI_BB_TOOLS_FILE: notArray })], []);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+	it("registers only the tool bb does not provide", async () => {
+		const mod = await import("../index.ts");
+		const dir = mkdtempSync(join(tmpdir(), "pi-web-tools-"));
+		const file = join(dir, "pi-tools.json");
+		writeFileSync(file, JSON.stringify([{ name: "web_search", description: "bb's copy", inputSchema: {} }]));
+		process.env.PI_BB_TOOLS_FILE = file;
+		try {
+			const registry = makeFakePi();
+			mod.default(registry.pi as never);
+			assert.deepEqual([...registry.tools.keys()], ["web_fetch"]);
+		} finally {
+			delete process.env.PI_BB_TOOLS_FILE;
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+	it("registers both tools when bb provides neither", async () => {
+		const mod = await import("../index.ts");
+		const registry = makeFakePi();
+		mod.default(registry.pi as never);
+		assert.deepEqual([...registry.tools.keys()].sort(), ["web_fetch", "web_search"]);
 	});
 });
 

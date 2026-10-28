@@ -8,9 +8,16 @@
  * Command
  *   /web [status|clear]   provider + cache diagnostics
  *
+ * Under bb, the bb Forage plugin provides the same two tools natively and bb
+ * draws their timeline rows itself. bb writes the tools it is providing to
+ * this session into the file named by `PI_BB_TOOLS_FILE`, so when web_search
+ * or web_fetch appears there this extension stands down for that tool and
+ * leaves the row to bb. Run pi on its own and both tools are registered here.
+ *
  * Only Node built-ins and pi's own peer packages are imported. No npm deps.
  */
 
+import { readFileSync } from "node:fs";
 import { StringEnum, Type } from "@earendil-works/pi-ai";
 import {
 	DEFAULT_MAX_BYTES,
@@ -92,6 +99,31 @@ function boundOutput(text: string, hint: string): { text: string; truncated: boo
 		text: `${t.content}\n\n[Output truncated at ${formatSize(t.outputBytes)} of ${formatSize(t.totalBytes)}. ${hint}]`,
 		truncated: true,
 	};
+}
+
+/**
+ * The tool names bb is providing to this pi session, from the file bb writes
+ * before it starts pi (`PI_BB_TOOLS_FILE`). Empty when pi runs outside bb, or
+ * when the file is missing or unreadable, so a broken file degrades to "no bb
+ * tools" and this extension keeps working on its own.
+ */
+export function toolsProvidedByBb(env: NodeJS.ProcessEnv = process.env): Set<string> {
+	const file = env.PI_BB_TOOLS_FILE;
+	if (!file) return new Set();
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(readFileSync(file, "utf8"));
+	} catch {
+		return new Set();
+	}
+	if (!Array.isArray(parsed)) return new Set();
+	const names = new Set<string>();
+	for (const entry of parsed) {
+		if (entry && typeof entry === "object" && typeof (entry as { name?: unknown }).name === "string") {
+			names.add((entry as { name: string }).name);
+		}
+	}
+	return names;
 }
 
 // ---------------------------------------------------------------------------
@@ -188,7 +220,8 @@ function formatSearchText(details: SearchDetails, providerLabel: string): string
 	return lines.join("\n");
 }
 
-function registerWebSearch(pi: ExtensionAPI) {
+function registerWebSearch(pi: ExtensionAPI, disabled = false) {
+	if (disabled) return;
 	pi.registerTool(
 		defineTool<typeof searchParams, SearchDetails>({
 			name: "web_search",
@@ -513,7 +546,8 @@ function renderFetchedPage(page: FetchedContent, opts: { offset: number; maxChar
 	return { text, detail: { ...base, shown: slice.end - slice.offset, truncated: slice.truncated } };
 }
 
-function registerWebFetch(pi: ExtensionAPI) {
+function registerWebFetch(pi: ExtensionAPI, disabled = false) {
+	if (disabled) return;
 	pi.registerTool(
 		defineTool<typeof fetchParams, FetchDetails>({
 			name: "web_fetch",
@@ -656,7 +690,7 @@ function registerWebFetch(pi: ExtensionAPI) {
 // /web command
 // ---------------------------------------------------------------------------
 
-function statusLines(): string[] {
+function statusLines(suppressed: string[] = []): string[] {
 	const config = loadConfig();
 	const chain = resolveProviderChain(undefined, config);
 	const cache = cacheStats();
@@ -673,10 +707,11 @@ function statusLines(): string[] {
 		`  github token: ${process.env.GITHUB_TOKEN || process.env.GH_TOKEN ? "found (higher API rate limit)" : "none (60 req/h unauthenticated)"}`,
 	];
 	if (config.warnings.length) lines.push(`  warnings:`, ...config.warnings.map((w) => `    - ${w}`));
+	if (suppressed.length) lines.push(`  bb provided: ${suppressed.join(", ")} — pi-web's copies are off in this session`);
 	return lines;
 }
 
-function registerCommand(pi: ExtensionAPI) {
+function registerCommand(pi: ExtensionAPI, suppressed: string[] = []) {
 	pi.registerCommand("web", {
 		description: "pi-web: show search/fetch status, or `clear` the page cache",
 		getArgumentCompletions: (prefix) => ["status", "clear"].filter((c) => c.startsWith(prefix)).map((c) => ({ value: c, label: c })),
@@ -688,7 +723,7 @@ function registerCommand(pi: ExtensionAPI) {
 				ctx.ui.notify(`pi-web: cleared ${before.entries} cached page${before.entries === 1 ? "" : "s"} (${formatBytes(before.bytes)})`, "info");
 				return;
 			}
-			ctx.ui.notify(statusLines().join("\n"), "info");
+			ctx.ui.notify(statusLines(suppressed).join("\n"), "info");
 		},
 	});
 }
@@ -698,9 +733,11 @@ function registerCommand(pi: ExtensionAPI) {
 // ---------------------------------------------------------------------------
 
 export default function (pi: ExtensionAPI) {
-	registerWebSearch(pi);
-	registerWebFetch(pi);
-	registerCommand(pi);
+	const bbTools = toolsProvidedByBb();
+	const suppressed = ["web_search", "web_fetch"].filter((name) => bbTools.has(name));
+	registerWebSearch(pi, bbTools.has("web_search"));
+	registerWebFetch(pi, bbTools.has("web_fetch"));
+	registerCommand(pi, suppressed);
 
 	pi.on("session_start", async (_event, ctx) => {
 		const config = loadConfig();
