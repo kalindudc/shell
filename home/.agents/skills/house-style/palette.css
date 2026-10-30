@@ -1,0 +1,114 @@
+/* House palette. Drop-in for any static site, learning guide or HTML report.
+   Theme: follows prefers-color-scheme; force one with <html data-theme="light|dark">. */
+
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap");
+
+:root {
+  --paper: #f6f3ec;
+  --card: #fbf9f4;
+  --deep: #ece7dc;
+  --rule: #d8d1c3;
+  --rule-soft: #e6e0d4;
+  --ink: #3a3633;
+  --ink-soft: #66605a;
+  --red: #9d3a2e;
+  --red-soft: #f0dcd6;
+  --green: #566326;
+  --green-soft: #e3e8d3;
+  --blue: #3f6b78;
+  --blue-soft: #d9e4e6;
+  --purple: #6e4b67;
+  --purple-soft: #e6dde4;
+  --aqua: #3d6a51;
+  --aqua-fill: #4f7f63;
+  --aqua-soft: #dbe7df;
+  --orange: #8c4b19;
+  --orange-soft: #f1e1d1;
+  --on-accent: #fbf9f4;
+  --nav-bg: rgba(246, 243, 236, .95);
+  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --mono: "IBM Plex Mono", Menlo, ui-monospace, SFMono-Regular, Consolas, monospace;
+  --read: 700px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #24221f;
+    --card: #2a2724;
+    --deep: #2e2b27;
+    --rule: #3e3a35;
+    --rule-soft: #34302c;
+    --ink: #e9e3d8;
+    --ink-soft: #a99f93;
+    --red: #ea6962;
+    --red-soft: #3e2624;
+    --green: #a9b665;
+    --green-soft: #2f3322;
+    --blue: #7daea3;
+    --blue-soft: #22302e;
+    --purple: #d3869b;
+    --purple-soft: #3a2830;
+    --aqua: #89b482;
+    --aqua-fill: #6c9a6a;
+    --aqua-soft: #243127;
+    --orange: #e78a4e;
+    --orange-soft: #3d2b1f;
+    --on-accent: #1d1c1a;
+    --nav-bg: rgba(36, 34, 31, .94);
+    color-scheme: dark;
+  }
+}
+
+html[data-theme="dark"] {
+  --paper: #24221f;
+  --card: #2a2724;
+  --deep: #2e2b27;
+  --rule: #3e3a35;
+  --rule-soft: #34302c;
+  --ink: #e9e3d8;
+  --ink-soft: #a99f93;
+  --red: #ea6962;
+  --red-soft: #3e2624;
+  --green: #a9b665;
+  --green-soft: #2f3322;
+  --blue: #7daea3;
+  --blue-soft: #22302e;
+  --purple: #d3869b;
+  --purple-soft: #3a2830;
+  --aqua: #89b482;
+  --aqua-fill: #6c9a6a;
+  --aqua-soft: #243127;
+  --orange: #e78a4e;
+  --orange-soft: #3d2b1f;
+  --on-accent: #1d1c1a;
+  --nav-bg: rgba(36, 34, 31, .94);
+  color-scheme: dark;
+}
+
+/* Semantic roles: use these names in components, not raw colours. */
+:root, html[data-theme="dark"] {
+  --link: var(--blue);
+  --focus: var(--blue);
+  --good: var(--aqua);
+  --good-soft: var(--aqua-soft);
+  --warn: var(--orange);
+  --warn-soft: var(--orange-soft);
+  --bad: var(--red);
+  --bad-soft: var(--red-soft);
+  --info: var(--blue);
+  --info-soft: var(--blue-soft);
+  --accent: var(--purple);
+  --accent-soft: var(--purple-soft);
+  --secondary: var(--green);
+  --secondary-soft: var(--green-soft);
+}
+
+html { background: var(--paper); }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--serif); font-size: 19px; line-height: 1.65; -webkit-font-smoothing: antialiased; }
+a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+code, kbd, pre { font-family: var(--mono); }
+code { font-size: .8em; background: var(--deep); padding: 1px 5px; border-radius: 4px; }
+::selection { background: var(--blue-soft); }
+@media (max-width: 760px) { body { font-size: 17.5px; } }

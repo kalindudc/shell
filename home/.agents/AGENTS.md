@@ -221,6 +221,12 @@ Some of what you write is read by a person, not an agent: cortex task bodies and
 
 ---
 
+## Visual house style
+
+Every web page you build for this user (static sites, learning guides, HTML reports, dashboards) uses one palette and type system. Load the `house-style` skill before choosing any colour, font or theme, and use its `palette.css` tokens. Do not restyle someone else's site, and follow the user if they name a different palette for one project.
+
+---
+
 ## Prompt Formatting
 
 Agent prompts and skill files use plain text with structural formatting only:
