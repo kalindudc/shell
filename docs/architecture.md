@@ -11,7 +11,9 @@ install.sh                    # Bash bootstrap: installs git + ruby, execs Ruby 
 src/install.rb                # Ruby entry point: parses CLI, loads stdlib-only installer runtime
 src/install/{main,*.rb}       # Orchestrator, OS, backend, state, dependency, and post-setup modules
 packages.yml                  # Declarative package-manager, machine-profile, and backend manifest
-bb.yml                        # Desired bb state (marketplaces, plugins, plugin and app settings), applied with the bb CLI
+bb.yml                        # Work-free bb recipe and capture allowlist, applied with the bb CLI
+src/install/bb_snapshot.rb    # Captures only approved settings; checks privacy before atomic writes
+docs/bb.md                    # Capture, preview, restore, exclusions, and privacy boundaries
 bb/automations/               # Public bb automations; the rest live in the private kalindudc/shell-private repo
 ```
 

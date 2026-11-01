@@ -4,6 +4,7 @@ require 'bundler/setup'
 require 'minitest/autorun'
 require 'fileutils'
 require 'tmpdir'
+require 'open3'
 
 require_relative '../../src/install/utils'
 require_relative '../../src/install/errors'
@@ -61,6 +62,37 @@ class TestLeakCheck < Minitest::Test
 
   def test_the_public_automation_files_have_no_generic_leaks
     assert_empty LeakCheck.check_paths(LeakCheck::PUBLIC_PATHS, root: SHELL_DIR, denylist: [])
+  end
+
+  def test_public_paths_cover_the_recipe_and_all_bb_backup_files
+    assert_includes LeakCheck::PUBLIC_PATHS, 'bb.yml'
+    assert_includes LeakCheck::PUBLIC_PATHS, 'bb'
+  end
+
+  def test_scan_flags_work_terms_and_credential_fields_without_needing_a_private_denylist
+    assert_includes labels('source: git:https://github.com/Shopify/private-tool'), 'work term'
+    assert_includes labels('machineCredential: something-unrecognisable'), 'credential field'
+    assert_includes labels('  apiKey: arbitrary-value'), 'credential field'
+    assert_empty labels('  - secrets')
+  end
+
+  def test_staged_check_reads_the_index_not_the_clean_working_copy
+    ok = Struct.new(:success?).new(true)
+    calls = []
+    capture = lambda do |*cmd|
+      calls << cmd
+      if cmd.include?('diff')
+        ["bb.yml\0bb/automations/report/prompt.md\0", '', ok]
+      else
+        [cmd.last == ':bb.yml' ? 'apiKey: leaked-value' : "safe\n", '', ok]
+      end
+    end
+    Open3.stub(:capture3, capture) do
+      findings = LeakCheck.check_staged(LeakCheck::PUBLIC_PATHS, root: '/tmp/example', denylist: [])
+      assert_equal ['bb.yml'], findings.map { |finding| finding[:file] }
+      assert_equal 'credential field', findings.first[:label]
+    end
+    assert_includes calls, ['git', '-C', '/tmp/example', 'show', ':bb.yml']
   end
 
   # Private copies

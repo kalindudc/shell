@@ -11,6 +11,7 @@ require_relative "custom"
 require_relative "post_setup"
 require_relative "bb"
 require_relative "bb_automations"
+require_relative "bb_snapshot"
 require_relative "cortex"
 
 module Installer
@@ -31,9 +32,14 @@ module Installer
         return
       end
 
+      if @options[:bb_export]
+        BbSnapshot.export!
+        return
+      end
+
       if @options[:bb_only]
         PostSetup.load_env_file
-        Bb.apply!(profile: Dependencies.new(load_packages, nil).profile_name)
+        Bb.apply!(profile: Dependencies.new(load_packages, nil).profile_name, dry_run: @options[:dry_run])
         return
       end
 

@@ -34,6 +34,16 @@ tasks:
     cmds:
       - ruby src/install.rb --bb
 
+  bb:plan:
+    desc: "Preview bb.yml changes without starting or modifying bb"
+    cmds:
+      - ruby src/install.rb --bb --dry-run
+
+  bb:export:
+    desc: "Capture only approved work-free bb settings in bb.yml; review the diff before committing"
+    cmds:
+      - ruby src/install.rb --bb-export
+
   bb:automations:
     desc: "Restore saved bb automations from bb/automations and the private repo; -- --update also overwrites changed ones"
     cmds:
@@ -45,7 +55,7 @@ tasks:
       - ruby src/install.rb --bb-automations-export
 
   check:leaks:
-    desc: "Fail if the public bb automation backup holds personal ids, tokens or work terms"
+    desc: "Check the public bb recipe and backups for private details"
     cmds:
       - ruby src/scripts/check-leaks.rb
 
@@ -126,6 +136,7 @@ tasks:
         bundle exec ruby test/unit/test_installer.rb
         bundle exec ruby test/unit/test_unfold.rb
         bundle exec ruby test/unit/test_bb.rb
+        bundle exec ruby test/unit/test_bb_snapshot.rb
         bundle exec ruby test/unit/test_bb_app.rb
         bundle exec ruby test/unit/test_bb_automations.rb
         bundle exec ruby test/unit/test_leak_check.rb

@@ -45,6 +45,7 @@ Shell startup times on modern hardware:
 ## Documentation
 
 - **[Installation Guide](docs/installation.md)** - Installation options, package categories, reboot continuation, and customization
+- **[bb Sync](docs/bb.md)** - Capture and restore the work-free bb setup, with explicit privacy boundaries
 - **[Architecture](docs/architecture.md)** - System design, package-manager bootstrap, state management, and directory structure
 - **[Development](docs/development.md)** - Development setup, testing, and available tasks
 - **[Contributing](docs/contributing.md)** - Code standards and testing requirements

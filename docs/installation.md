@@ -128,7 +128,19 @@ The installer adds the bb app: the `bb` cask on macOS, and on x86_64 Linux the o
 AppImage at `~/Applications/bb.AppImage`, with FUSE 2 and a desktop entry. bb updates
 itself after that.
 
-`bb.yml` declares what bb should have on every machine:
+`bb.yml` declares the work-free setup shared across machines and doubles as the capture
+allowlist. See [Syncing a work-free bb setup](bb.md) for the privacy boundary, excluded
+state, and how to approve additions.
+
+```bash
+task bb:export        # capture only approved personal settings; does not change bb
+task check:leaks      # check the recipe and public backup files
+git diff -- bb.yml    # review before staging or committing
+task bb:plan          # preview restore commands; requires bb already running
+task bb               # apply the reviewed recipe
+```
+
+The recipe covers:
 
 - plugin marketplaces;
 - plugins, as `<id>@<marketplace>`, or as an `id` and a git `source` for a plugin that no
@@ -150,9 +162,11 @@ task bb
 ```
 
 The step only adds and changes what `bb.yml` lists; it never removes plugins, marketplaces
-or settings. Machine-specific state goes under `profiles:` in `bb.yml`, selected like
+or settings. Panel and footer lists also preserve local entries that the recipe does not name.
+Apply supports machine-specific state under `profiles:` in `bb.yml`, selected like
 `machine_profiles`: `SHELL_MACHINE_PROFILE` (for example `SHELL_MACHINE_PROFILE=work` in
 `.env`), then a hostname listed under `machine_profiles` in `packages.yml`, then `default`.
+Capture refuses nonempty profiles; this public recipe must stay work-free.
 
 My own plugins live in [kalindudc/bb-marketplace](https://github.com/kalindudc/bb-marketplace).
 
@@ -181,9 +195,10 @@ task check:leaks                    # scan the public backup for ids, paths, tok
 
 The export writes a new automation to the private repo, never to this one; making one public means
 moving its folder here on purpose. Before it writes a public folder, the export runs the leak check
-and refuses on any hit. The same check runs in `task test:unit` and in the pre-commit hook
+and refuses on any hit. The same check also covers `bb.yml` and all of `bb/`. It runs in `task test:unit` and in the pre-commit hook
 (`.githooks/pre-commit`, turned on by `task up` with `git config core.hooksPath .githooks`). Without
-the private repo it checks only the generic patterns.
+the private repo it checks only the generic patterns. The hook checks the staged versions
+of the files, even when the working copies differ.
 
 Restoring is never automatic: it creates automations that then run on their own, so run it on
 purpose and pause the copies on any machine that should not run them. It never deletes an
