@@ -7,6 +7,7 @@ require_relative "tools"
 require_relative "setup"
 require_relative "bb"
 require_relative "bb_automations"
+require_relative "bb_snapshot"
 require_relative "cortex"
 
 module Installer
@@ -16,6 +17,11 @@ module Installer
     end
 
     def run
+      if @options[:bb_export]
+        BbSnapshot.export!
+        return
+      end
+
       if @options[:bb_automations_export]
         BbAutomations.export!
         return
@@ -53,7 +59,7 @@ module Installer
       case step
       when "tools" then Tools.install!
       when "setup" then Setup.run!
-      when "bb" then optional("bb", "task bb") { Bb.apply!(profile: profile) }
+      when "bb" then optional("bb", "task bb") { Bb.apply!(profile: profile, dry_run: @options[:dry_run]) }
       when "cortex" then optional("cortex", "task cortex") { Cortex.install! }
       end
     end

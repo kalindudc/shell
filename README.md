@@ -44,6 +44,7 @@ Shell startup times on modern hardware:
 ## Documentation
 
 - **[Installation Guide](docs/installation.md)** - What the installer does, profiles, commands, and adding packages
+- **[bb Sync](docs/bb.md)** - Capture and restore the work-free bb setup, with explicit privacy boundaries
 - **[Architecture](docs/architecture.md)** - The flake, dotfile links, generated files and the Ruby steps
 - **[Development](docs/development.md)** - Development setup, testing, and available tasks
 - **[Contributing](docs/contributing.md)** - Code standards and testing requirements

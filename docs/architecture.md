@@ -43,7 +43,9 @@ src/scripts/unstow.sh         # Removes links left by the old stow layout
 src/scripts/linux-system.sh   # Linux packages and settings Home Manager cannot manage
 src/install.rb                # The steps Nix does not manage (src/install/*.rb)
 packages.yml                  # npm, pi and pipx packages
-bb.yml                        # Desired bb state
+bb.yml                        # Work-free bb recipe and capture allowlist
+src/install/bb_snapshot.rb    # Captures approved settings; checks privacy before atomic writes
+docs/bb.md                    # Capture, preview, restore, exclusions, and privacy boundaries
 home/                         # Dotfiles, linked into $HOME
 ```
 
@@ -124,6 +126,12 @@ private repo's `git/gitconfig`, which switches work repos to the work identity. 
 
 In a full install, a failing bb or cortex step prints a warning and the install goes on.
 Run on its own, any failing step fails the command.
+
+`task bb:plan` runs `ruby src/install.rb bb --dry-run`, without tools, setup or cortex.
+`task bb:export` captures only the approved work-free settings in the writable checkout.
+Neither is a Home Manager activation hook: Nix installs the app and links the dotfiles,
+while the bb CLI owns its database-backed preferences. The runtime `~/.bb` directory is
+never added to the Home Manager file tree or the Nix store.
 
 ## Checks
 

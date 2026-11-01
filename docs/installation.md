@@ -108,7 +108,24 @@ The bb app comes from the `bb` cask on macOS (nix-darwin), and on x86_64 Linux f
 official AppImage at `~/Applications/bb.AppImage`, with a desktop entry (`task tools`).
 bb updates itself after that.
 
-`bb.yml` declares what bb should have on every machine:
+`bb.yml` declares the work-free setup shared across machines and its capture approvals.
+See [Syncing a work-free bb setup](bb.md) for the privacy boundary and how to approve additions.
+
+```bash
+task bb:export        # capture approved personal settings in the writable checkout
+task check:leaks      # check the recipe and public backup files
+git diff -- bb.yml    # review before staging or committing
+task bb:plan          # preview changes; requires bb already running
+task bb               # apply the reviewed recipe
+```
+
+Nix still installs the app; Home Manager still owns the dotfile links. These commands use
+the bb CLI for database-backed preferences and do not link `~/.bb` into the checkout or
+put its runtime data in the Nix store. Capture and preview never run the tools, setup, or
+cortex steps. Without Task, preview is `ruby src/install.rb bb --dry-run` and capture is
+`ruby src/install.rb --bb-export`.
+
+The recipe covers:
 
 - plugin marketplaces;
 - plugins, as `<id>@<marketplace>`, or as an `id` and a git `source` for a plugin that no
@@ -130,8 +147,10 @@ task bb
 ```
 
 The step only adds and changes what `bb.yml` lists; it never removes plugins, marketplaces
-or settings. Machine-specific state goes under `profiles:` in `bb.yml`, selected by
-`SHELL_MACHINE_PROFILE` (for example `SHELL_MACHINE_PROFILE=work` in `.env`), else `default`.
+or settings. Panel and footer lists preserve local entries not named in the recipe.
+Apply supports profiles in `bb.yml`, selected by `SHELL_MACHINE_PROFILE` in the environment
+or `.env`, else `default`. Capture refuses nonempty profiles; the shared recipe stays
+work-free. This profile selection is separate from the nix-darwin machine profile.
 
 My own plugins live in [kalindudc/bb-marketplace](https://github.com/kalindudc/bb-marketplace).
 
@@ -160,9 +179,10 @@ task check:leaks                    # scan the public backup for ids, paths, tok
 
 The export writes a new automation to the private repo, never to this one; making one public means
 moving its folder here on purpose. Before it writes a public folder, the export runs the leak check
-and refuses on any hit. The same check runs in `task test:unit` and in the pre-commit hook
+and refuses on any hit. The same check covers `bb.yml` and all of `bb/`. It runs in `task test:unit` and in the pre-commit hook
 (`.githooks/pre-commit`, turned on by `task up` with `git config core.hooksPath .githooks`). Without
-the private repo it checks only the generic patterns.
+the private repo it checks only generic patterns. The hook checks staged bytes even when
+the working copies differ.
 
 Restoring is never automatic: it creates automations that then run on their own, so run it on
 purpose and pause the copies on any machine that should not run them. It never deletes an

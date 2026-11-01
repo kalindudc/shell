@@ -113,6 +113,36 @@ class TestInstaller < Minitest::Test
     assert_equal 1, error.status
   end
 
+  def test_bb_preview_never_runs_tools_setup_cortex_or_applies_live_settings
+    runner = Installer::Runner.new(Installer::CLI.parse_args(['bb', '--dry-run']))
+    Installer::Setup.stub(:load_env_file, nil) do
+      Installer::Tools.stub(:install!, -> { flunk 'must not install tools' }) do
+        Installer::Setup.stub(:run!, -> { flunk 'must not run setup' }) do
+          Installer::Cortex.stub(:install!, -> { flunk 'must not install cortex' }) do
+            Installer::Bb.stub(:apply!, ->(profile:, dry_run:) { assert dry_run; assert_kind_of String, profile }) do
+              capture_io { runner.run }
+            end
+          end
+        end
+      end
+    end
+  end
+
+  def test_bb_capture_never_runs_setup_steps_or_loads_env
+    runner = Installer::Runner.new(Installer::CLI.parse_args(['--bb-export']))
+    Installer::Setup.stub(:load_env_file, -> { flunk 'must not load env' }) do
+      Installer::Tools.stub(:install!, -> { flunk 'must not install tools' }) do
+        Installer::Setup.stub(:run!, -> { flunk 'must not run setup' }) do
+          Installer::Cortex.stub(:install!, -> { flunk 'must not install cortex' }) do
+            Installer::BbSnapshot.stub(:export!, -> { assert true }) do
+              capture_io { runner.run }
+            end
+          end
+        end
+      end
+    end
+  end
+
   # tools
 
   def test_herdr_pi_integration_installs_unless_current

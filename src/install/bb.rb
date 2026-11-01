@@ -3,6 +3,7 @@
 require "json"
 require "open3"
 require "yaml"
+require "shellwords"
 require_relative "errors"
 require_relative "bb_app"
 
@@ -16,6 +17,7 @@ module Installer
     CLI_HINT = "open bb, then run: task bb"
     LIST_KEYS = %w[marketplaces plugins enable disable].freeze
     MAP_KEYS = %w[settings completed_turns experiments ui].freeze
+    ADDITIVE_UI_KEYS = %w[sidebar.pluginPanelOrder sidebar.visiblePluginPanels sidebar.footerOrder sidebar.hiddenFooterItems].freeze
 
     module_function
 
@@ -31,6 +33,7 @@ module Installer
       desired["plugin_settings"] = (config["plugin_settings"] || {}).merge(extra["plugin_settings"] || {}) do |_id, shared, own|
         shared.merge(own)
       end
+      desired["keyboard"] = Array(config["keyboard"]) + Array(extra["keyboard"])
       desired["theme"] = extra.fetch("theme", config["theme"])
       desired
     end
@@ -63,12 +66,14 @@ module Installer
       marketplace_commands(desired["marketplaces"], current.fetch(:marketplaces)) +
         to_install.map { |entry| ["bb", "plugin", "install", install_source(entry), "--yes"] } +
         enable_commands(desired["enable"], installed, installing) +
-        disable_commands(desired["disable"], installed) +
-        plugin_setting_commands(desired["plugin_settings"], current.fetch(:plugin_settings), installed.keys + installing) +
+        disable_commands(desired["disable"], installed.merge(installing.to_h { |id| [id, true] })) +
+        plugin_setting_commands(desired["plugin_settings"], current.fetch(:plugin_settings),
+                                (installed.select { |_, enabled| enabled }.keys + installing + desired["enable"]) - desired["disable"]) +
         setting_commands(desired["settings"], current.fetch(:settings)) +
         completed_turn_commands(desired["completed_turns"], current.fetch(:settings)) +
         experiment_commands(desired["experiments"], current.fetch(:experiments)) +
         ui_commands(desired["ui"], current.fetch(:ui)) +
+        keyboard_commands(desired["keyboard"], current.fetch(:keyboard, [])) +
         theme_commands(desired["theme"], current.fetch(:theme))
     end
 
@@ -97,7 +102,7 @@ module Installer
         current_values = current_settings.fetch(id, {})
         values
           .reject { |key, value| current_values[key] == value }
-          .map { |key, value| ["bb", "plugin", "config", id, "set", key, value.to_s] }
+          .map { |key, value| ["bb", "plugin", "config", id, "set", key, cli_value(value)] }
       end
     end
 
@@ -120,11 +125,41 @@ module Installer
         .map { |key, value| ["bb", "settings", "experiment", key, value.to_s] }
     end
 
-    # `bb settings ui set` takes plain text for strings and JSON for lists.
+    def cli_value(value)
+      value.is_a?(String) ? value : JSON.generate(value)
+    end
+
     def ui_commands(preferences, current_preferences)
-      preferences
-        .reject { |key, value| current_preferences[key] == value }
-        .map { |key, value| ["bb", "settings", "ui", "set", key, value.is_a?(String) ? value : JSON.generate(value)] }
+      preferences.flat_map do |key, value|
+        current = current_preferences[key]
+        if ADDITIVE_UI_KEYS.include?(key) && current.is_a?(Array)
+          next [] if current.select { |entry| value.include?(entry) } == value
+
+          value = value + (current - value)
+        end
+        next [] if current == value
+
+        [["bb", "settings", "ui", "set", key, cli_value(value)]]
+      end
+    end
+
+    def shortcut_text(shortcut)
+      return "disabled" if shortcut.nil?
+      return shortcut if shortcut.is_a?(String)
+
+      modifiers = { "mod" => "Mod", "meta" => "Meta", "control" => "Control", "alt" => "Alt", "shift" => "Shift" }
+      (modifiers.filter_map { |key, label| label if shortcut[key] } + [shortcut.fetch("key")]).join("+")
+    end
+
+    def keyboard_commands(bindings, current)
+      bindings.filter_map do |binding|
+        matching = current.find { |entry| entry.values_at("command", "platform") == binding.values_at("command", "platform") }
+        next if matching && shortcut_text(matching["shortcut"]) == binding.fetch("shortcut")
+
+        command = ["bb", "settings", "keyboard", "set", binding.fetch("command"), binding.fetch("shortcut")]
+        command += ["--platform", binding["platform"]] if binding["platform"]
+        command
+      end
     end
 
     def theme_commands(theme, current_theme)
@@ -136,10 +171,14 @@ module Installer
     def current_state(plugin_settings_ids)
       settings = bb_json("settings", "show")
       plugins = bb_json("plugin", "list").fetch("plugins").to_h { |plugin| [plugin.fetch("id"), plugin.fetch("enabled")] }
+      available = plugin_settings_ids.select { |id| plugins[id] }
+      configurations = available.to_h { |id| [id, bb_json("plugin", "config", id)] }
       {
         marketplaces: bb_json("marketplace", "list").map { |marketplace| marketplace.fetch("name") },
         plugins: plugins,
-        plugin_settings: (plugin_settings_ids & plugins.keys).to_h { |id| [id, bb_json("plugin", "config", id).fetch("values")] },
+        plugin_settings: configurations.transform_values { |value| value.fetch("values") },
+        plugin_schemas: configurations.transform_values { |value| value.fetch("schema", {}) },
+        keyboard: settings.fetch("keybindingOverrides", []),
         settings: settings.fetch("generalSettings"),
         experiments: settings.fetch("experiments", {}),
         ui: bb_json("settings", "ui", "list").fetch("preferences").transform_values { |preference| preference.fetch("value") },
@@ -155,10 +194,23 @@ module Installer
       end
 
       # JSON is UTF-8, but Open3 tags output with the locale encoding (US-ASCII under LANG=C).
-      JSON.parse(stdout.force_encoding(Encoding::UTF_8))
+      result = JSON.parse(stdout.force_encoding(Encoding::UTF_8))
+      if result.is_a?(Hash) && result["ok"] == false
+        raise Installer::CommandFailed, "bb #{args.join(' ')}: #{result.fetch('error')}"
+      end
+
+      result
     end
 
-    def apply!(config: load_config, profile: "default")
+    def apply!(config: load_config, profile: "default", dry_run: false)
+      if dry_run
+        desired = desired_state(config, profile)
+        commands = plan(desired, current_state(desired["plugin_settings"].keys))
+        Installer::Utils.log("Preview only: #{commands.size} bb changes (profile: #{profile})")
+        commands.each { |command| puts Shellwords.join(command) }
+        return true
+      end
+
       unless Installer::BbApp.ensure_running!
         Installer::Utils.warn("bb is not installed or did not start, skipping bb setup: #{CLI_HINT}")
         return false

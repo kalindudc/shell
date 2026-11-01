@@ -54,7 +54,7 @@ class TestBb < Minitest::Test
     ids = desired['plugins'].map { |entry| Installer::Bb.plugin_id(entry) }
 
     assert_includes desired['marketplaces'].map { |m| m['name'] }, 'kalindudc'
-    %w[follow-thinking session-log switchboard agent-graph bb-autoresearch tokyo-night pi-minions pi-quests].each do |id|
+    %w[session-log switchboard gruve forage loom shuttle vantage burn bb-autoresearch tokyo-night pi-minions pi-quests].each do |id|
       assert_includes ids, id
     end
   end
@@ -73,6 +73,20 @@ class TestBb < Minitest::Test
 
   def test_cli_bb_step_runs_only_the_bb_step
     assert_equal ['bb'], Installer::CLI.parse_args(['bb'])[:steps]
+  end
+
+  def test_cli_capture_and_preview_are_explicit
+    assert Installer::CLI.parse_args(['--bb-export'])[:bb_export]
+    assert Installer::CLI.parse_args(['bb', '--dry-run'])[:dry_run]
+    assert_raises(ArgumentError) { Installer::CLI.parse_args(['--dry-run']) }
+    assert_raises(ArgumentError) { Installer::CLI.parse_args(['bb', '--bb-export']) }
+  end
+
+  def test_cli_rejects_conflicting_actions_before_a_dry_run_can_run_setup_steps
+    %w[tools setup cortex --bb-export --bb-automations --bb-automations-export].each do |action|
+      assert_raises(ArgumentError, action) { Installer::CLI.parse_args(['bb', '--dry-run', action]) }
+    end
+    assert_raises(ArgumentError) { Installer::CLI.parse_args(['--bb-export', 'setup']) }
   end
 
   # desired state
@@ -159,8 +173,70 @@ class TestBb < Minitest::Test
     assert_equal [%w[bb plugin disable provider-codex]], Installer::Bb.plan(desired, current)
   end
 
-  def test_bb_yml_turns_off_the_codex_and_claude_code_providers
-    assert_equal %w[provider-claude-code provider-codex], bb_yml['disable'].sort
+  def test_bb_yml_preserves_the_current_provider_choices
+    assert_includes bb_yml['enable'], 'provider-claude-code'
+    assert_includes bb_yml['enable'], 'provider-codex'
+    assert_equal 'plugin:gruve:gruve', bb_yml['theme']
+  end
+
+  def test_plan_disables_a_plugin_that_will_be_installed_in_the_same_run
+    desired = Installer::Bb.desired_state(CONFIG.merge('disable' => ['follow-thinking']), 'default')
+    commands = Installer::Bb.plan(desired, MATCHING_STATE.merge(plugins: { 'workflows' => true }))
+
+    assert_includes commands, %w[bb plugin disable follow-thinking]
+  end
+
+  def test_plugin_setting_values_use_json_for_structured_values
+    commands = Installer::Bb.plugin_setting_commands({ 'reader' => { 'options' => [1, 2] } }, {}, ['reader'])
+
+    assert_equal [['bb', 'plugin', 'config', 'reader', 'set', 'options', '[1,2]']], commands
+  end
+
+  def test_ui_restore_preserves_unlisted_local_panels
+    commands = Installer::Bb.ui_commands(
+      { 'sidebar.visiblePluginPanels' => ['reader/sources'] },
+      { 'sidebar.visiblePluginPanels' => ['local/panel', 'reader/sources'] }
+    )
+    assert_empty commands
+  end
+
+  def test_ui_restore_adds_missing_portable_panels_without_removing_local_panels
+    commands = Installer::Bb.ui_commands(
+      { 'sidebar.visiblePluginPanels' => ['reader/sources', '__bb__/skills'] },
+      { 'sidebar.visiblePluginPanels' => ['local/panel', 'reader/sources'] }
+    )
+    assert_equal ['reader/sources', '__bb__/skills', 'local/panel'], JSON.parse(commands.first.last)
+  end
+
+  def test_plan_does_not_write_settings_for_plugins_that_will_remain_disabled
+    desired = Installer::Bb.desired_state(CONFIG.merge('disable' => ['follow-thinking'],
+      'plugin_settings' => { 'follow-thinking' => { 'lines' => 20 } }), 'default')
+
+    assert_equal [%w[bb plugin disable follow-thinking]], Installer::Bb.plan(desired, MATCHING_STATE)
+  end
+
+  def test_keyboard_plan_keeps_platform_scopes_and_handles_disabled_shortcuts
+    desired = Installer::Bb.desired_state(CONFIG.merge('keyboard' => [
+      { 'command' => 'panel.nextTab', 'shortcut' => 'Mod+K', 'platform' => 'mac' },
+      { 'command' => 'panel.previousTab', 'shortcut' => 'disabled' }
+    ]), 'default')
+    assert_equal [
+      %w[bb settings keyboard set panel.nextTab Mod+K --platform mac],
+      %w[bb settings keyboard set panel.previousTab disabled]
+    ], Installer::Bb.plan(desired, MATCHING_STATE.merge(keyboard: []))
+  end
+
+  def test_dry_run_never_starts_bb_installs_a_launcher_or_applies_settings
+    Installer::BbApp.stub(:ensure_running!, -> { flunk 'must not start bb' }) do
+      Installer::BbApp.stub(:install_cli_command!, -> { flunk 'must not install a launcher' }) do
+        Installer::Bb.stub(:current_state, MATCHING_STATE.merge(plugins: { 'workflows' => true })) do
+          Installer::Utils.stub(:run!, ->(*) { flunk 'must not mutate bb' }) do
+            out, = capture_io { assert Installer::Bb.apply!(config: CONFIG, dry_run: true) }
+            assert_includes out, 'bb plugin install'
+          end
+        end
+      end
+    end
   end
 
   def test_plan_passes_setting_values_as_text
@@ -260,6 +336,26 @@ class TestBb < Minitest::Test
       %w[bb plugin config workflows set maxActiveRuns 8],
       %w[bb plugin config follow-thinking set lines 20]
     ], calls
+  end
+
+  def test_current_state_does_not_query_disabled_plugin_settings
+    outputs = {
+      %w[settings show] => { 'generalSettings' => {}, 'appearance' => {} },
+      %w[plugin list] => { 'plugins' => [{ 'id' => 'reader', 'enabled' => false }] },
+      %w[marketplace list] => [],
+      %w[settings ui list] => { 'preferences' => {} }
+    }
+    Installer::Bb.stub(:bb_json, ->(*args) { outputs.fetch(args) }) do
+      state = Installer::Bb.current_state(['reader'])
+      assert_empty state[:plugin_settings]
+      assert_empty state[:plugin_schemas]
+    end
+  end
+
+  def test_bb_json_rejects_error_envelopes_even_with_a_successful_exit_code
+    Open3.stub(:capture3, [JSON.generate({ 'ok' => false, 'error' => 'plugin unavailable' }), '', OK]) do
+      assert_raises(Installer::CommandFailed) { Installer::Bb.bb_json('plugin', 'config', 'reader') }
+    end
   end
 
   def test_bb_json_reads_utf8_whatever_the_locale_encoding

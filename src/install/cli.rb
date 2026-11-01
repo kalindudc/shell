@@ -13,6 +13,8 @@ module Installer
       options = {
         verbose: false,
         steps: [],
+        bb_export: false,
+        dry_run: false,
         bb_automations: false,
         bb_automations_export: false,
         update: false
@@ -24,6 +26,10 @@ module Installer
           options[:steps] << arg
         when "--trace"
           options[:verbose] = true
+        when "--bb-export"
+          options[:bb_export] = true
+        when "--dry-run"
+          options[:dry_run] = true
         when "--bb-automations"
           options[:bb_automations] = true
         when "--bb-automations-export"
@@ -40,6 +46,14 @@ module Installer
         end
       end
 
+      standalone = options.values_at(:bb_export, :bb_automations, :bb_automations_export).count(true)
+      if standalone > 1 || (standalone.positive? && options[:steps].any?)
+        raise ArgumentError, "Run capture or automations alone, without setup steps"
+      end
+      if options[:dry_run] && (options[:steps].uniq != ["bb"] || standalone.positive?)
+        raise ArgumentError, "--dry-run requires the bb step alone; no setup was run"
+      end
+
       options
     end
 
@@ -54,6 +68,8 @@ module Installer
       puts ""
       puts "OPTIONS:"
       puts "  --trace                    Enable verbose output"
+      puts "  bb --dry-run               Preview bb changes without running other setup steps"
+      puts "  --bb-export                Capture only the settings and plugins approved in bb.yml"
       puts "  --bb-automations           Restore saved bb automations (create missing ones) and exit"
       puts "  --bb-automations --update  Also make changed automations match the saved files"
       puts "  --bb-automations-export    Save every bb automation to bb/automations or the private repo and exit"
