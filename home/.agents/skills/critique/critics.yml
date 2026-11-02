@@ -3,25 +3,28 @@
 # `bb provider models pi`) with NO `:<thinking>` suffix: spawn rejects the suffix as an
 # unknown model. `thinking` goes in the spawn task's own `thinking` field.
 #
-# One vendor per critic so votes are independent, and no critic from the vendor of the
-# reviewing model, so the critics do not grade their own family's work. Quorum is
-# max(2, floor(N/2)+1) distinct models: keep N odd, so a single dissent or a single
-# critic that fails to start cannot decide a finding. A critic round waits for its
-# slowest critic, so speed matters as much as quality.
+# One vendor per critic so votes are independent, and keep N odd, so a single dissent
+# or a single critic that fails to start cannot decide a finding. Quorum is
+# max(2, floor(N/2)+1) distinct models. A critic round waits for its slowest critic,
+# so per-step latency on real work matters as much as quality.
 #
-# Last reviewed 2026-11-02. The Shuttle review presets run the first pass on
-# anthropic/claude-opus-5-5, so no Anthropic critic. Each critic below judged the same
-# five known-answer findings (two real, two planted false claims, one pre-existing)
-# through spawn and got all five right. Time is that run; index is BenchLeader's
-# (2 Nov 2026); price is USD per 1M tokens in/out.
-#   gpt-6.1-sol     xhigh   87 s  index 67.3  $1.60 / $8.00
-#   kimi-k3         high    93 s  index 62.1  $3.00 / $15.00
-#   gemini-4-argon  medium 124 s  index 66.0  $2.00 / $10.00 until 2026-11-30, then $4 / $20
-# Replaced: deepseek-v4p1-flash (index 58.9; 181 s on the same test) and grok-4.7
-# (index 58.2; 350 s and 807 s in real burn#5 critic rounds). Also measured:
-# glm-5p3 113 s, 5/5 but index 59.0; kimi-k3-fast 89 s for 1.5x Kimi's price;
-# gemini-4-argon at high 151 s; gemini-3.8-flash 343 s and 4/5. meta/muse-spark is
-# refused by Meta's API (402 billing_not_configured). Qwen3.8 Max takes minutes per answer.
+# Avoid a critic from the reviewing model's vendor when another vendor is as good. On
+# 2026-11-02 none was: outside Anthropic, Google and OpenAI nothing scored above 54 on
+# BenchLeader, Google's Gemini 4 Argon took ~12 s per step on real reviews, and the user
+# ruled out Gemini, GLM, DeepSeek and Grok. Fable 5.1 therefore shares a vendor with
+# the first pass (anthropic/claude-opus-5-5), so it may share its blind spots; three
+# vendors still vote, so no single vendor reaches the quorum alone.
+#
+# Last reviewed 2026-11-02 on a real finding (PR 45617) through spawn, all three KEEP,
+# matching the other critics. Seconds on that finding; BenchLeader index; USD per 1M
+# tokens in/out.
+#   gpt-6.1-sol       xhigh   68 s  index 67.2  $1.60 / $8.00
+#   kimi-k3           high    53 s  index 62.1  $3.00 / $15.00
+#   claude-fable-5-1  high    84 s  index 67.1  $8.40 / $42.00  (the most thorough)
+# Also measured there: gpt-6.1-terra 40 s (index 65.2, a second OpenAI vote);
+# gpt-6-astra 56 s ($8.20 / $41); claude-sonnet-5-5 22 s but shallow (3 tool calls, the
+# only dissent of 9); gemini-4-argon 368 s at medium and 102 s at low; glm-5p3 67 s.
+# meta/muse-spark is refused by Meta's API (402 billing_not_configured).
 # A Fireworks model id itself starts with "fireworks:", so its entry is
 # fireworks/fireworks:accounts/... . Do not shorten it: a shorter form can resolve,
 # silently, to another build (it did for DeepSeek, to the dated -1017 one).
@@ -32,6 +35,6 @@ critics:
   - model: fireworks/fireworks:accounts/fireworks/models/kimi-k3
     thinking: high
     name: Kimi
-  - model: google/gemini-4-argon
-    thinking: medium
-    name: Gemini
+  - model: anthropic/claude-fable-5-1
+    thinking: high
+    name: Fable

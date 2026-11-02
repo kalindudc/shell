@@ -19,6 +19,9 @@ Before voting, verify the finding against the provided context:
 
 Only make claims about content you have EXPLICITLY READ via tools.
 
+Investigate only the finding and its source. Do not look up your own model, thread,
+process or environment: the parent already knows which model you are.
+
 If the provided context is insufficient to verify a finding, investigate by
 reading the relevant files directly using available tools.
 
