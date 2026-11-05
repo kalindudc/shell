@@ -20,6 +20,9 @@ module Journal
 
   module_function
 
+  # Where the ledger, archive, scouts workflow and site live.
+  def home = ENV.fetch('JOURNAL_HOME') { File.join(Dir.home, '.local', 'share', 'journal') }
+
   # Bullets with a link or @id in the previous journal's open sections.
   def open_items(body)
     section = nil
@@ -31,11 +34,11 @@ module Journal
       next unless section && OPEN_SECTIONS.any? { |s| section.start_with?(s) } && line.match?(/\A\s*- /)
 
       keys = line.scan(LINK_RE).flatten.to_set | line.scan(TASK_RE).to_set
-      items << { section: section, line: line.strip[0, 110], keys: keys } unless keys.empty?
+      items << { section: section, line: line.strip[0, 110], full: line.strip, keys: keys } unless keys.empty?
     end
   end
 
-  # Slack links match by channel and thread; mail links match exactly; other URLs ignore query and fragment.
+  # Slack links match by channel and thread; mail links match exactly; other URLs ignore the fragment and tracking parameters.
   def normalize(url)
     if (m = url.match(SLACK_RE))
       thread = m[3].to_s.delete('.')
@@ -43,7 +46,10 @@ module Journal
     end
     return url if url.include?('mail.google')
 
-    url.split('?').first.split('#').first.chomp('/')
+    # The query can be the identity (a calendar event's eid), so it stays; tracking parameters go.
+    base, query = url.split('#').first.split('?', 2)
+    kept = query.to_s.split('&').reject { |param| param.empty? || param.start_with?('utm_') }.sort
+    kept.empty? ? base.chomp('/') : "#{base.chomp('/')}?#{kept.join('&')}"
   end
 
   def body_keys(body)
@@ -56,9 +62,9 @@ module Journal
     keys.include?(key)
   end
 
-  # Open items from previous_body with no matching link or @id anywhere in new_body.
-  def missing_items(previous_body, new_body)
-    keys = body_keys(new_body)
+  # Open items from previous_body with no matching link or @id anywhere in new_body or the ledger.
+  def missing_items(previous_body, new_body, known: Set.new)
+    keys = body_keys(new_body) | known
     items = open_items(previous_body)
     missing = items.reject do |item|
       item[:keys].any? { |k| key_hit?(k.start_with?('http') ? normalize(k) : k, keys) }
@@ -78,3 +84,8 @@ module Journal
 end
 
 require_relative 'journal/render'
+require_relative 'journal/ledger'
+require_relative 'journal/ledger_view'
+require_relative 'journal/paper'
+require_relative 'journal/share'
+require_relative 'journal/site'

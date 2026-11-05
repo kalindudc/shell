@@ -19,7 +19,11 @@ module Journal
         "bars": [{"title": "My open PRs (13)", "parts": [{"label": "draft", "value": 7, "tone": "chart-2|bad|warn|good|brand"}]}],
         "week": [{"label": "Mon", "merged": 1, "threads": 12}],
         "shipped": [{"title": "...", "url": "...", "note": "optional suffix"}],
-        "sources": [{"name": "Calendar", "status": "ok|warn|fail", "note": "optional"}]
+        "sources": [{"name": "Calendar", "status": "ok|warn|fail", "note": "optional"}],
+        "ledger": "the output of `journal ledger view --json`; with it the page is the Morning Edge front page",
+        "lede": "3 to 5 sentences for the front page", "edition": 17,
+        "focus[].id": "the ledger id of each focus item",
+        "layout": "classic keeps the older dashboard even when ledger is set"
       }
     JSON
 
@@ -83,6 +87,12 @@ module Journal
       .col .lbl{font-size:10.5px;color:var(--muted-foreground)}
       .ship{display:flex;flex-direction:column;gap:6px;font-size:13px}
       .ship div::before{content:"\\2713";color:var(--success);font-weight:700;margin-right:8px}
+      .id{font:600 10.5px var(--font-mono,monospace);color:var(--muted-foreground);margin-right:6px}
+      .late{align-self:start;font-size:10.5px;padding:2px 7px;border-radius:999px;white-space:nowrap;color:var(--destructive-text);font-weight:600;background:color-mix(in srgb,var(--destructive) 12%,transparent)}
+      .box.hot{border-left:3px solid var(--destructive)}
+      .more{font-size:12px;color:var(--muted-foreground);padding-top:6px}
+      .hint{font-size:12px;color:var(--muted-foreground)}
+      .hint code{font-family:var(--font-mono,monospace);background:var(--surface-recessed,var(--muted));padding:1px 5px;border-radius:4px}
       .warnline{font-size:12.5px;padding:9px 12px;border-radius:var(--r);background:color-mix(in srgb,var(--warning) 14%,transparent);color:var(--warning-text)}
     CSS
 
@@ -138,7 +148,8 @@ module Journal
       return '' if Array(data['focus']).empty?
 
       rows = data['focus'].each_with_index.map do |f, i|
-        %(<div class="f"><div class="n">#{i + 1}</div><div><div class="t">#{link(f['title'], f['url'])}</div>) +
+        tag = f['id'] ? %(<span class="id">J-#{esc(f['id'])}</span>) : ''
+        %(<div class="f"><div class="n">#{i + 1}</div><div><div class="t">#{tag}#{link(f['title'], f['url'])}</div>) +
           %(<div class="why">#{esc(f['why'])}</div></div>#{age(f['since'], today)}</div>)
       end
       %(<div><h2>Today's focus</h2><div class="focus">#{rows.join}</div></div>)
@@ -174,6 +185,35 @@ module Journal
       follow_html = follow.empty? ? '<div class="d">Nothing open.</div>' : follow.join
       %(<div class="two"><div class="box"><h2>Needs my action</h2><div class="list">#{needs_html}</div></div>) +
         %(<div class="box"><h2>Follow-ups</h2><div class="list">#{follow_html}</div></div></div>)
+    end
+
+    LEDGER_BOXES = [
+      ['overdue', 'Overdue', 'Nothing overdue.'], ['due_today', 'Due today', 'Nothing due today.'],
+      ['new', 'New since the last journal', 'Nothing new.'], ['waiting', 'Waiting on others', 'Nobody owes you anything.']
+    ].freeze
+    LEDGER_ROWS = 8
+
+    def ledger_row(item)
+      badge = if item['days_overdue'] then %(<span class="late">#{esc(item['days_overdue'])}d late</span>)
+              elsif item['nudge'] then %(<span class="age a1">nudge · #{esc(item['age'])}d</span>)
+              else %(<span class="age #{item['age'].to_i <= 2 ? 'a0' : 'a1'}">#{esc(item['age'])}d</span>)
+              end
+      detail = item['detail'].to_s.empty? ? '' : %(<div class="d">#{esc(item['detail'])}</div>)
+      %(<div class="row"><div><span class="id">#{esc(item['label'])}</span>#{link(item['title'], item['url'])}#{detail}</div>#{badge}</div>)
+    end
+
+    def ledger_lists(ledger)
+      boxes = LEDGER_BOXES.map do |key, title, empty|
+        list = Array(ledger[key])
+        rows = list.first(LEDGER_ROWS).map { |i| ledger_row(i) }
+        more = list.size > LEDGER_ROWS ? %(<div class="more">and #{list.size - LEDGER_ROWS} more in the journal</div>) : ''
+        body = rows.empty? ? %(<div class="d">#{empty}</div>) : rows.join + more
+        %(<div class="box#{' hot' if key == 'overdue' && list.any?}"><h2>#{title} (#{list.size})</h2><div class="list">#{body}</div></div>)
+      end
+      backlog = Array(ledger['backlog']).size
+      hint = %(<div class="hint">#{backlog} more open in the backlog. Reply in this thread to close items: ) +
+             %(<code>done 12 15</code> <code>drop 20 not mine</code> <code>snooze 31 mon</code> <code>due 12 fri</code></div>)
+      %(<div class="two">#{boxes.join}</div>#{hint})
     end
 
     def bars(data)
@@ -223,9 +263,12 @@ module Journal
     end
 
     def page(data, now: Time.now)
+      return Paper.page(data) if data['ledger'] && data['layout'] != 'classic'
+
       today = Date.iso8601(data.fetch('date'))
       body = [
-        header(data), metrics(data), focus(data, today), calendar(data, today, now), lists(data, today), bars(data),
+        header(data), metrics(data), focus(data, today), calendar(data, today, now),
+        data['ledger'] ? ledger_lists(data['ledger']) : lists(data, today), bars(data),
         %(<div class="two">#{week(data)}#{shipped(data)}</div>), sources(data)
       ].join
       %(<!doctype html><html><head><meta charset="utf-8"><style>#{CSS}</style></head><body><div class="wrap">#{body}</div></body></html>)

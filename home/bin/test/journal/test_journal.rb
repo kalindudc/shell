@@ -42,6 +42,14 @@ class TestJournal < Minitest::Test
     assert_match('Review the PR', missing[1][:line])
   end
 
+  def test_normalize_keeps_identifying_queries
+    a = Journal.normalize('https://www.google.com/calendar/event?eid=AAA')
+    b = Journal.normalize('https://www.google.com/calendar/event?eid=BBB')
+    refute_equal(a, b)
+    assert_equal(a, Journal.normalize('https://www.google.com/calendar/event?utm_source=x&eid=AAA#top'))
+    assert_equal('https://github.com/acme/app/pull/7', Journal.normalize('https://github.com/acme/app/pull/7/#discussion'))
+  end
+
   def test_task_ids_do_not_match_issue_refs_or_mentions
     refute(Journal.body_keys('see #@42 and foo@42').include?('@42'))
   end
@@ -93,5 +101,18 @@ class TestJournal < Minitest::Test
   def test_calendar_clamps_to_day
     assert_in_delta(0.0, Journal::Render.pct(6))
     assert_in_delta(100.0, Journal::Render.pct(23))
+  end
+
+  def test_render_ledger_boxes_replace_the_lists
+    ledger = { 'overdue' => [{ 'label' => 'J-7', 'title' => 'Reply <now>', 'url' => 'https://example.com/t', 'age' => 9, 'days_overdue' => 4 }],
+               'due_today' => [], 'new' => [], 'waiting' => [{ 'label' => 'J-9', 'title' => 'Numbers', 'age' => 5, 'nudge' => true }],
+               'backlog' => [{}, {}] }
+    html = Journal::Render.page(data.merge('layout' => 'classic', 'ledger' => ledger, 'focus' => [data['focus'][0].merge('id' => 7)]))
+    assert_match('<span class="id">J-7</span><a href="https://example.com/a?x=1&amp;y=2"', html)
+    assert_match('4d late', html)
+    assert_match('nudge · 5d', html)
+    assert_match('Reply &lt;now&gt;', html)
+    assert_match('2 more open in the backlog', html)
+    refute_match('Follow-ups', html)
   end
 end

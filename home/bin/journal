@@ -1,20 +1,31 @@
-#!/usr/bin/env ruby
+#!/usr/bin/env -S ruby --disable-gems
 # frozen_string_literal: true
 
 # journal - helpers for an agent-written daily journal kept in cortex
 #
 # Usage: journal carryover <previous-task-id> <new-body.md>
 #        journal render <data.json> <out.html>
+#        journal ledger seed <journal-task-id> | upsert <items.json>... | apply "<reply>"
+#        journal ledger view [--since <iso-time>] [--json] [--public] | ls [--all] | show <id> | snapshot
+#        journal site [--archive <dir>] [--out <dir>]
 #
-# carryover lists open items in the previous journal that the new body drops;
-# it exits 1 when any are missing. render writes the themed HTML briefing.
+# carryover lists open items in the previous journal that the new body drops
+# and the ledger does not track; it exits 1 when any are missing. render writes
+# the themed HTML briefing. ledger keeps every item with a short id (J-12) so a
+# reply like "done 12 15, drop 20 not mine, snooze 31 mon" closes it for good;
+# apply also closes the cortex tasks behind items marked done (--no-cortex skips
+# that); "private 7" keeps an item off the shared site, "share 7" allows it again.
+# site builds the shareable static site from the archived briefings, leaving out
+# private items and anything that matches a sensitive pattern (sensitive.txt adds
+# patterns). Files live in $JOURNAL_HOME, by default ~/.local/share/journal.
 
+# Standard library only; --disable-gems keeps stale native gems in the user gem dir from breaking it.
 ENV.delete('BUNDLE_GEMFILE')
 
 require_relative 'lib/journal'
 
 def usage(code)
-  puts(File.readlines(__FILE__)[3..9].map { |line| line.sub(/^# ?/, '') })
+  puts(File.readlines(__FILE__)[3..20].map { |line| line.sub(/^# ?/, '') })
   puts("\nrender's JSON:\n#{Journal::Render::SCHEMA}") if code.zero?
   exit code
 end
@@ -25,7 +36,8 @@ usage(0) if ['-h', '--help', nil].include?(command)
 case command
 when 'carryover'
   usage(2) unless args.size == 2
-  total, missing = Journal.missing_items(Journal.cortex_body(args[0]), Journal.read(args[1]))
+  known = File.exist?(Journal::Ledger.default_path) ? Journal::Ledger.new.known_keys : Set.new
+  total, missing = Journal.missing_items(Journal.cortex_body(args[0]), Journal.read(args[1]), known: known)
   puts("checked #{total} open items from @#{args[0]}; #{missing.size} not carried over or resolved")
   missing.each { |item| puts("- [#{item[:section]}] #{item[:line]}") }
   exit(missing.empty? ? 0 : 1)
@@ -34,6 +46,13 @@ when 'render'
   page = Journal::Render.page(JSON.parse(Journal.read(args[0])))
   File.write(args[1], page, encoding: 'UTF-8')
   puts("wrote #{args[1]} (#{page.bytesize} bytes)")
+when 'site'
+  opt = ->(flag, default) { (i = args.index(flag)) ? args.fetch(i + 1) : default }
+  report = Journal::Site.build(opt.call('--archive', File.join(Journal.home, 'archive')), opt.call('--out', File.join(Journal.home, 'site')))
+  puts(JSON.pretty_generate(report))
+when 'ledger'
+  require_relative 'lib/journal/cli'
+  exit(Journal::CLI.ledger(args))
 else
   usage(2)
 end
