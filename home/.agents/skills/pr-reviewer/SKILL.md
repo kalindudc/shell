@@ -57,7 +57,7 @@ Read the PR description for intent and use applicable context already supplied. 
 
 Intent and worth, both modes. A correct change can still be the wrong change, and the user decides whether it should merge, so answer three questions for them. Start them before the defect sweep and finish them after Stage 4.
 1. Intent: what problem does the PR solve, and what outcome does it promise? Take it from the description, the linked or closed issues and the commit messages, and name the source. If none of them says why, say so: that is useful to the user, and in THOROUGH mode a whole-PR Docs finding can ask the author to state it.
-2. Does it get there: does the change deliver that outcome? Answer achieves, falls short (and why), or cannot tell from here (and what would show it, such as a live check). Finding no defects is not the same as achieving the goal, so say what you checked against the stated outcome.
+2. Does it get there, and only there: does the change deliver that outcome? Answer achieves, falls short (and why), or cannot tell from here (and what would show it, such as a live check). Then name any behavior it adds that the outcome does not need, such as an automatic expiry, matching for cases nobody has seen, a retry or a fallback; a description that only states a behavior ("auto-expires on X") has not said why it is needed. Finding no defects is not the same as achieving the goal, so say what you checked against the stated outcome.
 3. Should we do this at all: weigh each point below, and cite the evidence for it or say it is missing.
    - Need: is the problem real and worth solving now? An issue, incident, metric, user request or failing check is evidence. The description's word alone is weak evidence, and you say so.
    - Alternatives: does code, configuration or a feature already do this (search the PR head for it, and reuse searches you already made for duplication), or would something smaller do it, such as a configuration change, a deletion, an upstream fix or a narrower change?
@@ -83,6 +83,10 @@ THOROUGH: everything STATIC looks for, then the rest of the change's code health
 - Performance: only with evidence, such as a hot path, an unbounded loop or query, or a measured cost.
 - Compatibility: public APIs, config, schemas, wire formats and stored data, including what existing callers and old data do after the change.
 - Maintainability and readability: misleading names, duplication of an existing helper, dead code, control flow a reader cannot follow, and comments that are wrong or narrate the code.
+- Simplicity and scope: everything the PR adds has to be earned by its stated intent and the evidence behind it.
+  - Unrequested behavior: trace each behavior the change adds to the intent. Behavior nothing asks for, such as an expiry or kill date, matching for variants nobody has observed, retries, fallbacks, configuration or flags, is a finding (Design, or Operability when it changes production behavior on its own). Its cost is what it does that nobody wanted: a safeguard that switches itself off on a date while people believe it is on, or cases that are matched but never verified. A description or comment that only states the behavior ("expires on X", "mirrors Y") is not a reason for it.
+  - More machinery than the job needs: when a simpler construct covers every case the intent and evidence require, such as a plain comparison, `ends_with`, a set or a direct call instead of a regex, a parser or a layer, raise it (Maintainability) and show the simpler form and the cases it covers. Its cost is the reader's: every later reader has to decode the construct to trust it, where a plain comparison is obvious. Coverage of variants nobody has observed is not by itself a reason for the complexity: first look for a simpler form that still covers them, often by leaning on what another condition already pins. Lean only on a condition that tests the same value: a check on the request's host does not pin the host named inside a header or URL it carries. Propose that form, and say whether it keeps the original scope or widens it. A form that widens it is a simplification only when you cite the PR's own evidence that the added matches are harmless (for example "a false match costs a real user nothing"); otherwise keep the scope and shorten only the grammar around it. If the first simpler form you try is too broad or too narrow, try another (a suffix check, or a short pattern anchored only where it matters) before you drop the finding; drop it only when no simpler form keeps the scope. A replacement narrower than the original is not a simplification unless the cases it drops cannot happen or do not matter, so do not trade cheap variants a client can produce for free (a query string, a trailing slash, a port, a change of case) for brevity. If you needed a test harness to convince yourself a construct is right, ask whether a simpler one would need none.
+  - Code written with an agent often turns a word in the request into a mechanism ("temporary" into a hard expiry) or generalizes past the evidence. Look for both, whoever wrote the PR.
 - Documentation: the PR description, docs, changelog and comments match what the code now does.
 
 Every THOROUGH finding carries its category (Bug, Security, Design, Tests, Operability, Performance, Compatibility, Maintainability or Docs), its cost (who pays and how: users, callers, on-call, or the next reader), and a specific suggested change.
@@ -123,7 +127,7 @@ Pre-filter (reduce critic workload by catching obvious false positives early):
 - Respect encapsulation (don't re-litigate what the called method owns)
 - Require EVIDENCE before flagging failure paths -- "could plausibly fail" is not sufficient
 - Match standards to context (rake tasks, CLI tools, test fixtures != production code)
-- THOROUGH: drop a design or maintainability candidate that cannot name its cost or the codebase convention it breaks, and merge repeats of one nit into a single finding that lists every line
+- THOROUGH: drop a design or maintainability candidate that cannot name its cost and either the codebase convention it breaks or the stated intent it goes beyond, and merge repeats of one nit into a single finding that lists every line
 
 Scan for hidden artifacts: whitespace/alignment hunks hiding unrelated additions, AI-injected URL tracking params (`?utm_source=openai`), dead code introduced via conflict resolution.
 
@@ -175,7 +179,7 @@ THOROUGH criteria. REJECT if any of these apply:
 - Hallucinated standard, API behavior or codebase convention
 - Pre-existing issue the PR does not introduce or make worse
 - Missing nil/null check with no reachable failure path
-- An intentional design decision the PR explains, unless the finding shows a concrete defect in it
+- An intentional design decision the PR gives a reason for, unless the finding shows a concrete defect in it. A PR that only states a behavior ("auto-expires on X") has not given a reason for it
 - Encapsulation re-litigation (called method already handles it)
 - Production standard applied to scripts, CLI tools, or test fixtures
 - A practice a specialist source's exemption file sanctions, for the claim and subject it names
@@ -186,6 +190,12 @@ KEEP only if ALL true:
 - INTRODUCED or made worse by this PR (added or modified lines, or missing tests for them)
 - ACTIONABLE: names a specific change the author can make
 - WORTH THE AUTHOR'S TIME at its stated severity
+
+A simplicity or scope finding is a factual claim when it cites the stated intent and either a simpler form or the behavior nothing asks for. Judge it on these rules:
+- A simpler form that covers at least the cases that matter is not a preference: the complexity's cost falls on every reader, and that is a stated cost. KEEP it; REJECT it only when the proposed form drops a case the intent or evidence needs, including variants a client can produce for free. A form that also widens the match qualifies only when the finding cites the PR's own evidence that the added matches are harmless; without that citation, a widening form is a behavior change, not a simplification. Judge the finding against the best simpler form you can verify, not only the one it proposes: if a scope-preserving form exists, the complexity claim stands even when the proposed form is too broad. Name that form in your verdict, and the reviewer replaces the finding's suggestion with it before posting.
+- Weigh a stated reason against the PR's own evidence. A reason the PR's own analysis undercuts, such as a time limit "for safety" on a change the PR shows is harmless to keep, is not a reason, and neither is a bare statement of the behavior.
+- When an automatic expiry, timeout or kill switch ends a mitigation, the state it returns to is the problem the PR exists to fix. That is the behavior's cost, not a neutral baseline, and it needs no evidence that the replacement will be late.
+- Precedent counts only from code that does the same job: a time window for a scheduled event is no precedent for ending a mitigation on a date.
 
 Note in the Validation section how many critic sessions were spawned and total findings
 evaluated for cost transparency.
@@ -204,6 +214,8 @@ A finding is a DUPLICATE if:
 - An existing comment covers a parent/child of the same issue
 
 When uncertain, mark as duplicate. Better to skip a duplicate than repeat one.
+
+A concern another reviewer raised is not settled by being raised. While it is open, judge it on its merits against the stated intent and say in the For-you section whether you agree and why; do not set it aside as policy or preference without weighing it.
 
 ### Stage 5: Output
 
@@ -230,11 +242,21 @@ Author: <author> | <base> -> <head> | Mode: THOROUGH / STATIC
 Verdict: PASS / GO WITH FIXES / NEEDS REVIEW / BLOCK
 
 ## For you: should we do this? (never posted)
-- Intent: <the problem and the promised outcome, and where that comes from; or "the PR does not say why">
-- Does it get there: <achieves / falls short / cannot tell from here, with the evidence>
-- Need, Alternatives, Cost, Fit: <one line each, with evidence or "no evidence given"; leave out a point with nothing to say>
-- Lean: <worth doing / worth doing with changes / unclear until ... / doubtful because ...>
-- Question for the author: <optional; one sentence the user could post>
+- **What:** <what the PR changes, in one sentence a reader new to it understands>
+- **Why:** <the problem and the outcome it promises, and where that comes from (description, issue, incident); or "the PR does not say why">
+- **How:** <how it gets there, in one or two sentences, then: achieves / falls short because ... / cannot tell from here until ...>
+- **Extra:** <behavior or machinery the outcome does not need, such as an expiry, matching nobody asked for or a needless regex; or "nothing beyond the goal">
+- **Should we:**
+  - **Need:** <is the problem real and worth solving now, with its evidence or "the description's word only">
+  - **Alternatives:** <existing code or a smaller change that would do, or "none found">
+  - **Cost:** <what it adds to maintain or run, against what it buys>
+  - **Fit:** <whether it matches the repository's stated direction and owner>
+- **Lean:** <worth doing / worth doing with changes: ... / unclear until ... / doubtful because ...>
+- **Unverified:** <what this review could not check that the decision depends on; or "nothing material">
+- **Before merge:** <prerequisites outside the code, such as a dependency PR, a plan or a rollout step; or "none">
+- **Ask the author:** <optional: one question you could post as written>
+
+Write every label in this order, each as one or two short sentences, never a paragraph. What, Why, How, Lean and Unverified are always present; leave out another label, or a Should we line, only when it has nothing to say. Evidence, commands and file:line trails belong in Validation and the Cortex body, not here.
 
 ## Summary
 <2-3 plain sentences: what the PR does, the verdict, and the findings that matter most>
@@ -280,7 +302,7 @@ Omit empty finding subsections (except for PASS with no findings). Clearly disti
 
 PR mode only -- local tuicr reviews end at their own Stage 5. This is the FINAL step of every GitHub PR review and re-review round, including PASS (an `APPROVE` review with no inline comments), unless the Stage 1 prior-approval gate found that the posting identity's approval stands; then nothing is drafted or posted. Nothing is written to the PR until the user explicitly approves the exact draft presented. In explicit answer-only mode, present the draft inline and stop: posting and Cortex close-out are external records.
 
-SHUTTLE HANDOFF: when the request tells you to hand the review to Shuttle with `shuttle_review_draft`, Shuttle shows the draft to the user and posts it, so this stage changes. Run steps 1 to 3 and 5. The "For you" section goes in `shuttle_review_draft`'s `notes`, as Markdown without its heading: Shuttle shows it above the draft and never posts it. If the tool has no `notes` field (an older Shuttle), open your final answer with it instead, under the heading "For you (not posted)". NEVER put it in `summary` or a finding. Just before the call, re-fetch the PR's review comments once and drop or merge any finding that a comment posted since Stage 1 already raises; automated reviewers often finish after you start. Do not wait for more comments. Then call `shuttle_review_draft` once: the review body as `summary`; the recommended event as `verdict` (APPROVE is approve, COMMENT is comment, REQUEST_CHANGES is changes); and one finding per inline comment with `severity` (Critical is high, Medium is medium, Minor is low, Nit is nit), `path`, the anchored `line` and the comment as `body`. A finding about a whole file goes in without `line`; a whole-PR finding stays in `summary`. When the tool offers them (Shuttle's auto post reads them), also give each finding `consensus` as its Stage 3 votes, `{keep, total}` with KEEP votes out of the critics that voted (leave it out when consensus was unavailable or below quorum, never invent votes); `evidence` as up to five decisive excerpts `{path, from, to, quote}` copied exactly from the pinned head, the lines the finding's verification read; and `category` as one or two words. Give `assessment` once for the whole PR: `risk` (low, medium or high) and `concerns`, the PR-level points a line comment cannot carry, each as `{kind, text}` with the kind that fits best: `description` (the description claims what the diff does not do, or leaves out what it does), `scope` (unrelated files, tests changed to pass, generated churn), `unverified` (a claim or result you could not check or run), `process` (CI, approvals, conflicts, rebase or merge state), `design` (a behaviour or design point the user should weigh) or `other`. Shuttle's auto post holds drafts by kind, so pick the kind honestly rather than to pass or fail it; empty when there are none. Skip steps 4 and 6 to 10: build no payload file and post nothing. Leave the Cortex task `draft`, with a round-log line ending "handed to Shuttle". The draft the user sees is the notes, the summary and the inline comments, nothing else: the ledger, checklist, validation log and filtered-findings list stay in the Cortex body and NEVER appear in the draft.
+SHUTTLE HANDOFF: when the request tells you to hand the review to Shuttle with `shuttle_review_draft`, Shuttle shows the draft to the user and posts it, so this stage changes. Run steps 1 to 3 and 5. The "For you" section goes in `shuttle_review_draft`'s `notes`, as the labelled list from the Stage 5 template without its heading, never as paragraphs: Shuttle shows it above the draft and never posts it. If the tool has no `notes` field (an older Shuttle), open your final answer with it instead, under the heading "For you (not posted)". NEVER put it in `summary` or a finding. Just before the call, re-fetch the PR's review comments once and drop or merge any finding that a comment posted since Stage 1 already raises; automated reviewers often finish after you start. Do not wait for more comments. Then call `shuttle_review_draft` once: the review body as `summary`; the recommended event as `verdict` (APPROVE is approve, COMMENT is comment, REQUEST_CHANGES is changes); and one finding per inline comment with `severity` (Critical is high, Medium is medium, Minor is low, Nit is nit), `path`, the anchored `line` and the comment as `body`. A finding about a whole file goes in without `line`; a whole-PR finding stays in `summary`. When the tool offers them (Shuttle's auto post reads them), also give each finding `consensus` as its Stage 3 votes, `{keep, total}` with KEEP votes out of the critics that voted (leave it out when consensus was unavailable or below quorum, never invent votes); `evidence` as up to five decisive excerpts `{path, from, to, quote}` copied exactly from the pinned head, the lines the finding's verification read; and `category` as one or two words. Give `assessment` once for the whole PR: `risk` (low, medium or high) and `concerns`, the PR-level points a line comment cannot carry, each as `{kind, text}` with the kind that fits best: `description` (the description claims what the diff does not do, or leaves out what it does), `scope` (unrelated files, tests changed to pass, generated churn), `unverified` (a claim or result you could not check or run), `process` (CI, approvals, conflicts, rebase or merge state), `design` (a behaviour or design point the user should weigh) or `other`. Shuttle's auto post holds drafts by kind, so pick the kind honestly rather than to pass or fail it; empty when there are none. Skip steps 4 and 6 to 10: build no payload file and post nothing. Leave the Cortex task `draft`, with a round-log line ending "handed to Shuttle". The draft the user sees is the notes, the summary and the inline comments, nothing else: the ledger, checklist, validation log and filtered-findings list stay in the Cortex body and NEVER appear in the draft.
 
 1. SELECT: one inline comment per surviving finding (CERTAIN/LIKELY; consensus-filtered, or labeled not consensus-filtered), anchored on lines the PR changed at the pinned head (`side: "RIGHT"`; add `start_line` + `start_side` for ranges). Findings without a changed-line anchor (unchanged code, whole-PR concerns) go in the review body. Filtered findings never appear; praise stays to one line in the body. Start each nit's comment with `Nit:` so the author knows it is optional. Fewer, better comments.
 2. ANCHOR CHECK: from the pinned revision-scoped diff, confirm every `line`/`start_line` falls on the new side of one hunk of that file (added or context line; a range stays within one hunk) and that the source line there is the code the finding describes. A single out-of-diff line makes GitHub reject the whole review (422).
@@ -530,5 +552,6 @@ Cortex-specific rules below apply to authorized durable output, not explicit ans
 - NEVER wait for an automated reviewer; deduplicate against what it has posted at Stage 1 and once more just before the Shuttle handoff
 - Read PR source from the pinned head ref, not the checkout's files; load AGENTS.md, matching specialists and, in THOROUGH mode, past incidents before looking for findings
 - Skip checklist dimensions that don't apply
-- ALWAYS answer the intent and worth step in a "For you" section that reaches the user and is never posted: Shuttle `notes` when available, else the top of the final answer; the Cortex body; Stage 6's PRESENT; the tuicr handoff message. It never changes the verdict
+- ALWAYS check that every behavior and construct the PR adds is earned by its stated intent: raise unrequested behavior and needless machinery as THOROUGH findings, and name unrequested behavior in the For-you section in both modes
+- ALWAYS answer the intent and worth step in a "For you" section, as the Stage 5 template's labelled list (What, Why, How, Extra, Should we, Lean, Unverified, Before merge, Ask the author) and never as paragraphs, that reaches the user and is never posted: Shuttle `notes` when available, else the top of the final answer; the Cortex body; Stage 6's PRESENT; the tuicr handoff message. It never changes the verdict
 - No filler or preamble; write the summary and every comment per the Agent Protocol's Writing for people
