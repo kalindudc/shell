@@ -1,6 +1,6 @@
 ---
 name: pr-reviewer
-description: Multi-model critic consensus reviews in two modes -- thorough (default; bugs plus design, tests, operability, compatibility, maintainability and docs) or static (bugs, security and logic only) -- false-positive filtered, with structured severity and go/no-go verdicts. Targets GitHub PRs, one at a time or as a batch with one reviewer per PR (ending in an approval-gated GitHub review with inline comments; PRs the user already approved are skipped; re-reviews re-validate prior findings and post a new review) or local WIP/branch reviews via tuicr annotation sessions, both with a cortex findings ledger
+description: Multi-model critic consensus reviews in two modes -- thorough (default; bugs plus design, tests, operability, compatibility, maintainability and docs) or static (bugs, security and logic only) -- false-positive filtered, with structured severity and go/no-go verdicts. Targets GitHub PRs, one at a time or as a batch with one reviewer per PR (ending in an approval-gated GitHub review with inline comments; PRs the user already approved are skipped; re-reviews re-validate prior findings and post a new review), with a cortex findings ledger
 # extended: multi-stage pipeline with multi-model critic consensus and embedded evaluation criteria
 ---
 
@@ -14,11 +14,11 @@ Review PRs for code health. Output a minimal, actionable review, then draft a Gi
 
 Goal: "Would merging this improve the codebase?"
 
-Two targets: GitHub PRs (default flow below; re-reviews follow `PR re-review rounds`) and local WIP/branch reviews (see `Local review sessions with tuicr`). Both persist to the same cortex review task.
+Target: GitHub PRs (default flow below; re-reviews follow `PR re-review rounds`). Each PR persists to one cortex review task.
 
 ## Review modes
 
-Every review (single PR, re-review, batch or local) runs in one of two modes. Pick the mode from the request before Stage 1 and name it in the review header.
+Every review (single PR, re-review or batch) runs in one of two modes. Pick the mode from the request before Stage 1 and name it in the review header.
 
 - THOROUGH (default): a full code-health review. It covers everything STATIC does, plus design, tests, error handling and operability, performance, compatibility, maintainability and documentation. Use it unless the request asks for static mode.
 - STATIC: bugs, security issues and logic errors only, as a narrow defect sweep. Use it when the request says "static review", "static mode" or "bugs only".
@@ -29,9 +29,7 @@ Both modes use the same pipeline, evidence bar and posting gates. They differ on
 
 ### Stage 1: Fetch PR context
 
-MODE FORK: if the review target is LOCAL work (WIP, uncommitted changes, or a feature branch, with no PR source), skip this stage's `gh` retrieval and follow `Local review sessions with tuicr` below for scope and session mint; stages 2-4 apply with 'the PR' meaning the review-scope diff, and intent comes from the user's request, branch name, and commit messages instead of a PR description.
-
-PRIOR-APPROVAL GATE (PR mode): run this before the re-review fork, Stage 2, any delegation, and any Cortex write. An approval the posting identity already gave stands until the PR's own patch changes, so a verdict that has not changed NEVER needs a second review or post. GitHub is the source of truth here, including approvals given outside this skill and missing from the ledger.
+PRIOR-APPROVAL GATE: run this before the re-review fork, Stage 2, any delegation, and any Cortex write. An approval the posting identity already gave stands until the PR's own patch changes, so a verdict that has not changed NEVER needs a second review or post. GitHub is the source of truth here, including approvals given outside this skill and missing from the ledger.
 
 1. Read the posting identity (`gh api --method GET user --jq .login`), the revisions (`gh pr view <source> --json headRefOid,baseRefOid`), and the reviews (`gh api --method GET repos/{owner}/{repo}/pulls/{number}/reviews --paginate`). Take that login's latest review whose state is not `COMMENTED`; a later comment does not withdraw an approval.
 2. `APPROVED` at the current head: STOP. No analysis, critics, Cortex writes, or GitHub draft. Report that the PR is already approved at that head, with the review URL and any `open` findings in its review task.
@@ -204,9 +202,7 @@ evaluated for cost transparency.
 
 Use the comment snapshot already screened before delegation to make the final deduplication decision. Re-fetch only when relevant comments changed or current coverage is materially required, not simply because this stage was reached.
 
-LOCAL MODE: there is no PR comment snapshot. Deduplicate against the cortex findings ledger from prior rounds: a candidate matching an existing `open`/carried finding (same essence -- category + offending code pattern, never line numbers) IS that finding -- re-anchor and continue it under its F-id instead of creating a new one. A candidate matching a `fixed`/`wontfix` entry is a regression or repeat -- name its F-id explicitly instead of minting a fresh finding.
-
-PR RE-REVIEW: the reviewer's own prior-round comments (the ledger's `github thread` URLs) are NOT duplicates to drop -- they are the prior findings under re-validation, matched with the same F-id rules as local mode. Comments from everyone else are deduplicated as below.
+PR RE-REVIEW: the reviewer's own prior-round comments (the ledger's `github thread` URLs) are NOT duplicates to drop -- they are the prior findings under re-validation. A candidate matching an existing `open` finding (same essence -- category + offending code pattern, never line numbers) IS that finding -- re-anchor and continue it under its F-id instead of creating a new one. A candidate matching a `fixed`/`wontfix` entry is a regression or repeat -- name its F-id explicitly instead of minting a fresh finding. Comments from everyone else are deduplicated as below.
 
 A finding is a DUPLICATE if:
 - Same issue already raised by any commenter (even if worded differently)
@@ -300,7 +296,7 @@ Omit empty finding subsections (except for PASS with no findings). Clearly disti
 
 ### Stage 6: GitHub review draft, approval, and posting
 
-PR mode only -- local tuicr reviews end at their own Stage 5. This is the FINAL step of every GitHub PR review and re-review round, including PASS (an `APPROVE` review with no inline comments), unless the Stage 1 prior-approval gate found that the posting identity's approval stands; then nothing is drafted or posted. Nothing is written to the PR until the user explicitly approves the exact draft presented. In explicit answer-only mode, present the draft inline and stop: posting and Cortex close-out are external records.
+This is the FINAL step of every GitHub PR review and re-review round, including PASS (an `APPROVE` review with no inline comments), unless the Stage 1 prior-approval gate found that the posting identity's approval stands; then nothing is drafted or posted. Nothing is written to the PR until the user explicitly approves the exact draft presented. In explicit answer-only mode, present the draft inline and stop: posting and Cortex close-out are external records.
 
 SHUTTLE HANDOFF: when the request tells you to hand the review to Shuttle with `shuttle_review_draft`, Shuttle shows the draft to the user and posts it, so this stage changes. Run steps 1 to 3 and 5. The "For you" section goes in `shuttle_review_draft`'s `notes`, as the labelled list from the Stage 5 template without its heading, never as paragraphs: Shuttle shows it above the draft and never posts it. If the tool has no `notes` field (an older Shuttle), open your final answer with it instead, under the heading "For you (not posted)". NEVER put it in `summary` or a finding. Just before the call, re-fetch the PR's review comments once and drop or merge any finding that a comment posted since Stage 1 already raises; automated reviewers often finish after you start. Do not wait for more comments. Then call `shuttle_review_draft` once: the review body as `summary`; the recommended event as `verdict` (APPROVE is approve, COMMENT is comment, REQUEST_CHANGES is changes); and one finding per inline comment with `severity` (Critical is high, Medium is medium, Minor is low, Nit is nit), `path`, the anchored `line` and the comment as `body`. A finding about a whole file goes in without `line`; a whole-PR finding stays in `summary`. When the tool offers them (Shuttle's auto post reads them), also give each finding `consensus` as its Stage 3 votes, `{keep, total}` with KEEP votes out of the critics that voted (leave it out when consensus was unavailable or below quorum, never invent votes); `evidence` as up to five decisive excerpts `{path, from, to, quote}` copied exactly from the pinned head, the lines the finding's verification read; and `category` as one or two words. Give `assessment` once for the whole PR: `risk` (low, medium or high) and `concerns`, the PR-level points a line comment cannot carry, each as `{kind, text}` with the kind that fits best: `description` (the description claims what the diff does not do, or leaves out what it does), `scope` (unrelated files, tests changed to pass, generated churn), `unverified` (a claim or result you could not check or run), `process` (CI, approvals, conflicts, rebase or merge state), `design` (a behaviour or design point the user should weigh) or `other`. Shuttle's auto post holds drafts by kind, so pick the kind honestly rather than to pass or fail it; empty when there are none. Skip steps 4 and 6 to 10: build no payload file and post nothing. Leave the Cortex task `draft`, with a round-log line ending "handed to Shuttle". The draft the user sees is the notes, the summary and the inline comments, nothing else: the ledger, checklist, validation log and filtered-findings list stay in the Cortex body and NEVER appear in the draft.
 
@@ -340,9 +336,28 @@ SHUTTLE HANDOFF: when the request tells you to hand the review to Shuttle with `
 
 ## PR re-review rounds
 
-MODE TRIGGER: the user asks to re-review a PR or check the author's fixes, or the PR already has a `PR Review #<number>:` cortex task. One review task per PR: its body is the findings ledger and the ONLY cross-round memory, as in local mode. Locating that task by PR number is not plan discovery -- plans are still linked only when the user names one. The Stage 1 prior-approval gate runs before this section and can end the round before step 1.
+MODE TRIGGER: the user asks to re-review a PR or check the author's fixes, or the PR already has a `PR Review #<number>:` cortex task. One review task per PR: its body is the findings ledger and the ONLY cross-round memory. Locating that task by PR number is not plan discovery -- plans are still linked only when the user names one. The Stage 1 prior-approval gate runs before this section and can end the round before step 1.
 
-LEDGER: every PR review body, round 1 included, carries the `Findings ledger` table and `Round log` defined in `The cortex findings ledger`, plus a `github thread` column holding each finding's posted comment URL (`body` when raised only in the review body; `-` until posted). Round-log lines record head, mode, verdict, event, and review URL, e.g. `r1 @66bf050 thorough: NEEDS REVIEW, COMMENT, <review-url>`.
+LEDGER: every PR review body, round 1 included, carries the findings ledger and round log below. The `github thread` column holds each finding's posted comment URL (`body` when raised only in the review body; `-` until posted). Round-log lines record head, mode, verdict, event, and review URL.
+
+```markdown
+## Findings ledger
+
+| id | severity | status | first seen | latest location | summary (why, one line) | github thread |
+|----|----------|--------|------------|-----------------|-------------------------|---------------|
+| F1 | critical | fixed  | r1 @8a04250 | src.rs:13 (r1) | divide-by-zero if compute() returns 0 | <comment URL> |
+
+## Round log
+
+- r1 @66bf050 thorough: NEEDS REVIEW, COMMENT, <review-url>
+- r2 @7b08b13 thorough: F1 fixed in 7b08b13; F2 still present (re-validated, re-anchored src.rs:20); F3 wontfix (user: "intentional"); F4 new; GO WITH FIXES, COMMENT, <review-url>
+```
+
+Ledger rules grounded in prior art (SARIF, Gerrit, Semgrep, SonarQube): IDENTITY is location-independent; LOCATION is per-round; ONE canonical finding per issue.
+
+- Statuses: `open | fixed | outdated | wontfix` (Semgrep/GitHub). `carried` is a per-round projection, never stored -- like Gerrit ported comments ("not copies"), a carried finding is the SAME finding rendered at a new location.
+- Matching across rounds: match on the issue's ESSENCE -- category + the offending code pattern -- NEVER on line numbers (SARIF fingerprints: identity must be "resistant to changes... such as the line number").
+- Porting rule (Gerrit): carry ONLY `open` findings into a new round; recompute the anchor; degrade line -> file-level -> review body. `fixed`/`wontfix` are never carried.
 
 1. LOCATE: `cortex ls --json -l "$LANE" -t pr-review -q "@PR Review #<number>:"`, keeping titles that start with `PR Review #<number>:` (the listing includes `done` tasks). Exactly one -> use it; none -> run a first review; several -> ask once. The re-review request IS the explicit confirmation to reopen it: `cortex_update` with status `draft` and a `round <N> @<new-head>` message.
 2. FETCH: run Stage 1 against the new head, and read the prior rounds' threads (the ledger's `github thread` URLs) from the full-schema comments endpoint, replies included. Author replies ("fixed in X", "intentional", disagreement) feed step 3. A null `position` marks an outdated thread whose code changed.
@@ -365,82 +380,6 @@ MODE TRIGGER: the user asks for reviews of two or more PRs in one request (a lis
 8. FINALIZE each PR: write the critic results into `review.md` (filtered candidates move to Filtered) and recompute the verdict with Stage 5's rules. Refresh the head and `gh pr checks`: a moved head sends that PR back to step 5, and CI statements in `body.md` that are now stale get corrected. Persist with the Cortex recipe (new task or the reopened one) and attribute each with its verdict.
 9. PRESENT: build each payload with Stage 6 steps 1-5, then show ONE table (PR, head, mode, verdict, worth lean, Cortex task, recommended event, inline comment count) with links to every body and comment file, followed by the skipped PRs and why. Every row is a real proposal; NEVER list optional or redundant drafts. A blanket approval such as "post them" covers exactly the rows in the table; any other mix is named by PR number.
 10. POST each approved PR in turn through Stage 6 steps 7-10: pre-post check, post once, verify, close out. Finish with one table of review URLs and events, plus the findings left open.
-
-## Local review sessions with tuicr
-
-MODE TRIGGER: the user asks to review local work -- WIP, uncommitted changes, or a feature branch -- with no PR source. Stages 2-4 (deep analysis, critic consensus, deduplication) run unchanged against the local diff; Stage 1 and Stage 5 fork as below.
-
-Architecture: tuicr is ONLY the live annotation transport between agent and human. The cortex review task is the durable ledger and the ONLY memory across rounds. Tuicr sessions are disposable, HEAD-pinned views -- never read old sessions for context, never mutate them.
-
-Load the `tuicr` skill for all session mechanics (discovery, launch, headless mint, comment semantics, diff reconstruction). This section defines only the review protocol layered on top. A pr-reviewer local review IS the tuicr skill's 'agent review' workflow with pre-authorized comment writing -- do not re-ask for approval to annotate the session you minted.
-
-AUTHORIZATION: An explicit request to run this local-review workflow pre-authorizes bounded control of an available supported multiplexer (including Herdr) to create and manage the workflow's own fresh `tuicr` pane/session. Do not ask separately for multiplexer permission. Preserve the caller's focus, operate only in the requested repository and review scope, and close only panes this workflow created. Ask only when the repository/session target is ambiguous or an operation would exceed these bounds; this authorization never extends to unrelated panes, agents, workspaces, or destructive session control.
-
-### Stage 1 (local): scope and session mint
-
-1. Scope: resolve `<base>` (user-named ref, else the merge-base with the default branch). Review diff = `git diff <base>..HEAD` PLUS uncommitted worktree changes. Pin `HEAD_SHA=$(git rev-parse --short HEAD)` -- every round binds to its HEAD. UNTRACKED files are invisible to `git diff` scopes: `git add -N` new files that must be reviewable under `-r` scopes (`-w` covers them), and treat the session's `file_count` as the ground truth for what is annotatable.
-2. Mint per the `tuicr` skill's `Start A Session` (wrapper when a multiplexer is available, else the headless mint). Scope flags by HEAD position: when `<base>` resolves to HEAD itself (the canonical WIP-on-default-branch case) pass `-w` ALONE -- `-r HEAD..HEAD -w` exits 1 "No changes to review" despite a dirty worktree (verified 0.26.0); otherwise pass `-r <base>..HEAD -w`. An empty diff mints NOTHING. Bind only a FRESH slug (absent from the pre-mint listing) -- never annotate a stale session, never reuse a session across different HEADs.
-
-### Stage 5 (local): annotate findings in tuicr
-
-One `tuicr review add` per finding (no batch mode), following the `tuicr` skill's `Add Agent Comments` mechanics, including its verify-after-add step (a line outside the diff exits 0 but never renders). Every agent comment carries a STABLE finding id that never changes across rounds:
-
-- Id + severity prefix in every comment: `[F3] medium: divide-by-zero if compute() returns 0` -- terse "why", plain language. Comment usefulness depends on comprehensibility and politeness as much as technical content, and high comment volume reduces usefulness (Ram et al., EMSE 2023) -- fewer, better comments.
-- Anchor at the CURRENT line per the tuicr skill's side/range rules; only files in the session's diff are annotatable (`session does not contain file` otherwise) -- fall back to a review-level comment (omit `--target-file`) for anything else.
-- Pass `--username "agent:<session-id>"` so human vs agent authorship is separable when harvesting.
-- NEVER `:submit`/export to a forge -- annotations stay `local_draft`; tuicr is a local transport only.
-
-### Validate the review before handoff
-
-Before flipping the task to `review`, mechanically validate the review itself:
-
-1. CONSISTENCY: every annotation's `[F<id>]` in the session exists in the ledger, and every ledger `open` finding has exactly one annotation in the current session. Diff the id sets (`tuicr review comments --session <slug>` vs the ledger table) and fix mismatches BEFORE handoff -- a finding that lives in only one of the two stores breaks the next round.
-2. EVIDENCE: every finding carries its verification (command run, file:line read, or trace) in the review body; findings without concrete evidence are downgraded or dropped -- "could plausibly fail" never ships.
-3. COVERAGE: state files-in-diff vs files-examined (the session's `file_count` vs your analysis); name every file NOT examined and why. A review that silently skips half the diff is worse than no review.
-4. ANCHORS: re-run the tuicr skill's verify-after-add for every line comment (a line outside the diff exits 0 but never renders).
-
-For high-stakes or contested reviews, optionally run an adversarial meta-review BEFORE annotating tuicr: dispatch the assembled review body + findings through the Stage 3 critic mechanics with KEEP/REJECT per finding, and record in the body whether it ran. The human side of validation is the tuicr session itself (confirm/reject per finding, harvested next round); the ledger's wontfix/fixed history over rounds is the review's empirical false-positive rate -- feed it to the Self-Improvement loop.
-
-The cortex body for local mode = the standard review template (verdict, findings, validation) PLUS the findings ledger and round log below.
-
-### The cortex findings ledger
-
-Every annotation is mirrored in the review task body. Design borrows the converged industry model (SARIF, Gerrit, Semgrep, SonarQube): IDENTITY is location-independent; LOCATION is per-round; ONE canonical finding per issue; per-round annotations are views of it.
-
-```markdown
-## Findings ledger
-
-| id | severity | status | first seen | latest location | summary (why, one line) |
-|----|----------|--------|------------|-----------------|-------------------------|
-| F1 | critical | fixed  | r1 @8a04250 | src.rs:13 (r1) | divide-by-zero if compute() returns 0 |
-
-## Round log
-
-- r1 @8a04250 (`<slug>`): 3 findings F1-F3, verdict NEEDS REVIEW
-- r2 @7b08b13 (`<slug>`): F1 fixed in 7b08b13; F2 carried (re-validated, re-anchored src.rs:20); F3 wontfix (human: "intentional"); F4 new
-```
-
-Ledger rules grounded in prior art:
-
-- Statuses: `open | fixed | outdated | wontfix` (Semgrep/GitHub). `carried` is a per-round projection, never stored -- like Gerrit ported comments ("not copies"), a carried annotation is the SAME finding rendered at a new location.
-- Matching across rounds: match on the issue's ESSENCE -- category + the offending code pattern -- NEVER on line numbers (SARIF fingerprints: identity must be "resistant to changes... such as the line number").
-- Porting rule (Gerrit): carry ONLY `open` findings into a new round; recompute the anchor; degrade line -> file-level -> review-level (dropped from tuicr but kept in the ledger). `fixed`/`wontfix` are never carried -- they stay readable in their original session.
-
-### Review rounds (after new commits)
-
-1. START: the user signals fixes are in. That signal is explicit confirmation to flip the cortex task `review` -> `open` and edit the ledger. Read the task body -- the ledger is the ONLY prior context needed; do NOT re-read old tuicr sessions (archives).
-2. HARVEST the last session (`tuicr review comments --session <slug>`): comments whose author is not `agent:*` are human input -- map `[F<id>]` mentions to ledger entries (update status, e.g. wontfix with the human's rationale) or add human-raised items as new findings (next free id, severity from your own analysis).
-3. RE-VALIDATE every `open`/carried finding against the NEW code as a full re-check (fresh evidence, current line): `fixed` (record the fixing commit), still present (re-verify the failure path -- stale evidence is not carry-over justification), or `outdated` (the referenced code is gone).
-4. MINT the new session (same recipe) and annotate: still-present findings re-anchored at current lines with their stable `[F<id>]`, new findings with fresh ids.
-5. UPDATE the ledger (anchor edit or `--body-file`), flip the task back to `review`, post `cortex_update` with the round verdict. Aim for first-pass completeness: over 80% of well-run reviews need at most one iteration (Sadowski et al., ICSE 2018) -- rounds should converge, not drift.
-6. DONE: the user accepts -> flip the task `done`; leave all tuicr sessions as read-only history.
-
-### Guidance for the human reviewer (include in the handoff message)
-
-- Keep a review sitting to ~200-400 LOC and <=60-90 min (Cisco/SmartBear study); if the diff exceeds that, say so and suggest splitting by file or commit.
-- The agent pipeline owns the defect sweep; the human's highest-value role in the TUI is design, intent, and understandability judgment -- reviews by humans surface mostly small low-level and maintainability issues (Bacchelli & Bird, ICSE 2013; Beller et al., MSR 2014), and automation exists so humans focus on the meaningful (Sadowski et al., ICSE 2018).
-- Prompt round trips: respond within a day; long review intervals measurably reduce usefulness (Ram et al., EMSE 2023).
-- Open the handoff message with the review's "For you" section, so the intent, whether the change gets there, and whether it is worth doing come before the line-level annotations.
 
 ## Cortex persistence
 
@@ -500,9 +439,7 @@ When durable output is authorized, PR reviews live in Cortex—not substitute fi
 
 7. REVISIONS. To update an existing review task body, prefer anchor-based edits for surgical changes and `--body-file` for full rewrites — see the `cortex` skill's `cli/edit.md` for tradeoffs. NEVER edit a task whose status is `review` without explicit user confirmation.
 
-8. LOCAL MODE LIFECYCLE. For tuicr local reviews the same task holds the findings ledger and round log. Status flow: `draft` while annotating round 1 -> `review` when handed to the human -> `open` when the user signals a new round (their signal IS the explicit confirmation to edit the task) -> `review` again after the round's ledger update -> `done` on user acceptance. Title local tasks `Local Review: <branch>@<head-sha> -- round N`; in the body template replace the `Author: <author> | <base> -> <head>` line with `Scope: <base>..HEAD + worktree | lane: <lane>`. Ledger updates while the task sits in `review` during an ACTIVE local-review loop are pre-authorized (user standing rule); the generic never-edit-`review`-status rule applies only outside an active loop.
-
-9. PR MODE LIFECYCLE. Status flow: `draft` from `cortex add` through the Stage 6 approval -> `done` once the approved review is posted and verified (Stage 6 step 10) -> a re-review request reopens `done` -> `draft` (the request IS the explicit confirmation) -> `done` again after that round's review is posted and verified. A declined or deferred post leaves the task `draft`. A PR that the prior-approval gate stops leaves its task unchanged: do not reopen it. PR-mode tasks never sit in `review`, so ledger and body updates during an active PR round need no further confirmation.
+8. PR MODE LIFECYCLE. Status flow: `draft` from `cortex add` through the Stage 6 approval -> `done` once the approved review is posted and verified (Stage 6 step 10) -> a re-review request reopens `done` -> `draft` (the request IS the explicit confirmation) -> `done` again after that round's review is posted and verified. A declined or deferred post leaves the task `draft`. A PR that the prior-approval gate stops leaves its task unchanged: do not reopen it. PR-mode tasks never sit in `review`, so ledger and body updates during an active PR round need no further confirmation.
 
 ## Output Format
 
@@ -535,11 +472,9 @@ Cortex-specific rules below apply to authorized durable output, not explicit ans
 - ALWAYS run batches through `Batch PR reviews`: reviewer tasks come from `batch-reviewer-task.md` with only placeholders and block choices filled, one critic round covers the whole batch, and one approval table lists only real proposals
 - ALWAYS close out the cortex review task (`done`) only after the posted review is verified; leave it `draft` when posting is declined or deferred
 - When a PR re-review round posts, ALWAYS post a NEW GitHub review; NEVER edit, dismiss, resolve, or reply to prior reviews or threads unless the user explicitly asks
-- NEVER `:submit`/export tuicr annotations to a forge -- local drafts only
-- ALWAYS mirror every tuicr annotation in the cortex ledger under a stable finding id; NEVER track findings by line number alone
-- NEVER mutate or delete old tuicr sessions -- they are read-only archives; the cortex ledger is the only cross-round memory
-- ALWAYS re-validate open findings against the new code each round (local and PR re-reviews); NEVER carry a finding forward on stale evidence
-- ALWAYS run the pre-handoff validation (consistency, evidence, coverage, anchors) before flipping a local review to `review`
+- ALWAYS keep every finding in the cortex ledger under a stable finding id; NEVER track findings by line number alone
+- The cortex ledger is the only cross-round memory
+- ALWAYS re-validate open findings against the new code each re-review round; NEVER carry a finding forward on stale evidence
 - NEVER report formatting, linter-level, or theoretical concerns in either mode; in STATIC mode report bugs, security issues and logic errors only; in THOROUGH mode every finding carries a category, its cost and a specific suggestion
 - ALWAYS pick the review mode before Stage 1: THOROUGH unless the request asks for static mode, and send the critics that mode's criteria
 - Verify findings against relevant source context, callers/contracts, and tests; expand reads when needed, not merely to satisfy a stage.
@@ -553,5 +488,5 @@ Cortex-specific rules below apply to authorized durable output, not explicit ans
 - Read PR source from the pinned head ref, not the checkout's files; load AGENTS.md, matching specialists and, in THOROUGH mode, past incidents before looking for findings
 - Skip checklist dimensions that don't apply
 - ALWAYS check that every behavior and construct the PR adds is earned by its stated intent: raise unrequested behavior and needless machinery as THOROUGH findings, and name unrequested behavior in the For-you section in both modes
-- ALWAYS answer the intent and worth step in a "For you" section, as the Stage 5 template's labelled list (What, Why, How, Extra, Should we, Lean, Unverified, Before merge, Ask the author) and never as paragraphs, that reaches the user and is never posted: Shuttle `notes` when available, else the top of the final answer; the Cortex body; Stage 6's PRESENT; the tuicr handoff message. It never changes the verdict
+- ALWAYS answer the intent and worth step in a "For you" section, as the Stage 5 template's labelled list (What, Why, How, Extra, Should we, Lean, Unverified, Before merge, Ask the author) and never as paragraphs, that reaches the user and is never posted: Shuttle `notes` when available, else the top of the final answer; the Cortex body; Stage 6's PRESENT. It never changes the verdict
 - No filler or preamble; write the summary and every comment per the Agent Protocol's Writing for people
