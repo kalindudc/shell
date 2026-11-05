@@ -11,9 +11,14 @@
 # Avoid a critic from the reviewing model's vendor when another vendor is as good. On
 # 2026-11-02 none was: outside Anthropic, Google and OpenAI nothing scored above 54 on
 # BenchLeader, Google's Gemini 4 Argon took ~12 s per step on real reviews, and the user
-# ruled out Gemini, GLM, DeepSeek and Grok. Fable 5.1 therefore shares a vendor with
-# the first pass (anthropic/claude-opus-5-5), so it may share its blind spots; three
-# vendors still vote, so no single vendor reaches the quorum alone.
+# ruled out Gemini, GLM, DeepSeek and Grok. The Anthropic critic therefore shares a vendor
+# with the first pass, so it may share its blind spots; three vendors still vote, so no
+# single vendor reaches the quorum alone. Never make the reviewing model itself a critic:
+# since 2026-11-05 Shuttle's thorough reviews run on claude-fable-5-1, so Opus 5.5 took
+# Fable's seat.
+#
+# 2026-11-05, PR 78515 (three findings, all three KEEP from each critic; seconds per
+# round): claude-opus-5-5 high 131 s, gpt-6.1-sol 200 s, kimi-k3 299 s.
 #
 # Last reviewed 2026-11-02 on a real finding (PR 45617) through spawn, all three KEEP,
 # matching the other critics. Seconds on that finding; BenchLeader index; USD per 1M
@@ -35,6 +40,6 @@ critics:
   - model: fireworks/fireworks:accounts/fireworks/models/kimi-k3
     thinking: high
     name: Kimi
-  - model: anthropic/claude-fable-5-1
+  - model: anthropic/claude-opus-5-5
     thinking: high
-    name: Fable
+    name: Opus
