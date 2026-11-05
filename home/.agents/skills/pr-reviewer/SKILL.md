@@ -14,7 +14,20 @@ Review PRs for code health. Output a minimal, actionable review, then draft a Gi
 
 Goal: "Would merging this improve the codebase?"
 
-Target: GitHub PRs (default flow below; re-reviews follow `PR re-review rounds`). Each PR persists to one cortex review task.
+Target: GitHub PRs (default flow below; re-reviews follow `references/re-review.md`). Each PR persists to one cortex review task.
+
+## Files and when to read them
+
+This file holds what every review needs: the modes, Stages 1 to 5, and Stage 6's drafting steps. Paths below are relative to this skill's directory. Read a reference file in full when its condition holds, and only then:
+
+| Read | When |
+|---|---|
+| `references/criteria-thorough.md` or `references/criteria-static.md` (the review mode's file) | before the Stage 2 pre-filter; the same file goes in the Stage 3 critic brief as written |
+| `references/cortex.md` | Cortex persistence is in scope, that is, unless the request is answer-only |
+| `references/finish-shuttle.md` | the request says to hand the review to Shuttle with `shuttle_review_draft`, after Stage 6 steps 1 to 4 |
+| `references/finish-github.md` | any other GitHub PR review, after Stage 6 steps 1 to 4 |
+| `references/re-review.md` | the user asks to re-review a PR or check its fixes, the PR already has a `PR Review #<number>:` Cortex task, or the prior-approval gate or `references/batch.md` sends the review there |
+| `references/batch.md` and `references/batch-reviewer-task.md` | the request names two or more PRs |
 
 ## Review modes
 
@@ -33,12 +46,12 @@ PRIOR-APPROVAL GATE: run this before the re-review fork, Stage 2, any delegation
 
 1. Read the posting identity (`gh api --method GET user --jq .login`), the revisions (`gh pr view <source> --json headRefOid,baseRefOid`), and the reviews (`gh api --method GET repos/{owner}/{repo}/pulls/{number}/reviews --paginate`). Take that login's latest review whose state is not `COMMENTED`; a later comment does not withdraw an approval.
 2. `APPROVED` at the current head: STOP. No analysis, critics, Cortex writes, or GitHub draft. Report that the PR is already approved at that head, with the review URL and any `open` findings in its review task.
-3. `APPROVED` at an older commit: compare the PR's own patch then and now. `git diff <base-oid>...<approved-commit> | git patch-id --stable` and the same for the head give equal ids when only the base moved (a rebase); fetch the approved commit by SHA if it is not local. Equal ids: STOP as in step 2 and say the patch is unchanged since the approval. Different ids, or no comparison possible: review only what changed since the approval (`git range-diff <base-oid> <approved-commit> <head>`), through `PR re-review rounds` when a review task exists. No new surviving finding means the approval stands: post nothing; if a review task exists, add the round's log line and return it to `done`. Surviving findings go in a Stage 6 draft that carries only those findings, as `COMMENT` or `REQUEST_CHANGES`, never a second `APPROVE`.
+3. `APPROVED` at an older commit: compare the PR's own patch then and now. `git diff <base-oid>...<approved-commit> | git patch-id --stable` and the same for the head give equal ids when only the base moved (a rebase); fetch the approved commit by SHA if it is not local. Equal ids: STOP as in step 2 and say the patch is unchanged since the approval. Different ids, or no comparison possible: review only what changed since the approval (`git range-diff <base-oid> <approved-commit> <head>`), through `references/re-review.md` when a review task exists. No new surviving finding means the approval stands: post nothing; if a review task exists, add the round's log line and return it to `done`. Surviving findings go in a Stage 6 draft that carries only those findings, as `COMMENT` or `REQUEST_CHANGES`, never a second `APPROVE`.
 4. `DISMISSED`, `CHANGES_REQUESTED`, or no such review: continue normally. A dismissed approval no longer counts on GitHub, so a PASS round still drafts a new `APPROVE`.
 
-For several PRs, follow `Batch PR reviews`, which runs this gate for each PR before any reviewer starts and lists the skipped PRs with their approval links. Review an approved PR in full only when the user explicitly asks for a fresh review of that PR.
+For several PRs, follow `references/batch.md`, which runs this gate for each PR before any reviewer starts and lists the skipped PRs with their approval links. Review an approved PR in full only when the user explicitly asks for a fresh review of that PR.
 
-RE-REVIEW FORK: if the user asks to re-review a PR or check its fixes, or the PR already has a `PR Review #<number>:` cortex task, follow `PR re-review rounds` below; this stage still runs against the new head.
+RE-REVIEW FORK: if the user asks to re-review a PR or check its fixes, or the PR already has a `PR Review #<number>:` cortex task, follow `references/re-review.md`; this stage still runs against the new head. To find that task, run `cortex ls --json -l "$LANE" -t pr-review -q "@PR Review #<number>:"` (LANE is the repository directory's name, as `references/cortex.md` step 2 defines it) and keep titles that start with `PR Review #<number>:` (the listing includes `done` tasks).
 
 Use the explicitly provided PR URL/number or pinned source context first. Only when no source was supplied, resolve the current PR with `gh pr view --json number -q .number`; ask once if no unique PR can be identified. Do not check out or detach the user's branch to begin a read-only review.
 
@@ -149,51 +162,7 @@ An empty screened batch skips this entire stage, including configuration/prompt 
 
 Send the critics the criteria for the review's mode, and the mode's severity tiers from Stage 2.
 
-STATIC criteria. REJECT if any of these apply:
-- Style, formatting, linting, or naming issue
-- Testing suggestion (unless a test doesn't test what it claims)
-- Best practice or maintainability concern without behavior change
-- Theoretical optimization or speculative concern without evidence
-- Scope creep (redesign beyond the PR)
-- Hallucinated standard or API behavior
-- Pre-existing issue not introduced by this PR
-- Missing nil/null check with no reachable failure path
-- Intentional design decision (the PR clearly intends the change)
-- Encapsulation re-litigation (called method already handles it)
-- Production standard applied to scripts, CLI tools, or test fixtures
-- A practice a specialist source's exemption file sanctions, for the claim and subject it names
-
-KEEP only if ALL true:
-- REAL bug, security vuln, or logic contradiction
-- INTRODUCED by this PR (in added/modified lines)
-- CONCRETE, PROVABLE, IMMEDIATE impact
-- Verified by reading the actual code
-
-THOROUGH criteria. REJECT if any of these apply:
-- Formatting, or anything a configured linter or formatter catches
-- A preference with no stated cost to users, callers, operators or readers
-- Theoretical optimization or speculative concern without evidence
-- Scope creep (redesign beyond the PR)
-- Hallucinated standard, API behavior or codebase convention
-- Pre-existing issue the PR does not introduce or make worse
-- Missing nil/null check with no reachable failure path
-- An intentional design decision the PR gives a reason for, unless the finding shows a concrete defect in it. A PR that only states a behavior ("auto-expires on X") has not given a reason for it
-- Encapsulation re-litigation (called method already handles it)
-- Production standard applied to scripts, CLI tools, or test fixtures
-- A practice a specialist source's exemption file sanctions, for the claim and subject it names
-- Severity overstated enough to mislead the author (a nit sold as Medium)
-
-KEEP only if ALL true:
-- ACCURATE: the claim matches the code, verified by reading it
-- INTRODUCED or made worse by this PR (added or modified lines, or missing tests for them)
-- ACTIONABLE: names a specific change the author can make
-- WORTH THE AUTHOR'S TIME at its stated severity
-
-A simplicity or scope finding is a factual claim when it cites the stated intent and either a simpler form or the behavior nothing asks for. Judge it on these rules:
-- A simpler form that covers at least the cases that matter is not a preference: the complexity's cost falls on every reader, and that is a stated cost. KEEP it; REJECT it only when the proposed form drops a case the intent or evidence needs, including variants a client can produce for free. A form that also widens the match qualifies only when the finding cites the PR's own evidence that the added matches are harmless; without that citation, a widening form is a behavior change, not a simplification. Judge the finding against the best simpler form you can verify, not only the one it proposes: if a scope-preserving form exists, the complexity claim stands even when the proposed form is too broad. Name that form in your verdict, and the reviewer replaces the finding's suggestion with it before posting.
-- Weigh a stated reason against the PR's own evidence. A reason the PR's own analysis undercuts, such as a time limit "for safety" on a change the PR shows is harmless to keep, is not a reason, and neither is a bare statement of the behavior.
-- When an automatic expiry, timeout or kill switch ends a mitigation, the state it returns to is the problem the PR exists to fix. That is the behavior's cost, not a neutral baseline, and it needs no evidence that the replacement will be late.
-- Precedent counts only from code that does the same job: a time window for a scheduled event is no precedent for ending a mitigation on a date.
+The criteria live in `references/criteria-static.md` and `references/criteria-thorough.md`. Put the review mode's file in the critic brief as written; do not paraphrase it.
 
 Note in the Validation section how many critic sessions were spawned and total findings
 evaluated for cost transparency.
@@ -202,7 +171,7 @@ evaluated for cost transparency.
 
 Use the comment snapshot already screened before delegation to make the final deduplication decision. Re-fetch only when relevant comments changed or current coverage is materially required, not simply because this stage was reached.
 
-PR RE-REVIEW: the reviewer's own prior-round comments (the ledger's `github thread` URLs) are NOT duplicates to drop -- they are the prior findings under re-validation. A candidate matching an existing `open` finding (same essence -- category + offending code pattern, never line numbers) IS that finding -- re-anchor and continue it under its F-id instead of creating a new one. A candidate matching a `fixed`/`wontfix` entry is a regression or repeat -- name its F-id explicitly instead of minting a fresh finding. Comments from everyone else are deduplicated as below.
+PR RE-REVIEW: match the reviewer's own prior findings as `references/re-review.md` says before deduplicating against other commenters.
 
 A finding is a DUPLICATE if:
 - Same issue already raised by any commenter (even if worded differently)
@@ -292,53 +261,13 @@ e.g., "This PR moves cache eviction into the request path. Two critical bugs blo
  THOROUGH lists every Stage 2 dimension)
 ```
 
-Omit empty finding subsections (except for PASS with no findings). Clearly distinguish consensus-filtered findings from directly verified findings whose consensus was unavailable/below quorum. Use the Cortex persistence section for the configured durable product unless the user explicitly requested answer-only/no external records; that mode returns the review inline without Cortex or clipboard writes. For GitHub PRs, the cortex body also carries the findings ledger and round log (see `PR re-review rounds`), and the review ALWAYS continues to Stage 6 (which drafts nothing when the prior-approval gate says the approval stands).
+Omit empty finding subsections (except for PASS with no findings). Clearly distinguish consensus-filtered findings from directly verified findings whose consensus was unavailable/below quorum. Use `references/cortex.md` for the configured durable product unless the user explicitly requested answer-only/no external records; that mode returns the review inline without Cortex or clipboard writes. For GitHub PRs, the cortex body also carries the findings ledger and round log (defined below), and the review ALWAYS continues to Stage 6 (which drafts nothing when the prior-approval gate says the approval stands).
 
-### Stage 6: GitHub review draft, approval, and posting
+- Copy to clipboard only within the requested output scope and when the capability is available.
 
-This is the FINAL step of every GitHub PR review and re-review round, including PASS (an `APPROVE` review with no inline comments), unless the Stage 1 prior-approval gate found that the posting identity's approval stands; then nothing is drafted or posted. Nothing is written to the PR until the user explicitly approves the exact draft presented. In explicit answer-only mode, present the draft inline and stop: posting and Cortex close-out are external records.
+#### Findings ledger and round log
 
-SHUTTLE HANDOFF: when the request tells you to hand the review to Shuttle with `shuttle_review_draft`, Shuttle shows the draft to the user and posts it, so this stage changes. Run steps 1 to 3 and 5. The "For you" section goes in `shuttle_review_draft`'s `notes`, as the labelled list from the Stage 5 template without its heading, never as paragraphs: Shuttle shows it above the draft and never posts it. If the tool has no `notes` field (an older Shuttle), open your final answer with it instead, under the heading "For you (not posted)". NEVER put it in `summary` or a finding. Just before the call, re-fetch the PR's review comments once and drop or merge any finding that a comment posted since Stage 1 already raises; automated reviewers often finish after you start. Do not wait for more comments. Then call `shuttle_review_draft` once: the review body as `summary`; the recommended event as `verdict` (APPROVE is approve, COMMENT is comment, REQUEST_CHANGES is changes); and one finding per inline comment with `severity` (Critical is high, Medium is medium, Minor is low, Nit is nit), `path`, the anchored `line` and the comment as `body`. A finding about a whole file goes in without `line`; a whole-PR finding stays in `summary`. When the tool offers them (Shuttle's auto post reads them), also give each finding `consensus` as its Stage 3 votes, `{keep, total}` with KEEP votes out of the critics that voted (leave it out when consensus was unavailable or below quorum, never invent votes); `evidence` as up to five decisive excerpts `{path, from, to, quote}` copied exactly from the pinned head, the lines the finding's verification read; and `category` as one or two words. Give `assessment` once for the whole PR: `risk` (low, medium or high) and `concerns`, the PR-level points a line comment cannot carry, each as `{kind, text}` with the kind that fits best: `description` (the description claims what the diff does not do, or leaves out what it does), `scope` (unrelated files, tests changed to pass, generated churn), `unverified` (a claim or result you could not check or run), `process` (CI, approvals, conflicts, rebase or merge state), `design` (a behaviour or design point the user should weigh) or `other`. Shuttle's auto post holds drafts by kind, so pick the kind honestly rather than to pass or fail it; empty when there are none. Skip steps 4 and 6 to 10: build no payload file and post nothing. Leave the Cortex task `draft`, with a round-log line ending "handed to Shuttle". The draft the user sees is the notes, the summary and the inline comments, nothing else: the ledger, checklist, validation log and filtered-findings list stay in the Cortex body and NEVER appear in the draft.
-
-1. SELECT: one inline comment per surviving finding (CERTAIN/LIKELY; consensus-filtered, or labeled not consensus-filtered), anchored on lines the PR changed at the pinned head (`side: "RIGHT"`; add `start_line` + `start_side` for ranges). Findings without a changed-line anchor (unchanged code, whole-PR concerns) go in the review body. Filtered findings never appear; praise stays to one line in the body. Start each nit's comment with `Nit:` so the author knows it is optional. Fewer, better comments.
-2. ANCHOR CHECK: from the pinned revision-scoped diff, confirm every `line`/`start_line` falls on the new side of one hunk of that file (added or context line; a range stays within one hunk) and that the source line there is the code the finding describes. A single out-of-diff line makes GitHub reject the whole review (422).
-3. WRITE brief: the review body is 2-4 plain sentences -- what the PR does, the verdict, and the findings that matter most. Each inline comment is ONE short paragraph of at most three sentences: what is wrong, what it costs, and the fix. Quote code only when the problem is not visible in the diff hunk the comment sits on; never attach validation logs, checklists, critic tallies or praise padding to the draft. Polite, specific, first person, written like a colleague leaving a GitHub review. No internal jargon in public text (F-ids, critic tallies, cortex references) and no tracking params (`?utm_source=`).
-4. BUILD: write each body to its own markdown file in a scratch directory (e.g. `/tmp/pr<n>-review/`) and assemble the payload with `jq` -- NEVER hand-escape JSON -- pinned to the reviewed head:
-   ```bash
-   jq -n --arg commit_id "$HEAD_SHA" --arg event COMMENT \
-     --rawfile body body.md --rawfile c1 comment-1.md \
-     '{commit_id: $commit_id, event: $event, body: $body,
-       comments: [{path: "<path>", start_line: 10, start_side: "RIGHT", line: 12, side: "RIGHT", body: $c1}]}' \
-     > github-review-draft.json
-   ```
-   Validate before presenting: `jq` parses the file and `grep -c utm_` returns 0.
-
-   The summary ALWAYS travels as this payload's `body`, next to its `event`, so the verdict and its explanation are ONE review. GitHub shows an approval with a body as "<login> approved these changes" with the body in a nested "<login> left a comment" card; that card is part of the review, not a separate comment. NEVER post the summary as an issue comment, or as a second review next to a body-less approval.
-5. RECOMMEND the event from the verdict; the user makes the final call:
-   - PASS -> `APPROVE` (body only)
-   - GO WITH FIXES -> `APPROVE` with the non-blocking comments, or `COMMENT`
-   - NEEDS REVIEW -> `COMMENT`
-   - BLOCK -> `REQUEST_CHANGES`
-
-   Prefer `COMMENT` over `REQUEST_CHANGES` when the decisive findings are documentation-only, runtime-unverified, or not consensus-filtered. When the reviewer authored the PR, GitHub accepts only `COMMENT`. Omitting `event` creates a PENDING review the user can finish in the GitHub UI.
-6. PRESENT for approval: first the "For you" section, labelled as not part of the payload, then the exact review body, each inline comment with `path:line(s)`, the recommended event and alternatives, the payload path, the posting identity (`gh api --method GET user --jq .login`), and the post command. STOP and wait. Requested edits -> revise, repeat steps 2-4, and re-present. Approval of the draft as presented (e.g. "post it") authorizes exactly that payload and event; naming a different event (e.g. "request changes") changes only `event`.
-7. PRE-POST CHECK, immediately before posting: the PR head still equals `commit_id` and the comment/review snapshot is unchanged since drafting. Head moved -> STOP, re-validate the affected findings and anchors against the new head, and re-present; NEVER post stale anchors. New comments -> deduplicate, and re-present if any overlaps a drafted comment.
-8. POST ONCE: `gh api --method POST repos/<owner>/<repo>/pulls/<n>/reviews --input github-review-draft.json > post-response.json`. NEVER blind-retry: on failure, first list `GET repos/<owner>/<repo>/pulls/<n>/reviews` for a review by the posting user at `commit_id` (a duplicate review is worse than a delay), then quote the error and propose a fix. Known 422s: a comment line outside the diff, approving or requesting changes on your own PR, and an existing pending review by the same user.
-9. VERIFY: the response `state` matches the event (`COMMENTED`/`CHANGES_REQUESTED`/`APPROVED`), `commit_id` equals the pinned head, and the posted body equals the payload. Confirm every inline anchor through the full-schema endpoint:
-   ```bash
-   gh api --method GET repos/<owner>/<repo>/pulls/<n>/comments --paginate \
-     --jq '.[] | select(.pull_request_review_id == <review-id>) | {path, start_line, line, side, position, html_url}'
-   ```
-   Each drafted comment must appear with its drafted `path`/`line`/`side` and a non-null `position`. Do NOT check anchors with `GET .../reviews/<review-id>/comments`: its legacy schema returns null `line`/`side` even for correctly anchored comments.
-
-   Then confirm the post created exactly one item: one new review by the posting identity at `commit_id` in `GET repos/<owner>/<repo>/pulls/<n>/reviews`, and no new issue comment by it in `GET repos/<owner>/<repo>/issues/<n>/comments`.
-10. CLOSE OUT only after step 9 passes: record the review URL, event, and each finding's comment URL in the ledger and round log, then `cortex_update` with status `done` and a message carrying the review URL and event, and confirm with `cortex show <id> --json`. If the user declines or defers posting, post nothing and leave the task `draft`; findings the user drops from the draft become `wontfix` with the user's rationale.
-
-## PR re-review rounds
-
-MODE TRIGGER: the user asks to re-review a PR or check the author's fixes, or the PR already has a `PR Review #<number>:` cortex task. One review task per PR: its body is the findings ledger and the ONLY cross-round memory. Locating that task by PR number is not plan discovery -- plans are still linked only when the user names one. The Stage 1 prior-approval gate runs before this section and can end the round before step 1.
-
-LEDGER: every PR review body, round 1 included, carries the findings ledger and round log below. The `github thread` column holds each finding's posted comment URL (`body` when raised only in the review body; `-` until posted). Round-log lines record head, mode, verdict, event, and review URL.
+Every PR review body, round 1 included, carries the findings ledger and round log below. The `github thread` column holds each finding's posted comment URL (`body` when raised only in the review body; `-` until posted). Round-log lines record head, mode, verdict, event, and review URL.
 
 ```markdown
 ## Findings ledger
@@ -356,125 +285,32 @@ LEDGER: every PR review body, round 1 included, carries the findings ledger and 
 Ledger rules grounded in prior art (SARIF, Gerrit, Semgrep, SonarQube): IDENTITY is location-independent; LOCATION is per-round; ONE canonical finding per issue.
 
 - Statuses: `open | fixed | outdated | wontfix` (Semgrep/GitHub). `carried` is a per-round projection, never stored -- like Gerrit ported comments ("not copies"), a carried finding is the SAME finding rendered at a new location.
-- Matching across rounds: match on the issue's ESSENCE -- category + the offending code pattern -- NEVER on line numbers (SARIF fingerprints: identity must be "resistant to changes... such as the line number").
-- Porting rule (Gerrit): carry ONLY `open` findings into a new round; recompute the anchor; degrade line -> file-level -> review body. `fixed`/`wontfix` are never carried.
 
-1. LOCATE: `cortex ls --json -l "$LANE" -t pr-review -q "@PR Review #<number>:"`, keeping titles that start with `PR Review #<number>:` (the listing includes `done` tasks). Exactly one -> use it; none -> run a first review; several -> ask once. The re-review request IS the explicit confirmation to reopen it: `cortex_update` with status `draft` and a `round <N> @<new-head>` message.
-2. FETCH: run Stage 1 against the new head, and read the prior rounds' threads (the ledger's `github thread` URLs) from the full-schema comments endpoint, replies included. Author replies ("fixed in X", "intentional", disagreement) feed step 3. A null `position` marks an outdated thread whose code changed.
-3. RE-VALIDATE every `open` finding against the new head as a full re-check with fresh evidence -- NEVER carry-over: `fixed` (record the fixing commit), still present (re-verify the failure path, re-anchor at the current line), `outdated` (the referenced code is gone), or `wontfix` (the user accepts the author's rationale). Weigh author pushback on its merits: withdraw the finding with the reason when the pushback holds; otherwise keep it and surface the disagreement to the user.
-4. NEW CHANGES: review the commits since the last reviewed head (`gh api --method GET repos/<owner>/<repo>/compare/<old-head>...<new-head>`, `git diff` when objects are local, or the full PR diff when the old head was force-pushed away) through Stages 2-4 with full-PR context. A candidate matching a ledger finding's essence IS that finding. Send only new or changed findings to Stage 3; reuse prior critic consensus when a finding and its code region are unchanged.
-5. OUTPUT: update the same task body (this round's review template, ledger statuses and locations, round log) via anchor-based edits or a `--body-file` rewrite. Redo the "For you" section only when the description, linked issues or scope changed since the last round, and otherwise say it is unchanged since that round.
-6. NEW GITHUB REVIEW through Stage 6, unless the prior-approval gate says the posting identity's approval stands; NEVER edit, dismiss, resolve, or reply to prior reviews or threads unless the user explicitly asks. The body lists fixed findings (with fixing commits), still-present findings (linking their existing threads), and new findings. Inline comments go to new findings and to still-present findings whose prior thread is outdated (re-anchored, linking the prior thread); a still-present finding with a live thread is referenced in the body only, to avoid duplicate threads. Recommend the event from the round verdict (e.g. every finding fixed -> `APPROVE`). Approval, pre-post check, posting, verification, and close-out to `done` follow Stage 6 unchanged.
+Matching and porting findings across rounds are in `references/re-review.md`.
 
-## Batch PR reviews
+### Stage 6: GitHub review draft, approval, and posting
 
-MODE TRIGGER: the user asks for reviews of two or more PRs in one request (a list of numbers, an author's PR list, or a stack). Every PR gets the same gate, the same review mode, the same reviewer instructions, the same output files, one shared critic round and one approval table, so verdicts are comparable within and across batches. This is the only mode that delegates whole reviews; a single PR uses the normal flow.
+This is the FINAL step of every GitHub PR review and re-review round, including PASS (an `APPROVE` review with no inline comments), unless the Stage 1 prior-approval gate found that the posting identity's approval stands; then nothing is drafted or posted. Nothing is written to the PR until the user explicitly approves the exact draft presented. In explicit answer-only mode, present the draft inline and stop: posting and Cortex close-out are external records.
 
-1. RESOLVE: review exactly the PRs the user named; a linked PR list scopes the lookup but never adds PRs. Capture `number,title,author,state,isDraft,baseRefName,baseRefOid,headRefName,headRefOid,additions,deletions,changedFiles,url` for each. A PR whose base branch is another PR's head branch is stacked: review only its own base..head. Ask once about closed, merged or missing PRs.
-2. GATE: run the Stage 1 prior-approval gate for every PR. A skipped PR gets no reviewer, no Cortex write and no draft; gate case 3 gets a DELTA reviewer.
-3. LOCATE each remaining PR's review task (`PR re-review rounds` step 1). A task means RE-REVIEW mode; reopen it to `draft` now.
-4. SOURCE: when a local clone of the repository exists, fetch each head into its own ref and verify it: `git fetch origin refs/pull/<n>/head:refs/pr-review/<n>-<head12>`, then confirm `git rev-parse` equals `headRefOid`, and fetch any missing base commit. This changes no branch or working tree. NEVER clone, check out, or reuse a ref that points at another commit. Without a clone, use the template's GH-ONLY source block. Note which runtimes are present or absent for the template's tooling note.
-5. DISPATCH: fill `batch-reviewer-task.md` (in this skill's directory) once per PR, choosing one mode block, the scope block for the batch's review mode and one source block, and changing nothing else. Spawn every reviewer in one `spawn` call (waves of eight), all on this thread's model unless the user names one. Artifacts go to `<storage>/pr-reviews/pr<n>/`, where `<storage>` is `$BB_THREAD_STORAGE` when set, else one `mktemp -d` for the batch. Do not poll while they run.
-6. CHECK each report before trusting it: `candidates.json` parses, every candidate has `anchor_verified: true` and evidence, and Coverage accounts for every file in the diff. Re-dispatch a failed or incomplete reviewer once with the same task; report a second failure instead of filling the gap yourself. Re-read each candidate's decisive lines at the pinned head, and rerun its reproduction when cheap, before the critic round.
-7. CRITICS: run ONE Stage 3 round for the whole batch: one task per configured critic model, each pointing at one brief file that carries every candidate from every PR, grouped by PR with its pinned revisions and diff paths. Zero candidates across the batch skips the round. Check critics' factual side claims against source before repeating them.
-8. FINALIZE each PR: write the critic results into `review.md` (filtered candidates move to Filtered) and recompute the verdict with Stage 5's rules. Refresh the head and `gh pr checks`: a moved head sends that PR back to step 5, and CI statements in `body.md` that are now stale get corrected. Persist with the Cortex recipe (new task or the reopened one) and attribute each with its verdict.
-9. PRESENT: build each payload with Stage 6 steps 1-5, then show ONE table (PR, head, mode, verdict, worth lean, Cortex task, recommended event, inline comment count) with links to every body and comment file, followed by the skipped PRs and why. Every row is a real proposal; NEVER list optional or redundant drafts. A blanket approval such as "post them" covers exactly the rows in the table; any other mix is named by PR number.
-10. POST each approved PR in turn through Stage 6 steps 7-10: pre-post check, post once, verify, close out. Finish with one table of review URLs and events, plus the findings left open.
+How the review ends depends on the request. Run steps 1 to 4 below in every PR review. Then, when the request tells you to hand the review to Shuttle with `shuttle_review_draft`, follow `references/finish-shuttle.md`; otherwise follow `references/finish-github.md`, steps 5 to 10.
 
-## Cortex persistence
+1. SELECT: one inline comment per surviving finding (CERTAIN/LIKELY; consensus-filtered, or labeled not consensus-filtered), anchored on lines the PR changed at the pinned head (`side: "RIGHT"`; add `start_line` + `start_side` for ranges). Findings without a changed-line anchor (unchanged code, whole-PR concerns) go in the review body. Filtered findings never appear; praise stays to one line in the body. Start each nit's comment with `Nit:` so the author knows it is optional. Fewer, better comments.
+2. ANCHOR CHECK: from the pinned revision-scoped diff, confirm every `line`/`start_line` falls on the new side of one hunk of that file (added or context line; a range stays within one hunk) and that the source line there is the code the finding describes. A single out-of-diff line makes GitHub reject the whole review (422).
+3. WRITE brief: the review body is 2-4 plain sentences -- what the PR does, the verdict, and the findings that matter most. Each inline comment is ONE short paragraph of at most three sentences: what is wrong, what it costs, and the fix. Quote code only when the problem is not visible in the diff hunk the comment sits on; never attach validation logs, checklists, critic tallies or praise padding to the draft. Polite, specific, first person, written like a colleague leaving a GitHub review. No internal jargon in public text (F-ids, critic tallies, cortex references) and no tracking params (`?utm_source=`).
+4. RECOMMEND the event from the verdict; the user makes the final call:
+   - PASS -> `APPROVE` (body only)
+   - GO WITH FIXES -> `APPROVE` with the non-blocking comments, or `COMMENT`
+   - NEEDS REVIEW -> `COMMENT`
+   - BLOCK -> `REQUEST_CHANGES`
 
-When durable output is authorized, PR reviews live in Cortex—not substitute files—and coexist with plans and PR descriptions in the same lane. Skip this entire section for an explicit answer-only/no-external-records request. If requested persistence is unavailable, report that blocker without claiming it succeeded or creating an alternate artifact.
-
-1. ALWAYS use the `cortex_update` tool, call that tool for every update. If the tool does not exist follow the Fallback Strategy.
-    Fallback strategy: generate ONE session id at the start of your agent session, hold in working memory, and reuse it for the lifetime of the session:
-    ```bash
-    SESSION_ID="pr-review-$(openssl rand -hex 4)"   # e.g. pr-review-7f3a9201
-    ```
-    Format `<role>-<8 hex>`, max 80 chars, no newlines. NEVER store in env vars (sandboxed sub-shells throw them away) or in repo files (two agents collapse into one identity in the audit trail). The `cortex update <id> --as "$SESSION_ID" -m "..."` examples below are the fallback path — keep using them when the tool is unavailable.
-
-2. LANE = current repository directory name (same as the planner and pr-desc skills):
-    ```bash
-    LANE=$(git rev-parse --show-toplevel 2>/dev/null | xargs basename || basename "$PWD")
-    ```
-    Override only when the user explicitly names a different lane.
-
-3. PLAN LINKING (USER-SPECIFIED ONLY). Do NOT auto-discover plans for reviews. Inspect `$ARGUMENTS` for an explicit plan reference — patterns like `plan #42`, `--plan 42`, `for plan 42`, or a bare `#42` token paired with the word `plan`. Extract the integer id into `PLAN_ID`. If the user did not specify a plan, leave `PLAN_ID` empty and skip every plan-related step below.
-
-    If a `PLAN_ID` was supplied, validate it and capture its tags (so the review task can inherit them, EXCEPT the reserved `plan` tag):
-    ```bash
-    cortex show "$PLAN_ID" --json | jq -r .task.title    # confirm it exists; abort if not
-    ```
-
-4. PERSIST THE PR REVIEW. Draft the rendered review markdown into a tmpfile and persist as a cortex task:
-    ```bash
-    REVIEW_BODY=$(mktemp -t cortex-pr-review.XXXXXX.md)
-    # write the rendered review markdown to "$REVIEW_BODY" using the template above
-
-    # Tags: ALWAYS include `pr-review`. If the user named a plan, ALSO inherit every tag from that
-    # plan EXCEPT `plan` itself (that tag is reserved for plans and would mis-classify the review).
-    TAGS="pr-review"
-    if [ -n "$PLAN_ID" ]; then
-      PLAN_TAGS=$(cortex show "$PLAN_ID" --json \
-        | jq -r '.task.tags | map(select(. != "plan")) | join(",")')
-      [ -n "$PLAN_TAGS" ] && TAGS="pr-review,$PLAN_TAGS"
-    fi
-
-    cortex add "PR Review #<pr-number>: <pr-title>" \
-      --lane "$LANE" \
-      --status draft \
-      --body-file "$REVIEW_BODY" \
-      -t "$TAGS"
-    ```
-    ALWAYS use `--body-file`; NEVER inline `-b "..."` (shell escaping is a footgun for KB-scale markdown).
-
-5. ATTRIBUTE. `cortex add` is anonymous — record WHO drafted the review immediately using the `cortex_update` tool if available, or the fallback strategy if not:
-    Fallback strategy:
-    ```bash
-    cortex update <review-id> --as "$SESSION_ID" -m "pr review drafted: <verdict>"
-    ```
-    Include the verdict (PASS / GO WITH FIXES / NEEDS REVIEW / BLOCK) in the message so it surfaces in `cortex ls`.
-
-6. LINK TO THE PLAN (only if the user supplied a plan id). Post one update on the review task whose body contains `@<PLAN_ID>` so the cross-reference is recorded in the audit trail using our update strategy from above.
-    Use the literal `@<id>` token (no brackets) so it is greppable from `cortex show` output. Skip this step entirely when no plan was specified. For example: `@114`.
-
-7. REVISIONS. To update an existing review task body, prefer anchor-based edits for surgical changes and `--body-file` for full rewrites — see the `cortex` skill's `cli/edit.md` for tradeoffs. NEVER edit a task whose status is `review` without explicit user confirmation.
-
-8. PR MODE LIFECYCLE. Status flow: `draft` from `cortex add` through the Stage 6 approval -> `done` once the approved review is posted and verified (Stage 6 step 10) -> a re-review request reopens `done` -> `draft` (the request IS the explicit confirmation) -> `done` again after that round's review is posted and verified. A declined or deferred post leaves the task `draft`. A PR that the prior-approval gate stops leaves its task unchanged: do not reopen it. PR-mode tasks never sit in `review`, so ledger and body updates during an active PR round need no further confirmation.
-
-## Output Format
-
-- For authorized durable output, persist the review per the recipe above (repo lane, `draft`, `pr-review` plus supplied-plan tags except reserved `plan`); leave priority unset unless explicitly requested.
-- Report the created task ID only after persistence succeeds; its body is viewable via `cortex show <review-id>`. For explicit answer-only mode, return the structured review inline instead.
-- Copy to clipboard only within the requested output scope and when the capability is available.
-- For GitHub PRs, finish by presenting the Stage 6 draft for approval, or by reporting that the prior-approval gate skipped the PR and why; after an approved post, report the review URL, event, and verified anchors, and the closed-out task ID.
-
-## Self-Improvement
-
-Capture feedback only for concrete, novel, reusable evidence from this task and within its authorized scope. Ordinary success or restating existing guidance starts no notes read, observer, or promotion.
-
-When capture is justified, the current agent owns the gate: resolve `SKIP_SKILL_NOTES` from the environment only (never `.env`); `1` or `true` disables notes. Otherwise use the `improve-skills` Fast Loop. Reuse applicable evidence; one owner and at most one entry per skill/session. A delegated observer receives `notes_enabled=true`, the target, and the concrete observation.
-
+   Prefer `COMMENT` over `REQUEST_CHANGES` when the decisive findings are documentation-only, runtime-unverified, or not consensus-filtered. When the reviewer authored the PR, GitHub accepts only `COMMENT`. Omitting `event` creates a PENDING review the user can finish in the GitHub UI.
 ## Rules
 
-Cortex-specific rules below apply to authorized durable output, not explicit answer-only mode.
-
-- Load or reuse the `cortex` skill when persistence is required; preserve its attribution/status semantics.
-- Persist authorized durable reviews via `cortex add --body-file`; NEVER inline `-b "..."` for KB-scale markdown.
-- ALWAYS attribute the new review task immediately after `cortex add` with `cortex_update` (include the verdict in the message)
-- ALWAYS tag the review task with `pr-review`; ALSO inherit every tag from the user-specified plan when one was provided, EXCEPT the reserved `plan` tag
-- NEVER auto-discover plans for reviews — only link to a plan when the user explicitly names a plan id in `$ARGUMENTS`
-- ALWAYS post a `@<PLAN_ID>` linking update on the review task when the user supplied a plan id; SKIP the linking update otherwise
-- NEVER edit a `review`-status cortex task without explicit user confirmation
 - NEVER write to the PR (reviews, comments, replies, resolutions, dismissals) without explicit user approval of the exact drafted payload; post ONLY that payload, ONCE, after the Stage 6 pre-post check
 - ALWAYS run the Stage 1 prior-approval gate before any analysis, delegation, or Cortex write; the posting identity's approval stands until the PR's own patch changes, and a verdict that has not changed NEVER gets a second review or post
 - ALWAYS end a GitHub PR review or re-review round with the Stage 6 draft (an `APPROVE` body for PASS), unless the prior-approval gate says the existing approval stands; verify anchors before presenting and again after posting
-- ALWAYS send the summary as the `body` of the same review that carries the `event`; NEVER as a separate issue comment or a second review
-- ALWAYS run batches through `Batch PR reviews`: reviewer tasks come from `batch-reviewer-task.md` with only placeholders and block choices filled, one critic round covers the whole batch, and one approval table lists only real proposals
-- ALWAYS close out the cortex review task (`done`) only after the posted review is verified; leave it `draft` when posting is declined or deferred
-- When a PR re-review round posts, ALWAYS post a NEW GitHub review; NEVER edit, dismiss, resolve, or reply to prior reviews or threads unless the user explicitly asks
 - ALWAYS keep every finding in the cortex ledger under a stable finding id; NEVER track findings by line number alone
 - The cortex ledger is the only cross-round memory
-- ALWAYS re-validate open findings against the new code each re-review round; NEVER carry a finding forward on stale evidence
 - NEVER report formatting, linter-level, or theoretical concerns in either mode; in STATIC mode report bugs, security issues and logic errors only; in THOROUGH mode every finding carries a category, its cost and a specific suggestion
 - ALWAYS pick the review mode before Stage 1: THOROUGH unless the request asks for static mode, and send the critics that mode's criteria
 - Verify findings against relevant source context, callers/contracts, and tests; expand reads when needed, not merely to satisfy a stage.
@@ -483,10 +319,15 @@ Cortex-specific rules below apply to authorized durable output, not explicit ans
 - If no real issues found, output PASS with empty sections
 - Keep each finding to one short paragraph: what breaks or what it costs, then the fix. The evidence lives in the review's work, not in a quote trail appended to every comment
 - In any Shuttle or GitHub draft, write like a colleague: plain sentences, no headings, no section padding, brief by default
-- When the request says to hand the review to Shuttle, end Stage 6 with `shuttle_review_draft` per its SHUTTLE HANDOFF paragraph; NEVER also build or post a GitHub payload
 - NEVER wait for an automated reviewer; deduplicate against what it has posted at Stage 1 and once more just before the Shuttle handoff
 - Read PR source from the pinned head ref, not the checkout's files; load AGENTS.md, matching specialists and, in THOROUGH mode, past incidents before looking for findings
 - Skip checklist dimensions that don't apply
 - ALWAYS check that every behavior and construct the PR adds is earned by its stated intent: raise unrequested behavior and needless machinery as THOROUGH findings, and name unrequested behavior in the For-you section in both modes
 - ALWAYS answer the intent and worth step in a "For you" section, as the Stage 5 template's labelled list (What, Why, How, Extra, Should we, Lean, Unverified, Before merge, Ask the author) and never as paragraphs, that reaches the user and is never posted: Shuttle `notes` when available, else the top of the final answer; the Cortex body; Stage 6's PRESENT. It never changes the verdict
 - No filler or preamble; write the summary and every comment per the Agent Protocol's Writing for people
+
+## Self-Improvement
+
+Capture feedback only for concrete, novel, reusable evidence from this task and within its authorized scope. Ordinary success or restating existing guidance starts no notes read, observer, or promotion.
+
+When capture is justified, the current agent owns the gate: resolve `SKIP_SKILL_NOTES` from the environment only (never `.env`); `1` or `true` disables notes. Otherwise use the `improve-skills` Fast Loop. Reuse applicable evidence; one owner and at most one entry per skill/session. A delegated observer receives `notes_enabled=true`, the target, and the concrete observation.

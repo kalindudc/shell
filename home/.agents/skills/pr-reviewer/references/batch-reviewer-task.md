@@ -1,11 +1,11 @@
 # Batch reviewer task template
 
-Used by `Batch PR reviews` in `SKILL.md`. The parent fills every `{placeholder}`, picks exactly one mode block, one scope block and one source block, and sends the result as one minion task per PR. Do not otherwise edit the wording: every PR in every batch gets the same instructions, so verdicts stay comparable.
+Used by `references/batch.md`. The parent fills every `{placeholder}`, picks exactly one mode block, one scope block and one source block, and sends the result as one minion task per PR. Do not otherwise edit the wording: every PR in every batch gets the same instructions, so verdicts stay comparable.
 
 Placeholders are the lower-case `{names}` below; every other brace (the JSON shapes in the Files section) is literal text.
 
 - From `gh pr view`: `{owner}`, `{repo}`, `{number}`, `{title}`, `{author}`, `{additions}`, `{deletions}`, `{changed_files}`, `{url}`, `{base_branch}`, `{base_oid}`, `{head_oid}`.
-- From batch setup: `{head_ref}` (the verified `refs/pr-review/<n>-<head12>`), `{clone}`, `{out_dir}` (`<storage>/pr-reviews/pr<n>`), `{skill_path}` (this skill's `SKILL.md`), `{tooling_note}`, `{mode_block}`, `{scope_block}`, `{source_block}`.
+- From batch setup: `{head_ref}` (the verified `refs/pr-review/<n>-<head12>`), `{clone}`, `{out_dir}` (`<storage>/pr-reviews/pr<n>`), `{skill_path}` (this skill's `SKILL.md`, the core file), `{tooling_note}`, `{mode_block}`, `{scope_block}`, `{source_block}`.
 - `{risk_areas}`: one or two sentences naming what could break for this kind of change, taken from the title and description. Never a suspected finding.
 - STACKED: `{lower_pr}`. RE-REVIEW: `{round}`, `{task_id}`, `{old_head}`, `{old_base}`, `{old_ref}`, `{ledger_summary}` (each ledger row with its status, location, one-line summary and thread URL, plus filtered items from earlier rounds). DELTA: `{approved_commit}`, `{approval_url}`.
 
@@ -13,7 +13,7 @@ Placeholders are the lower-case `{names}` below; every other brace (the JSON sha
 
 - FIRST: `FIRST REVIEW against base branch {base_branch}.`
 - STACKED: `FIRST REVIEW of a STACKED PR: its base is the head of #{lower_pr} ({base_branch}), not the default branch. Review only base..head. Read the lower PRs' code for context, but report their issues only when this PR makes them newly reachable.`
-- RE-REVIEW: `RE-REVIEW, round {round}. Follow the skill's 'PR re-review rounds' steps 2 to 4 only (no Cortex writes). Read the prior task read-only with: cortex show {task_id} --json | jq -r .task.body. The last round reviewed head {old_head} on base {old_base} (local ref {old_ref}; NOT the current head). Changes since then: git -C {clone} range-diff {old_base}..{old_head} {base_oid}..{head_oid}. Prior ledger, with thread URLs: {ledger_summary}. Re-validate every open finding with fresh evidence at this head and read the replies on its thread. Do not re-raise filtered or wontfix items unless the new code changes them materially.`
+- RE-REVIEW: `RE-REVIEW, round {round}. Follow the skill's references/re-review.md steps 2 to 4 only (no Cortex writes). Read the prior task read-only with: cortex show {task_id} --json | jq -r .task.body. The last round reviewed head {old_head} on base {old_base} (local ref {old_ref}; NOT the current head). Changes since then: git -C {clone} range-diff {old_base}..{old_head} {base_oid}..{head_oid}. Prior ledger, with thread URLs: {ledger_summary}. Re-validate every open finding with fresh evidence at this head and read the replies on its thread. Do not re-raise filtered or wontfix items unless the new code changes them materially.`
 - DELTA: `DELTA REVIEW since the posting identity's approval at {approved_commit} ({approval_url}). Review only what changed since then: git -C {clone} range-diff {base_oid} {approved_commit} {head_oid}. Report only new findings in the changed code; the approval otherwise stands, so a clean result is PASS with nothing to post.`
 
 ## Scope blocks
