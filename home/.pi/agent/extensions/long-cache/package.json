@@ -1,0 +1,6 @@
+{
+  "name": "long-cache",
+  "version": "1.0.0",
+  "description": "One-hour Anthropic prompt cache for long-lived threads only",
+  "type": "module"
+}

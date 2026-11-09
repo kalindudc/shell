@@ -180,6 +180,12 @@ tasks:
           exit 0
         fi
         (cd "${PI_WEB_DIR}" && node --import ./test/_pi-resolve.mjs --test 'test/*.test.ts')
+      - |
+        if ! command -v node >/dev/null 2>&1; then
+          echo "Warning: node not found, skipping long-cache extension tests"
+          exit 0
+        fi
+        (cd home/.pi/agent/extensions/long-cache && node --test 'test/*.test.ts')
 
   test:bin:
     desc: "Run home/bin/ tool tests (BATS + Ruby)"

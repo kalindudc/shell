@@ -114,12 +114,12 @@ Do NOT report, in either mode: formatting or anything a configured linter or for
 
 If no real issues are found, produce a PASS verdict with empty findings sections. Do NOT invent concerns to populate the template.
 
-Apply the pre-filter below and deduplicate against applicable comments BEFORE delegation. Verify mechanical facts inline; delegate only unresolved substantial investigations, grouped by shared evidence rather than one child per candidate.
+Apply the pre-filter below and deduplicate against applicable comments BEFORE delegation. Verify mechanical facts inline; delegate only unresolved substantial investigations, grouped by shared evidence rather than one child per candidate. Delegate them to the `verifier` agent, which runs on your own model; never to `researcher`, which runs on a cheaper one.
 
 Task-array template (fill in actual revisions, paths, and questions):
 
 ```json
-{"tasks":[{"agent":"researcher","task":"Verify <screened candidate batch> against <pinned diff/source paths> without edits; trace reachable behavior and relevant tests, returning confidence and file:line evidence."}]}
+{"tasks":[{"agent":"verifier","task":"Verify <screened candidate batch> against <pinned diff/source paths> without edits; trace reachable behavior and relevant tests, returning confidence and file:line evidence."}]}
 ```
 
 Only source-verified inline or delegated findings with CERTAIN or LIKELY confidence proceed. If delegation fails, continue inline only where the evidence is obtainable within scope; report remaining gaps rather than inventing another workflow.

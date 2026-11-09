@@ -32,12 +32,12 @@ If no concerns were supplied, ask once after honoring the opt-out. Split multipl
 
 ### 2. Investigate the concern batch
 
-Deduplicate related concerns and reuse applicable revision-scoped evidence. Verify mechanical facts inline. Delegate only unresolved substantial questions that benefit from independent context, grouping concerns that share sources.
+Deduplicate related concerns and reuse applicable revision-scoped evidence. Verify mechanical facts inline. Delegate only unresolved substantial questions that benefit from independent context, grouping concerns that share sources. Delegate them to the `verifier` agent, which runs on your own model; never to `researcher`, which runs on a cheaper one.
 
 Task-array template (fill in the actual bounded scope and evidence requirements):
 
 ```json
-{"tasks":[{"agent":"researcher","task":"Verify <unresolved concern batch> in <verified paths/revision> without edits; return confidence, file:line evidence, and remaining gaps."}]}
+{"tasks":[{"agent":"verifier","task":"Verify <unresolved concern batch> in <verified paths/revision> without edits; return confidence, file:line evidence, and remaining gaps."}]}
 ```
 
 Use the same evidence/confidence standard for inline and delegated work: CERTAIN or LIKELY concerns proceed; POSSIBLE or DECLINE remain explicitly "Insufficient Evidence." No surviving concerns means no critic sessions. If delegation fails, continue inline only when the missing evidence is obtainable within scope; do not invent another workflow.

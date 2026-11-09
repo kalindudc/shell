@@ -1,7 +1,9 @@
 ---
 name: researcher
-description: Read-only research and verification agent -- answers delegated questions about code, docs, and the web with cited evidence and calibrated confidence. Brief it with numbered questions, exact paths/revisions/URLs, a tool-call budget, and explicit non-scope.
+description: Read-only research agent on Claude Sonnet 5.5 -- answers delegated questions about code, docs, and the web with cited evidence and calibrated confidence. Brief it with numbered questions, exact paths/revisions/URLs, a tool-call budget, and explicit non-scope.
 tools: read, grep, find, ls, bash, ast_query, git_blame, git_diff_summary, web_fetch, web_search
+model: anthropic/claude-sonnet-5-5
+thinking: high
 steps: 100
 ---
 

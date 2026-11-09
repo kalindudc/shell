@@ -259,6 +259,14 @@ If a substantial task exceeds ~50 tool calls or significant context length, proa
 
 Harness configuration owns actual tool availability and enforcement. Shared policy owns safety, evidence, effort, and stopping; skills own domain procedures; wrappers bind explicit inputs once; leaf agents return assigned evidence without becoming independent coordinators. Use runtime routing according to the effort rules above, not merely because a capability is available. A reference to another workflow is not itself a request to execute it.
 
+### Models for delegated work
+
+A minion with no `agent` and no `model` runs on your own model, usually the most expensive one. Name a persona on every `spawn` task:
+
+- `builder` (GPT-6.1 Sol) for implementation from a clear brief; `researcher` (Claude Sonnet 5.5) for read-only research.
+- PR reviews keep their models: reviewers, `verifier` and critics use what their skill names. NEVER move them to a cheaper model.
+- Leave `agent` and `model` unset only for work that needs your judgment (a design decision, a high-risk or high-impact change) or a model the user asked for, and say why in the task.
+
 ---
 
 ## GIT commit protocol
