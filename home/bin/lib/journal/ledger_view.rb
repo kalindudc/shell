@@ -49,6 +49,7 @@ module Journal
       end
       parts << "open #{days(sum['age'])}, since #{pretty(sum['first_seen'])}"
       parts << 'worth a nudge' if sum['nudge']
+      parts << "no scout has reported it for #{days(sum['unseen_days'])}" if sum['unseen_days']
       sentence = parts.join('; ')
       "#{sentence[0].upcase}#{sentence[1..]}."
     end

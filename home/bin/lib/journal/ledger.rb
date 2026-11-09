@@ -9,15 +9,18 @@ module Journal
   class Ledger
     KINDS = %w[action review owe wait discuss task].freeze
     CLOSED = %w[done dropped].freeze
-    # Business days until an item without an explicit due date counts as overdue; nil never goes overdue.
-    DEFAULT_DUE_DAYS = { 'action' => 1, 'review' => 2, 'owe' => 5, 'wait' => nil, 'discuss' => nil, 'task' => nil }.freeze
     WAIT_NUDGE_DAYS = 3
+    # Days without any scout report before an open item is flagged as possibly stale.
+    UNSEEN_DAYS = 3
+    MAX_LINKS = 40
     SECTION_KINDS = {
       "Today's focus" => 'action', 'Needs my action' => 'action', 'I owe' => 'owe', 'Follow-ups' => 'owe',
       'Waiting on others' => 'wait', 'Open discussions' => 'discuss', 'Remaining tasks' => 'task',
       'Pull requests' => 'task', 'Cortex' => 'task', 'Other' => 'task'
     }.freeze
     VERBS = %w[done drop snooze due reopen note private share].freeze
+    # A reply splits into commands where a separator is followed by a verb and an id; any other separator belongs to the note.
+    COMMAND_BREAK = /\s*[,;\n]\s*(?=(?:#{VERBS.join('|')})\s+(?:J-?)?\d)/i
     BARE_HOST = %r{\Ahttps?://[^/]+/?\z}
     WEEKDAYS = %w[sun mon tue wed thu fri sat].freeze
     MONTHS = %w[jan feb mar apr may jun jul aug sep oct nov dec].freeze
@@ -56,20 +59,26 @@ module Journal
 
     def find(id) = items.find { |i| i['id'] == id.to_i }
 
+    def identities(item) = [item['key']] + item['keys'].to_a
+
     def find_by_keys(keys)
       keys = keys.to_set
-      items.find { |i| (([i['key']] + i['keys'].to_a).to_set & keys).any? }
+      items.find { |i| (identities(i).to_set & keys).any? }
     end
 
-    # A primary link on either side must match; two items that only share a secondary link
-    # (a digest message listing several actions, a PR cited as context) stay separate.
+    # An item is identified by its primary key and the aliases it owns. Links a finding merely cites
+    # (a PR in a digest, a thread in a task's description) are context, kept in `links`, and never match.
     def find_match(found)
-      all = ([found['key']] + found['keys']).to_set
-      items.find { |i| ([i['key']] + i['keys'].to_a).include?(found['key']) || all.include?(i['key']) }
+      items.find { |i| i['key'] == found['key'] } || items.find { |i| i['keys'].to_a.include?(found['key']) }
+    end
+
+    # Aliases a new finding may add to an item: its own links to the same thing, unless another item already owns them.
+    def free_aliases(candidates, owner)
+      candidates.reject { |k| items.any? { |i| !i.equal?(owner) && identities(i).include?(k) } } - [owner && owner['key']]
     end
 
     # Every key the ledger knows, in any status; the carry-over check treats these as tracked.
-    def known_keys = items.flat_map { |i| [i['key']] + i['keys'].to_a + i['refs'].to_a }.to_set
+    def known_keys = items.flat_map { |i| identities(i) + i['links'].to_a + i['refs'].to_a }.to_set
 
     # Merges scout findings: matching items are refreshed, closed items with newer activity reopen,
     # resolved findings close their item, and the rest become new items.
@@ -89,6 +98,7 @@ module Journal
           report['new'] << add(found, now)['id']
         else
           report[merge(item, found, now)] << item['id']
+          item['last_seen'] = today.iso8601
         end
       end
       report
@@ -129,7 +139,7 @@ module Journal
 
         url = entry[:full][LINK_RE, 1]
         kind = 'review' if entry[:section].start_with?('Needs my action') && url.to_s.match?(%r{/pulls?/\d+})
-        added << add({ 'key' => keys.first, 'keys' => keys.drop(1), 'title' => strip_title(entry[:full]), 'kind' => kind,
+        added << add({ 'key' => keys.first, 'keys' => [], 'links' => keys.drop(1), 'title' => strip_title(entry[:full]), 'kind' => kind,
                        'url' => url, 'refs' => refs }, now, first_seen: since)['id']
       end
       added
@@ -142,14 +152,13 @@ module Journal
       'open'
     end
 
-    def due(item)
-      return Date.parse(item['due']) if item['due']
-
-      days = DEFAULT_DUE_DAYS[item['kind']]
-      days && add_business_days(Date.parse(item['first_seen']), days)
-    end
+    # Only a date someone set counts: an item without one is never overdue, it just ages in the backlog.
+    def due(item) = item['due'] && Date.parse(item['due'])
 
     def age(item) = (today - Date.parse(item['first_seen'])).to_i
+
+    # Days since a scout last reported the item; items from before this was recorded count from first_seen.
+    def unseen_days(item) = (today - Date.parse(item['last_seen'] || item['first_seen'])).to_i
 
     def open_items = items.select { |i| status(i) == 'open' }
 
@@ -189,6 +198,7 @@ module Journal
       parts['due'] = d&.iso8601
       parts['days_overdue'] = (today - d).to_i if d && d < today
       parts['nudge'] = true if item['kind'] == 'wait' && age(item) >= WAIT_NUDGE_DAYS
+      parts['unseen_days'] = unseen_days(item) if unseen_days(item) >= UNSEEN_DAYS
       parts['snooze_until'] = item['snooze_until'] if item['snooze_until']
       parts['closed_at'] = item['closed_at'] if item['closed_at']
       parts['cortex'] = item['cortex'] if item['cortex']&.any?
@@ -216,22 +226,45 @@ module Journal
       end
     end
 
+    # "done 12 15, drop 20 not mine; snooze 31 mon": the id list ends at the first word that is not an id,
+    # and the rest of the command is its note, so a note may contain verbs and punctuation.
     def parse_commands(text)
-      tokens = text.to_s.gsub(/[,;\n]/, ' ').split
-      commands = []
-      until tokens.empty?
-        verb = tokens.shift.downcase
+      text.to_s.strip.split(COMMAND_BREAK).flat_map do |chunk|
+        tokens = chunk.split
+        verb = tokens.shift.to_s.downcase
         raise ArgumentError, "unknown command #{verb.inspect}; use #{VERBS.join(', ')}" unless VERBS.include?(verb)
 
         ids = []
         ids << tokens.shift[/\d+/].to_i while tokens.first&.match?(/\A(?:J-?)?\d+\z/i)
         raise ArgumentError, "#{verb} needs at least one item id" if ids.empty?
 
-        words = []
-        words << tokens.shift while tokens.any? && !VERBS.include?(tokens.first.downcase)
-        ids.each { |id| commands << { verb: verb, id: id, rest: words.join(' ') } }
+        ids.map { |id| { verb: verb, id: id, rest: tokens.join(' ') } }
       end
-      commands
+    end
+
+    # Closes open items for which the block returns evidence that the work is finished; returns the closed items.
+    def sync(now: Time.now)
+      open_items.filter_map do |item|
+        next unless (evidence = yield(item))
+
+        close(item, 'done', evidence, now)
+        item
+      end
+    end
+
+    # Moves links that earlier versions stored as match keys back to context: an item keeps only its own url as an alias.
+    def tidy
+      moved = 0
+      items.each do |item|
+        own = [item['key'], (Journal.normalize(item['url']) unless item['url'].to_s.strip.empty?)]
+        keep, move = item['keys'].to_a.partition { |k| own.include?(k) || k.match?(TASK_RE) && Array(item['cortex']).include?(k.delete('@').to_i) }
+        next if move.empty?
+
+        item['keys'] = keep
+        item['links'] = ((item['links'].to_a + move).uniq - identities(item)).last(MAX_LINKS)
+        moved += move.size
+      end
+      moved
     end
 
     private
@@ -263,25 +296,30 @@ module Journal
         'cortex' => cmd[:verb] == 'done' ? item['cortex'].to_a : [] }
     end
 
+    # `key` identifies the item; its own `url` becomes an alias. Every other link a scout cites is context.
     def normalize_incoming(raw)
-      keys = ([raw['key'], raw['url']] + raw['keys'].to_a + raw['links'].to_a.map { |l| l.is_a?(Hash) ? l['url'] : l })
-             .compact.map(&:strip).reject { |k| k.empty? || k.match?(BARE_HOST) }
-             .map { |k| k.start_with?('http') ? Journal.normalize(k) : k }.uniq
+      clean = lambda do |list|
+        list.compact.map(&:strip).reject { |k| k.empty? || k.match?(BARE_HOST) }
+            .map { |k| k.start_with?('http') ? Journal.normalize(k) : k }.uniq
+      end
+      keys = clean.call([raw['key'], raw['url']])
       raise ArgumentError, "item without a key or url: #{raw['title'].inspect}" if keys.empty?
 
       kind = raw['kind'].to_s
       raise ArgumentError, "unknown kind #{kind.inspect} for #{raw['title'].inspect}" unless KINDS.include?(kind) || raw['resolved']
 
-      raw.merge('key' => keys.first, 'keys' => keys.drop(1))
+      links = clean.call(raw['keys'].to_a + raw['links'].to_a.map { |l| l.is_a?(Hash) ? l['url'] : l }) - keys
+      raw.merge('key' => keys.first, 'keys' => keys.drop(1), 'links' => links)
     end
 
     def add(found, now, first_seen: nil)
       item = {
-        'id' => data['next_id'], 'key' => found['key'], 'keys' => found['keys'].to_a, 'title' => found['title'],
+        'id' => data['next_id'], 'key' => found['key'], 'keys' => free_aliases(found['keys'].to_a, nil), 'title' => found['title'],
         'kind' => found['kind'], 'url' => found['url'], 'detail' => found['detail'], 'source' => found['source'],
         'due' => found['due'], 'due_reason' => found['due_reason'], 'cortex' => found['cortex'].to_a, 'refs' => found['refs'],
         'first_seen' => (first_seen || Date.parse(found['first_seen'] || today.iso8601)).iso8601,
         'last_activity' => found['last_activity'], 'status' => 'open', 'created_at' => now.iso8601, 'history' => [],
+        'links' => found['links'].to_a.first(MAX_LINKS), 'last_seen' => today.iso8601,
         'private' => found['private'] ? true : nil, 'private_reason' => found['private'] ? found['private_reason'] : nil
       }.compact
       data['next_id'] += 1
@@ -291,7 +329,8 @@ module Journal
     end
 
     def merge(item, found, now)
-      item['keys'] = (item['keys'].to_a + [found['key']] + found['keys'] - [item['key']]).uniq
+      item['keys'] = (item['keys'].to_a + free_aliases(found['keys'], item)).uniq
+      item['links'] = ((item['links'].to_a + found['links'].to_a).uniq - identities(item)).last(MAX_LINKS)
       %w[detail url].each { |f| item[f] = found[f] unless found[f].to_s.strip.empty? }
       %w[due due_reason].each { |f| item[f] = found[f] if found[f] } unless item['due_reason'] == 'set from a reply'
       item['title'] = found['title'] if found['title'] && found['kind']
@@ -348,7 +387,7 @@ module Journal
       (item['history'] ||= []) << { 'at' => now.iso8601, 'event' => event, 'note' => note }.compact
     end
 
-    def sort_urgent(list) = list.sort_by { |i| [due(i) || Date.new(9999), -age(i)] }
+    def sort_urgent(list) = list.sort_by { |i| [due(i) || Date.new(9999), KINDS.index(i['kind']) || 9, -age(i)] }
 
     def carried_since(line, journal_date)
       m = line.match(/carried over since (#{MONTHS.join('|')})[a-z]*\s+(\d{1,2})/i)
@@ -363,14 +402,6 @@ module Journal
       text = text.gsub(/\[([^\]]*)\]\([^)]*\)/, '\1').gsub(/\(carried over since [^)]*\)/, '').squeeze(' ').strip
       text = text.split(/(?<=[.;])\s+(?=[A-Z(@])/).first.to_s.sub(/\s+([.;])\z/, '\1').chomp('.').chomp(';')
       text.length > 110 ? "#{text[0, 107].rstrip}..." : text
-    end
-
-    def add_business_days(date, days)
-      days.times do
-        date += 1
-        date += 1 while date.saturday? || date.sunday?
-      end
-      date
     end
 
     def next_weekday(name)

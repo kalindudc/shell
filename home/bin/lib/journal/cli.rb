@@ -15,8 +15,10 @@ module Journal
       when 'ls' then list(rest)
       when 'show' then show(rest.fetch(0))
       when 'snapshot' then puts(JSON.generate(Ledger.transaction(&:snapshot)))
+      when 'sync' then sync(rest)
+      when 'tidy' then puts(JSON.generate('moved_to_links' => Ledger.transaction(&:tidy)))
       else
-        warn('usage: journal ledger seed|upsert|apply|view|ls|show|snapshot (see journal --help)')
+        warn('usage: journal ledger seed|upsert|apply|sync|tidy|view|ls|show|snapshot (see journal --help)')
         return 2
       end
       0
@@ -53,6 +55,54 @@ module Journal
       puts(JSON.pretty_generate(results))
     end
 
+    PR_RE = %r{\Ahttps://github\.com/([\w.-]+/[\w.-]+)/pull/(\d+)\z}
+    FINISHED = %w[MERGED CLOSED].freeze
+
+    # Closes open items whose work is provably finished: their cortex tasks are done, or they are about a pull request
+    # (their own key or url) and every pull request they name is merged or closed. A PR merely cited in an item about
+    # something else proves nothing, and links that cannot be checked here (a Delta PR) leave the item to the scouts.
+    def sync(args)
+      dry = args.include?('--dry-run')
+      cortex = cortex_statuses
+      prs = {}
+      checker = ->(item) { finished_evidence(item, cortex, prs) }
+      closed = if dry
+                 Ledger.new.open_items.filter_map { |item| (e = checker.call(item)) && [item, e] }
+               else
+                 pairs = []
+                 Ledger.transaction { |l| l.sync { |item| checker.call(item).tap { |e| pairs << [item, e] if e } } }
+                 pairs
+               end
+      puts(JSON.pretty_generate('dry_run' => dry, 'closed' => closed.map { |item, e| { 'id' => item['id'], 'title' => item['title'], 'evidence' => e } }))
+    end
+
+    def finished_evidence(item, cortex, prs)
+      ids = (Array(item['cortex']) + [item['key']].grep(TASK_RE).map { |k| k.delete('@').to_i }).uniq
+      if ids.any?
+        return ids.all? { |id| cortex[id] == 'done' } ? "cortex #{ids.map { |i| "@#{i}" }.join(', ')} done" : nil
+      end
+      own = ([item['key'], item['url']] + item['keys'].to_a).compact.uniq
+      return nil unless own.any? { |u| u.match?(PR_RE) }
+
+      urls = (own + item['links'].to_a).uniq
+      return nil if urls.any? { |u| u.match?(%r{/pull/\d+}) && !u.match?(PR_RE) }
+
+      states = urls.grep(PR_RE).map { |u| prs[u] ||= pr_state(*u.match(PR_RE).captures) }
+      states.all? { |st| FINISHED.include?(st) } ? "#{states.size == 1 ? 'the PR is' : 'all PRs are'} #{states.uniq.map(&:downcase).join(' or ')}" : nil
+    end
+
+    def pr_state(repo, number)
+      out, status = Open3.capture2('gh', 'pr', 'view', number, '-R', repo, '--json', 'state', '-q', '.state', err: File::NULL)
+      status.success? ? out.strip : 'UNKNOWN'
+    end
+
+    def cortex_statuses
+      out, status = Open3.capture2('cortex', 'ls', '--json')
+      raise 'cortex ls failed' unless status.success?
+
+      JSON.parse(out.force_encoding('UTF-8')).to_h { |t| [t['id'].to_i, t['status']] }
+    end
+
     def view(args)
       since = (i = args.index('--since')) ? Time.parse(args.fetch(i + 1)) : nil
       public = args.include?('--public')
@@ -70,7 +120,7 @@ module Journal
     def list(args)
       ledger = Ledger.new
       chosen = args.include?('--all') ? ledger.items : ledger.items.reject { |i| Ledger::CLOSED.include?(i['status']) }
-      puts(JSON.pretty_generate(chosen.map { |i| ledger.summary(i).merge('keys' => [i['key']] + i['keys'].to_a) }))
+      puts(JSON.pretty_generate(chosen.map { |i| ledger.summary(i).merge('keys' => ledger.identities(i), 'links' => i['links'].to_a) }))
     end
 
     def show(id)

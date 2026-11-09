@@ -5,7 +5,7 @@
 #
 # Usage: journal carryover <previous-task-id> <new-body.md>
 #        journal render <data.json> <out.html>
-#        journal ledger seed <journal-task-id> | upsert <items.json>... | apply "<reply>"
+#        journal ledger seed <journal-task-id> | upsert <items.json>... | apply "<reply>" | sync [--dry-run] | tidy
 #        journal ledger view [--since <iso-time>] [--json] [--public] | ls [--all] | show <id> | snapshot
 #        journal site [--archive <dir>] [--out <dir>]
 #
@@ -14,7 +14,9 @@
 # the themed HTML briefing. ledger keeps every item with a short id (J-12) so a
 # reply like "done 12 15, drop 20 not mine, snooze 31 mon" closes it for good;
 # apply also closes the cortex tasks behind items marked done (--no-cortex skips
-# that); "private 7" keeps an item off the shared site, "share 7" allows it again.
+# that); sync closes items whose cortex tasks are done or whose pull requests are all merged or closed;
+# tidy moves links that old versions stored as match keys back to context; "private 7" keeps an
+# item off the shared site, "share 7" allows it again.
 # site builds the shareable static site from the archived briefings, leaving out
 # private items and anything that matches a sensitive pattern (sensitive.txt adds
 # patterns). Files live in $JOURNAL_HOME, by default ~/.local/share/journal.
@@ -25,7 +27,7 @@ ENV.delete('BUNDLE_GEMFILE')
 require_relative 'lib/journal'
 
 def usage(code)
-  puts(File.readlines(__FILE__)[3..20].map { |line| line.sub(/^# ?/, '') })
+  puts(File.readlines(__FILE__)[3..22].map { |line| line.sub(/^# ?/, '') })
   puts("\nrender's JSON:\n#{Journal::Render::SCHEMA}") if code.zero?
   exit code
 end

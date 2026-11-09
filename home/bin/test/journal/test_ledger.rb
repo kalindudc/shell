@@ -60,11 +60,14 @@ class TestLedger < Minitest::Test
     assert_equal(%w[2026-01-09 2025-12-30 2026-01-05], seeded.items.first(3).map { |i| i['first_seen'] })
   end
 
-  def test_default_due_dates_skip_weekends_and_drive_overdue
+  def test_only_a_set_due_date_makes_an_item_overdue
     l = seeded
+    assert_empty(l.view['overdue'])
+    assert_nil(l.due(l.find(1)))
+    l.apply('due 1 2026-01-12, due 2 2026-01-14', now: NOW)
     v = l.view
-    assert_equal([2, 1], v['overdue'].map { |i| i['id'] })
-    assert_equal(Date.new(2026, 1, 12), l.due(l.find(1))) # Friday plus one business day
+    assert_equal([1], v['overdue'].map { |i| i['id'] })
+    assert_equal([2], v['due_today'].map { |i| i['id'] })
     assert_equal([3], v['waiting'].map { |i| i['id'] })
   end
 
@@ -170,7 +173,9 @@ class TestLedger < Minitest::Test
   end
 
   def test_markdown_view_lists_ids_and_timing
-    md = Journal::LedgerView.markdown(seeded, since: NOW + 1)
+    l = seeded
+    l.apply('due 1 2026-01-12, due 2 2026-01-12', now: NOW)
+    md = Journal::LedgerView.markdown(l, since: NOW + 1)
     assert_match('## Overdue (2)', md)
     assert_match(/J-1: \[Reply to Ada about the rollout\]\(.*\)\. Overdue by 2 days \(due Mon Jan 12\); open 5 days/, md)
     assert_match('| J-4 | @41 Ship the cache |', md)
@@ -194,5 +199,85 @@ class TestLedger < Minitest::Test
     total, missing = Journal.missing_items(BODY, 'nothing here', known: known)
     assert_equal(5, total)
     assert_empty(missing)
+  end
+
+  def test_links_a_finding_cites_never_match_or_merge_into_other_items
+    l = seeded
+    pr = 'https://github.com/acme/app/pull/7'
+    l.upsert([{ 'key' => 'fellow:digest', 'url' => 'https://acme.fellow.app/m', 'title' => 'Do A', 'kind' => 'owe', 'links' => [pr] }], now: NOW)
+    assert_equal([pr], l.find(6)['links'])
+    refute_includes(l.identities(l.find(6)), pr)
+    report = l.upsert([{ 'url' => pr, 'resolved' => true, 'resolved_evidence' => 'merged' }], now: NOW)
+    assert_equal({ 'resolved' => [2] }, report)
+    assert_equal('open', l.status(l.find(6)))
+  end
+
+  def test_a_resolved_finding_for_one_cited_pr_does_not_close_an_item_about_many
+    l = ledger
+    l.upsert([{ 'key' => 'https://github.com/acme/app/pull/20', 'title' => 'Fix CI on three PRs', 'kind' => 'task',
+                'links' => %w[https://github.com/acme/app/pull/21 https://github.com/acme/app/pull/22] }], now: NOW)
+    report = l.upsert([{ 'url' => 'https://github.com/acme/app/pull/21', 'resolved' => true }], now: NOW)
+    assert_empty(report)
+    assert_equal('open', l.status(l.find(1)))
+  end
+
+  def test_a_findings_own_url_is_an_alias_that_matches_later
+    l = ledger
+    url = 'https://github.com/acme/app/pull/30'
+    l.upsert([{ 'key' => '@50', 'url' => url, 'title' => '@50 Ship it', 'kind' => 'task', 'cortex' => [50] }], now: NOW)
+    assert_equal([url], l.find(1)['keys'])
+    assert_equal({ 'resolved' => [1] }, l.upsert([{ 'url' => url, 'resolved' => true, 'resolved_evidence' => 'merged' }], now: NOW))
+  end
+
+  def test_an_alias_another_item_owns_is_not_claimed_twice
+    l = ledger
+    shared = 'https://acme.slack.com/archives/D1/p1700000007000700'
+    l.upsert([{ 'key' => 'fellow:a', 'url' => shared, 'title' => 'Do A', 'kind' => 'owe' },
+              { 'key' => 'fellow:b', 'url' => shared, 'title' => 'Do B', 'kind' => 'owe' }], now: NOW)
+    assert_equal([['slack:D1:1700000007000700'], []], l.items.map { |i| i['keys'] })
+  end
+
+  def test_notes_may_contain_verbs_and_punctuation
+    l = seeded
+    results = l.apply('drop 1 stale, it was due last week; note 2 sent to Ada, private doc', now: NOW)
+    assert_equal(%w[drop note], results.map { |r| r['verb'] })
+    assert_equal('stale, it was due last week', l.find(1)['close_note'])
+    assert_equal('sent to Ada, private doc', l.find(2)['detail'])
+  end
+
+  def test_a_reply_must_start_with_a_verb
+    assert_raises(ArgumentError) { ledger.parse_commands('please close 3') }
+  end
+
+  def test_sync_closes_only_items_the_block_proves_finished
+    l = seeded
+    closed = l.sync(now: NOW) { |i| i['id'] == 2 ? 'the PR is merged' : nil }
+    assert_equal([2], closed.map { |i| i['id'] })
+    assert_equal(['done', 'the PR is merged'], [l.find(2)['status'], l.find(2)['close_note']])
+    assert_equal('open', l.status(l.find(1)))
+  end
+
+  def test_tidy_moves_old_secondary_keys_to_links_but_keeps_the_items_own_url
+    l = seeded
+    item = l.find(2)
+    item['keys'] = ['https://github.com/acme/app/pull/7', 'https://github.com/acme/app/pull/8', 'slack:C1:1700']
+    assert_equal(2, l.tidy)
+    assert_equal([['https://github.com/acme/app/pull/7'], ['https://github.com/acme/app/pull/8', 'slack:C1:1700']], [item['keys'], item['links']])
+  end
+
+  def test_tidy_copes_with_a_blank_url
+    l = seeded
+    l.find(2)['url'] = ''
+    assert_equal(0, l.tidy)
+  end
+
+  def test_items_no_scout_reports_are_flagged_as_unseen
+    l = seeded
+    l.items.each { |i| i['last_seen'] = '2026-01-09' }
+    l.upsert([{ 'url' => 'https://github.com/acme/app/pull/7', 'kind' => 'review' }], now: NOW)
+    sums = l.items.to_h { |i| [i['id'], l.summary(i)['unseen_days']] }
+    assert_nil(sums[2])
+    assert_equal(5, sums[1])
+    assert_match('no scout has reported it for 5 days', Journal::LedgerView.markdown(l).lines.grep(/J-3:/).first)
   end
 end
