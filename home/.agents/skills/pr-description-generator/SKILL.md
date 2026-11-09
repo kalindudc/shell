@@ -5,7 +5,7 @@ description: Generate research-backed PR descriptions that maximize reviewabilit
 
 # PR Description Generator Skill
 
-CRITICAL: before using this skill, load the `cortex` skill — PR descriptions are persisted as cortex tasks, and the persistence/linking steps below assume the cortex CLI vocabulary (`cortex_update`, lanes, tags, statuses).
+CRITICAL: unless an orchestrator such as Loom asks you for the pull request text (see Output Format), load the `cortex` skill before using this skill — PR descriptions are persisted as cortex tasks, and the persistence/linking steps below assume the cortex CLI vocabulary (`cortex_update`, lanes, tags, statuses).
 
 ## Purpose
 
@@ -19,6 +19,17 @@ The entire PR description MUST be readable in under 5 minutes. A description nob
 - Omit sections that add no value for a given PR rather than padding them
 - Define project acronyms and internal names the first time they appear
 - The file tree is often the longest section — that is fine, it is scannable
+
+## Write for the reviewer, not for the tooling
+
+The reader is a reviewer who has never seen the tools, tickets or agents that produced the change. Every word in the description must mean something to them.
+
+- Refer to other changes by their pull request link and a few words on what they do, for example "#2313253 (mobile-bridge forwards `Shopify-Force-Env`)". NEVER by an internal ticket key, ticket ref or plan id, such as `LANE-11`, `core-force-env` or `@114`.
+- Leave out how the change was produced: orchestration tools and their vocabulary (Loom, planner, worker, reviewer agent, fix round, review round, brief, triage, acceptance criterion numbers such as AC2), agent sandboxes, and "the human". When a person's decision shaped the design, state the decision and its reason, not who relayed it.
+- State prerequisites as facts about systems, with links: what must be merged or deployed first, and what breaks if it is not, for example "Core must treat `Shopify-Force-Env: canary` as forced canary in production first (#2312411); until then these jobs run on production queues."
+- Testing: say what ran and what CI covers. Do not explain why a tool could not run something locally ("the sandbox has no node_modules"); write "CI runs Jest and the native suites".
+- Describe the change as it is now. Leave out earlier versions of this PR, earlier review rounds and what a previous attempt did.
+- Before you finish, scan the text for ticket keys and for these words, and rewrite each hit for a reviewer: Loom, planner, worker, round, brief, sandbox, "the human", "the ticket", AC followed by a number.
 
 ## Process
 
@@ -182,7 +193,8 @@ PR descriptions live in cortex — not as files. The flow mirrors the `cortex-pl
 
 ## Output Format
 
-- Persist the PR description as a cortex task per the recipe above (lane = repo dir, status = `draft`, tags = `pr-desc` + every tag of the related plan if one exists).
+- When an orchestrator asks you for the pull request text, for example Loom's `loom_submit` or `loom_pr`, return the title and description as it asks, and skip Cortex persistence and the clipboard. The orchestrator may add its own section, such as merge and deploy order; do not write one yourself.
+- Otherwise, persist the PR description as a cortex task per the recipe above (lane = repo dir, status = `draft`, tags = `pr-desc` + every tag of the related plan if one exists).
 - Inform the user of the cortex task id; the body is viewable via `cortex show <pr-id>`.
 - Copy the rendered PR markdown body to clipboard if available (`pbcopy` on macOS, `xclip -selection clipboard` on Linux). Skip if neither is present.
 - Max 5 minute read time -- this is non-negotiable
@@ -215,5 +227,6 @@ When capture is justified, the current agent owns the gate: resolve `SKIP_SKILL_
 - FOLLOW KISS -- cut sections and details the reviewer does not need; never compress sentences to save space
 - NEVER over reference related issues or PRs, if you are unsure if a an issue/PR is relevant, omit it or prompt the user for clarification rather than guessing
 - Every claim must match actual code changes -- verify alignment before output
+- NEVER use internal ticket keys, orchestration vocabulary or agent-environment details in the description (see Write for the reviewer, not for the tooling); link other changes by pull request
 - Omit optional sections entirely rather than filling them with placeholder content
 - Brevity is a feature: include less, and say it plainly

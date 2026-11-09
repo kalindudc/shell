@@ -187,9 +187,11 @@ arbitrary text contains no private information. Review every diff, especially
 when adding sources or settings. These checks are scoped to the bb backup, not
 a claim that the entire shell repository or its Git history has been audited.
 
-## Automations remain separate
+## Automations and Shuttle remain separate
 
-`task bb:export` and `task bb` never capture or restore automations. The existing
+`task bb:export` and `task bb` never capture or restore automations, or the Shuttle plugin's
+servers, presets and free-text settings. Shuttle's backup goes only to the private repo with
+`task bb:shuttle:export`; see [the installation guide](installation.md#shuttle). The existing
 `bb:automations` commands still use their separate public/private workflow.
 Run those only deliberately: restoring an enabled schedule makes it run on that
 machine too. See [the installation guide](installation.md#bb-automations).

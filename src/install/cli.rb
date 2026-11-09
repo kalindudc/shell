@@ -13,6 +13,8 @@ module Installer
         dry_run: false,
         bb_automations: false,
         bb_automations_export: false,
+        bb_shuttle: false,
+        bb_shuttle_export: false,
         update: false,
         cortex_only: false
       }
@@ -33,6 +35,10 @@ module Installer
           options[:bb_automations] = true
         when "--bb-automations-export"
           options[:bb_automations_export] = true
+        when "--bb-shuttle"
+          options[:bb_shuttle] = true
+        when "--bb-shuttle-export"
+          options[:bb_shuttle_export] = true
         when "--update"
           options[:update] = true
         when "--cortex"
@@ -43,8 +49,10 @@ module Installer
         end
       end
 
-      raise ArgumentError, "--dry-run requires --bb; no installation was run" if options[:dry_run] && !options[:bb_only]
-      actions = options.values_at(:stow_only, :bb_only, :bb_export, :bb_automations, :bb_automations_export, :cortex_only)
+      if options[:dry_run] && !options[:bb_only] && !options[:bb_shuttle]
+        raise ArgumentError, "--dry-run requires --bb or --bb-shuttle; no installation was run"
+      end
+      actions = options.values_at(:stow_only, :bb_only, :bb_export, :bb_automations, :bb_automations_export, :bb_shuttle, :bb_shuttle_export, :cortex_only)
       raise ArgumentError, "Choose only one installer action" if actions.count(true) > 1
 
       options
@@ -62,6 +70,9 @@ module Installer
       puts "  --bb-automations         Restore saved bb automations (create missing ones) and exit"
       puts "  --bb-automations --update  Also make changed automations match the saved files"
       puts "  --bb-automations-export  Save every bb automation to bb/automations or the private repo and exit"
+      puts "  --bb-shuttle             Restore Shuttle's saved config and settings from the private repo and exit"
+      puts "  --bb-shuttle --dry-run   Preview what restoring Shuttle would change"
+      puts "  --bb-shuttle-export      Save Shuttle's config and settings to the private repo and exit"
       puts "  --cortex   Install cortex and its agent skills, pi extension and bb plugin, then exit"
       puts "  --help     Show this help message"
     end

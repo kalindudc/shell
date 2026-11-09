@@ -41,6 +41,10 @@ ruby src/install.rb --bb
 ruby src/install.rb --bb-automations [--update]
 ruby src/install.rb --bb-automations-export
 
+# Restore, preview or save Shuttle's config (same as `task bb:shuttle`, `bb:shuttle:plan` and `bb:shuttle:export`)
+ruby src/install.rb --bb-shuttle [--dry-run]
+ruby src/install.rb --bb-shuttle-export
+
 # Install cortex and its agent integrations only (same as `task cortex`)
 ruby src/install.rb --cortex
 
@@ -203,6 +207,29 @@ of the files, even when the working copies differ.
 Restoring is never automatic: it creates automations that then run on their own, so run it on
 purpose and pause the copies on any machine that should not run them. It never deletes an
 automation, and it leaves one that differs from its files alone unless you pass `--update`.
+
+### Shuttle
+
+The Shuttle plugin keeps its configuration in its own database: the servers it reads, with each
+command adapter's commands and workspace, the review presets with their prompts, skills and models,
+and the auto review and watch automations. They name work servers and repos, so they are backed up
+only to the private repo, under `bb/shuttle/`:
+
+- `config.toml` is what `bb shuttle config-export` prints, which `bb shuttle config-import` reads back.
+- `settings.json` holds every Shuttle setting from bb's plugin settings, including the free-text ones
+  that `bb.yml` leaves out. A setting that names a bb project is left out, since its id means nothing
+  on another machine. A secret setting stops the export.
+
+```bash
+task bb:shuttle:export   # save both files, then review and commit the private repo
+task bb:shuttle:plan     # show what restoring would change in Shuttle; changes nothing
+task bb:shuttle          # restore: import the config and set each setting that differs
+```
+
+The export checks that the new `config.toml` would restore to exactly what Shuttle has now before
+it replaces the saved one. Restoring needs Shuttle installed, for example by `task bb`. It replaces
+Shuttle's servers, presets and automations with the saved ones. It does not bring back Shuttle's
+database: PRs, boards, Inbox rules, drafts and history.
 
 ## cortex
 

@@ -11,6 +11,7 @@ require_relative "custom"
 require_relative "post_setup"
 require_relative "bb"
 require_relative "bb_automations"
+require_relative "bb_shuttle"
 require_relative "bb_snapshot"
 require_relative "cortex"
 
@@ -50,6 +51,16 @@ module Installer
 
       if @options[:bb_automations]
         BbAutomations.apply!(update: @options[:update])
+        return
+      end
+
+      if @options[:bb_shuttle_export]
+        BbShuttle.export!
+        return
+      end
+
+      if @options[:bb_shuttle]
+        BbShuttle.apply!(dry_run: @options[:dry_run])
         return
       end
 

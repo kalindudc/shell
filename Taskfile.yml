@@ -54,6 +54,21 @@ tasks:
     cmds:
       - ruby src/install.rb --bb-automations-export
 
+  bb:shuttle:
+    desc: "Restore Shuttle's saved config and settings from the private repo"
+    cmds:
+      - ruby src/install.rb --bb-shuttle
+
+  bb:shuttle:plan:
+    desc: "Preview what restoring Shuttle's config and settings would change"
+    cmds:
+      - ruby src/install.rb --bb-shuttle --dry-run
+
+  bb:shuttle:export:
+    desc: "Save Shuttle's config (servers, presets, automations) and settings to the private repo"
+    cmds:
+      - ruby src/install.rb --bb-shuttle-export
+
   check:leaks:
     desc: "Check the public bb recipe and backups for private details"
     cmds:
@@ -139,6 +154,7 @@ tasks:
         bundle exec ruby test/unit/test_bb_snapshot.rb
         bundle exec ruby test/unit/test_bb_app.rb
         bundle exec ruby test/unit/test_bb_automations.rb
+        bundle exec ruby test/unit/test_bb_shuttle.rb
         bundle exec ruby test/unit/test_leak_check.rb
         bundle exec ruby test/unit/test_git_identity.rb
         ruby src/scripts/check-leaks.rb
