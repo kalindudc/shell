@@ -39,7 +39,9 @@ fi
 # Set global bundle config so all projects install gems to the user gem dir
 # and never require root. This persists in ~/.bundle/config.
 "${BUNDLE_BIN}" config set --global path "$(ruby -e 'puts Gem.user_dir')"
-"${BUNDLE_BIN}" config set --global bin "$GEM_BIN"
+# A global bin makes every `bundle install` rewrite the shared launchers in $GEM_BIN
+# with that project's Gemfile hard-coded, so they break when it moves or is deleted.
+"${BUNDLE_BIN}" config unset --global bin
 
 "${BUNDLE_BIN}" install
 

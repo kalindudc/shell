@@ -18,7 +18,8 @@
  */
 
 import { readFileSync } from "node:fs";
-import { StringEnum, Type } from "@earendil-works/pi-ai";
+import { StringEnum } from "@earendil-works/pi-ai";
+import { Type } from "typebox";
 import {
 	DEFAULT_MAX_BYTES,
 	type ExtensionAPI,

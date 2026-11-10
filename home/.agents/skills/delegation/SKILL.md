@@ -50,6 +50,8 @@ Pick the model by naming a persona on the task, not by leaving it to inherit you
 |---|---|---|
 | Implementation from a clear brief: planned features, fixes, refactors, test runs | `builder` | GPT-6.1 Sol, xhigh |
 | Read-only research: code questions, docs, web, inventories | `researcher` | Claude Sonnet 5.5, high |
+| Designing a UI: job brief, HTML mock, production UI (the `ux-design` skill) | `ux-designer` | Claude Opus 5.5, high |
+| Reviewing a UI brief, mock or shipped page, independent of its designer | `ux-reviewer` | GPT-6 Astra, high |
 | Verifying findings in a PR review or critique | `verifier` | the caller's own model |
 | Critics in a PR review or critique | none | the `model` and `thinking` in `critique/critics.yml` |
 

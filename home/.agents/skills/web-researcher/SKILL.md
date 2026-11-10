@@ -1,6 +1,6 @@
 ---
 name: web-researcher
-description: Conduct thorough web-based research using the web_fetch and web_search tools (pi-web extension) with delegation. Use when you need external info not in the local codebase -- docs, API references, current practices, error resolution.
+description: Conduct thorough web-based research using the web_fetch and web_search tools (bb's Forage plugin) with delegation. Use when you need external info not in the local codebase -- docs, API references, current practices, error resolution.
 ---
 
 # Web Research
@@ -13,7 +13,7 @@ description: Conduct thorough web-based research using the web_fetch and web_sea
 
 ## Tool Selection
 
-Both tools come from the `pi-web` extension (`~/.pi/agent/extensions/pi-web`). Run `/web` to see provider and cache status.
+Both tools come from bb's Forage plugin. The `forage` skill covers its providers, privacy limits and cache.
 
 `web_fetch` is the primary research tool. Use it when you know or can construct the URL:
 - Official docs: `https://docs.example.com/api/...`
@@ -35,7 +35,7 @@ Both tools come from the `pi-web` extension (`~/.pi/agent/extensions/pi-web`). R
 - `domains: ["docs.python.org"]` restricts results; `"-reddit.com"` excludes
 - `recency: "month"` (day/week/month/year) for evolving topics
 - `includeContent: true` also returns the readable content of the top results when snippets are not enough
-- Keyless by default (DuckDuckGo, then Exa); the output names the provider used and any fallbacks
+- `provider` picks a backend; the default `auto` tries Brave, SearXNG, DuckDuckGo and then Exa, skipping any that are not configured
 
 ## Quick Research
 
