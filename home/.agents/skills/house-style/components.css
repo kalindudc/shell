@@ -57,9 +57,9 @@ pre code { background: none; padding: 0; font-size: inherit; }
 
 footer { border-top: 1px solid var(--rule); padding: 26px 24px 46px; font-size: 15px; color: var(--ink-soft); }
 
-/* Overview pages use .page; long-form pages keep .read. Prose keeps a reading measure in both. */
-.page { max-width: 1160px; margin: 0 auto; padding: 30px 24px 70px; }
-.page p, .page .lede, .page figcaption { max-width: 70ch; }
+/* Overview pages use .page; long-form pages keep .read. A width in ch changes with font size, so prose shares one fixed --measure. */
+.page { --measure: 820px; max-width: 1160px; margin: 0 auto; padding: 30px 24px 70px; }
+.page p, .page .lede, .page figcaption { max-width: var(--measure); }
 
 figure { margin: 22px 0 26px; }
 figcaption { font-size: 16px; line-height: 1.5; color: var(--ink-soft); margin-top: 10px; }
