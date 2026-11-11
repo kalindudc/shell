@@ -223,7 +223,7 @@ Some of what you write is read by a person, not an agent: cortex task bodies and
 
 ## Visual house style
 
-Every web page you build for this user (static sites, learning guides, HTML reports, dashboards) uses one palette and type system. Load the `house-style` skill before choosing any colour, font or theme, and use its `palette.css` tokens. Do not restyle someone else's site, and follow the user if they name a different palette for one project.
+Every web page you build for this user (static sites, learning guides, HTML reports, dashboards) uses one palette and type system. Load the `house-style` skill before choosing any colour, font, theme or layout, and use its `palette.css` tokens. Follow its content rules too: lead with the answer, tell the story and the next step in short sentences, and add a figure, table or board only where it shows what a sentence cannot, so pages are neither walls of text nor walls of diagrams. Do not restyle someone else's site, and follow the user if they name a different palette for one project.
 
 ---
 
