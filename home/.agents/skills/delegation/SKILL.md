@@ -42,6 +42,10 @@ Name a persona on each task, or set its `model`, to choose the minion's model (s
 - Verification: run a simple check inline; delegate only when isolation or substantial independent work justifies the coordination cost.
 - Multi-file edits: batch related files under one owner and wait for dependent results before continuing.
 
+## Cleanup
+
+Archive a child thread (`bb thread archive <id>`) once its result is read and nothing will go back to it, so the sidebar shows only live work. Keep a child you will return to, such as a builder waiting on review rounds or a reviewer that will re-check its own findings; archive it when that loop ends. Archiving a shared-environment child leaves the checkout alone.
+
 ## Model Selection
 
 Pick the model by naming a persona on the task, not by leaving it to inherit yours. A minion with no `agent` and no `model` runs on the caller's model, which is usually the most expensive one in the session. Verified 2026-11-09 against a week of spend: delegated work on the caller's Opus 5.5 was over a third of it.
@@ -51,7 +55,7 @@ Pick the model by naming a persona on the task, not by leaving it to inherit you
 | Implementation from a clear brief: planned features, fixes, refactors, test runs | `builder` | GPT-6.1 Sol, xhigh |
 | Read-only research: code questions, docs, web, inventories | `researcher` | Claude Sonnet 5.5, high |
 | Designing a UI: job brief, HTML mock, production UI (the `ux-design` skill) | `ux-designer` | Claude Opus 5.5, high |
-| Reviewing a UI brief, mock or shipped page, independent of its designer | `ux-reviewer` | GPT-6 Astra, high |
+| Reviewing a UI brief, mock or shipped page, independent of its designer | `ux-reviewer` | GPT-6.1 Sol, xhigh |
 | Verifying findings in a PR review or critique | `verifier` | the caller's own model |
 | Critics in a PR review or critique | none | the `model` and `thinking` in `critique/critics.yml` |
 

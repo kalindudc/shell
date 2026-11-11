@@ -1,0 +1,128 @@
+<!doctype html>
+<!--
+  Mock shell (ux-design skill, assets/mock-shell.html). Copy it to <work>/mock/index.html and
+  replace the screens inside <main data-page>. A host's own frame and themes, when the product lives
+  inside one, are in catalog/hosts/<host>/.
+  - Frame: an app sidebar and a page with a title bar. Delete the sidebar for a page without one.
+  - Themes: neutral placeholders in light and dark. Replace THEMES with the product's real tokens
+    (scripts/capture-tokens.js) or the person's house style. Every colour is a var(--token).
+  - Width switch: 1400, 1000, 720, 390 (the frame's width, not the window's).
+  - State switch: sets data-state on <html>; mark state variants with data-when="empty" (space-separated list).
+  - Screens: <section data-screen="id">; any element with data-go="id" opens it; the hash keeps it (#id).
+  - Name each piece's production component with data-part="ComponentName".
+  No network requests: keep it that way.
+-->
+<html lang="en" data-theme="light" data-state="default">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock</title>
+<style>
+:root { --frame-w: 1400px; --frame-h: 900px; }
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: #8a8578; font: 13px/1.45 var(--font-sans); color: var(--foreground); }
+.mock-bar { position: sticky; top: 0; z-index: 10; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; padding: 8px 12px; background: #1d1c1a; color: #eee; font: 12px/1.4 ui-monospace, Menlo, monospace; }
+.mock-bar label { display: inline-flex; gap: 6px; align-items: center; }
+.mock-bar select, .mock-bar button { font: inherit; background: #2c2b28; color: #eee; border: 1px solid #555; padding: 2px 6px; }
+.mock-bar .note { opacity: .7; }
+.frame { width: var(--frame-w); height: var(--frame-h); margin: 16px auto; display: grid; grid-template-columns: 256px 1fr; background: var(--background); color: var(--foreground); font-family: var(--font-sans); overflow: hidden; box-shadow: 0 0 0 1px #0003; }
+.frame.narrow { grid-template-columns: 1fr; }
+.frame.narrow .app-sidebar { display: none; }
+.app-sidebar { background: var(--sidebar); color: var(--sidebar-foreground); border-right: 1px solid var(--sidebar-border); overflow: auto; padding: 12px 8px; }
+.app-pane { display: grid; grid-template-rows: 48px 1fr; min-width: 0; }
+.app-titlebar { display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid var(--border-seam); font-size: 13px; }
+[data-page] { overflow: auto; min-width: 0; }
+section[data-screen] { display: none; }
+section[data-screen].on { display: block; }
+[hidden] { display: none !important; }
+a { color: inherit; text-underline-offset: 2px; }
+a[aria-current] { color: var(--primary); }
+/* Helpers named after the tokens, so the mock reads like utility classes in production. */
+.fg { color: var(--foreground); } .muted { color: var(--muted-foreground); } .subtle { color: var(--subtle-foreground); }
+.primary { color: var(--primary); } .ok { color: var(--success); } .warn { color: var(--warning-text); } .bad { color: var(--destructive-text); }
+.seam { border-color: var(--border-seam); } .card { background: var(--card); }
+.hover:hover { background: var(--state-hover); } .selected { background: var(--surface-selected); }
+.attention { background: var(--surface-attention); } .danger { background: var(--surface-destructive); }
+.btn { display: inline-flex; align-items: center; height: 28px; padding: 0 10px; border: 1px solid var(--border-seam); border-radius: var(--radius); background: transparent; color: var(--foreground); font: inherit; font-size: 12px; cursor: pointer; }
+.btn:hover { background: var(--state-hover); }
+.btn.primary-btn { background: var(--primary); color: var(--primary-foreground); border-color: var(--primary); font-weight: 600; }
+.btn:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--ring); outline-offset: 1px; }
+.label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-foreground); }
+.num { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="mock-bar" role="toolbar" aria-label="Mock controls">
+  <strong>Mock</strong>
+  <label>Theme <select id="theme"></select></label>
+  <label>Width <select id="width"><option>1400</option><option>1000</option><option>720</option><option>390</option></select></label>
+  <label>State <select id="state"><option>default</option><option>empty</option><option>loading</option><option>error</option><option>stale</option><option>many</option></select></label>
+  <span class="note">Screens: <span id="screens"></span></span>
+</div>
+<div class="frame" id="frame">
+  <aside class="app-sidebar" data-part="PageSidebar" aria-label="Page navigation">
+    <!-- The product's own navigation. -->
+    <div class="label">Product</div>
+    <p class="muted"><a href="#home" data-go="home">Home</a></p>
+  </aside>
+  <div class="app-pane">
+    <div class="app-titlebar"><span class="muted">Product</span><span class="muted" aria-hidden="true">/</span><span id="crumb">Home</span></div>
+    <main data-page>
+      <section data-screen="home" data-title="Home">
+        <div style="padding:16px">Replace this screen.</div>
+        <div data-when="empty" style="padding:16px" class="muted">Nothing here yet: the empty state.</div>
+      </section>
+    </main>
+  </div>
+</div>
+<script>
+const THEMES = {"light":{"label":"neutral light (placeholder)","className":"light","tokens":{"--font-sans":"ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif","--font-mono":"ui-monospace, SFMono-Regular, Menlo, monospace","--radius":"6px","background":"#ffffff","foreground":"#1f2328","card":"#f6f8fa","card-foreground":"#1f2328","muted-foreground":"#59636e","subtle-foreground":"#636c76","primary":"#0a58ca","primary-foreground":"#ffffff","success":"#1a7f37","warning-text":"#9a6700","destructive-text":"#cf222e","border":"#d1d9e0","border-seam":"#d1d9e0","state-hover":"#1f23280f","surface-selected":"#0a58ca1a","surface-attention":"#d4a72c33","surface-destructive":"#cf222e14","ring":"#0a58ca","sidebar":"#f6f8fa","sidebar-foreground":"#1f2328","sidebar-border":"#d1d9e0"}},"dark":{"label":"neutral dark (placeholder)","className":"dark","tokens":{"--font-sans":"ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif","--font-mono":"ui-monospace, SFMono-Regular, Menlo, monospace","--radius":"6px","background":"#0d1117","foreground":"#e6edf3","card":"#161b22","card-foreground":"#e6edf3","muted-foreground":"#9198a1","subtle-foreground":"#8b949e","primary":"#4493f8","primary-foreground":"#0d1117","success":"#3fb950","warning-text":"#d29922","destructive-text":"#f85149","border":"#3d444d","border-seam":"#3d444d","state-hover":"#e6edf314","surface-selected":"#4493f826","surface-attention":"#d2992226","surface-destructive":"#f8514926","ring":"#4493f8","sidebar":"#010409","sidebar-foreground":"#e6edf3","sidebar-border":"#3d444d"}}};
+const root = document.documentElement;
+const themeSel = document.getElementById("theme");
+for (const [id, t] of Object.entries(THEMES)) themeSel.add(new Option(t.label, id));
+const style = document.createElement("style");
+document.head.appendChild(style);
+function applyTheme(id) {
+  const t = THEMES[id] || Object.values(THEMES)[0];
+  const vars = Object.entries(t.tokens).map(([k, v]) => (k.startsWith("--") ? k : "--" + k) + ": " + v).join("; ");
+  style.textContent = ":root { " + vars + " }";
+  root.dataset.theme = id;
+  root.className = t.className;
+  localStorage.setItem("mock.theme", id);
+}
+function applyWidth(w) {
+  const frame = document.getElementById("frame");
+  root.style.setProperty("--frame-w", w + "px");
+  root.style.setProperty("--frame-h", (w <= 390 ? 844 : 900) + "px");
+  frame.classList.toggle("narrow", w < 1000);
+  localStorage.setItem("mock.width", w);
+}
+function applyState(s) {
+  root.dataset.state = s;
+  for (const el of document.querySelectorAll("[data-when]")) el.hidden = !el.dataset.when.split(/\s+/).includes(s);
+  for (const el of document.querySelectorAll("[data-unless]")) el.hidden = el.dataset.unless.split(/\s+/).includes(s);
+  localStorage.setItem("mock.state", s);
+}
+function go(id) {
+  const screens = [...document.querySelectorAll("section[data-screen]")];
+  const target = screens.find((s) => s.dataset.screen === id) || screens[0];
+  for (const s of screens) s.classList.toggle("on", s === target);
+  document.getElementById("crumb").textContent = target.dataset.title || target.dataset.screen;
+  for (const a of document.querySelectorAll("[data-go]")) a.toggleAttribute("aria-current", a.dataset.go === target.dataset.screen);
+  if (location.hash.slice(1) !== target.dataset.screen) history.replaceState(null, "", "#" + target.dataset.screen);
+}
+document.addEventListener("click", (e) => { const a = e.target.closest("[data-go]"); if (a) { e.preventDefault(); go(a.dataset.go); } });
+themeSel.onchange = () => applyTheme(themeSel.value);
+document.getElementById("width").onchange = (e) => applyWidth(Number(e.target.value));
+document.getElementById("state").onchange = (e) => applyState(e.target.value);
+document.getElementById("screens").textContent = [...document.querySelectorAll("section[data-screen]")].map((s) => s.dataset.screen).join(", ");
+themeSel.value = localStorage.getItem("mock.theme") || Object.keys(THEMES)[0];
+document.getElementById("width").value = localStorage.getItem("mock.width") || "1400";
+document.getElementById("state").value = localStorage.getItem("mock.state") || "default";
+applyTheme(themeSel.value); applyWidth(Number(document.getElementById("width").value)); applyState(document.getElementById("state").value);
+go(location.hash.slice(1));
+window.addEventListener("hashchange", () => go(location.hash.slice(1)));
+</script>
+</body>
+</html>
