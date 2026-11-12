@@ -57,9 +57,14 @@ pre code { background: none; padding: 0; font-size: inherit; }
 
 footer { border-top: 1px solid var(--rule); padding: 26px 24px 46px; font-size: 15px; color: var(--ink-soft); }
 
-/* Overview pages use .page; long-form pages keep .read. A width in ch changes with font size, so prose shares one fixed --measure. */
+/* Overview pages use .page; long-form pages keep .read. The page is one centred column, up to 1160px, and every block starts
+   on its left edge. Text blocks stop at --measure so lines stay readable; it is in px because a width in ch changes with the
+   font size. Figures, tables, boards and card grids fill the column. Only a block that needs more room than the column gets
+   .wide, which extends it equally past the column on both sides. */
 .page { --measure: 820px; max-width: 1160px; margin: 0 auto; padding: 30px 24px 70px; }
-.page p, .page .lede, .page figcaption { max-width: var(--measure); }
+.page p, .page .lede, .page figcaption, .page > ul, .page > ol, .page > blockquote, .page > .callout, .page > .checklist { max-width: var(--measure); }
+.page > .callout, .page > .checklist, .page > .panel { box-sizing: border-box; }
+.page .wide { --w: min(1440px, calc(100vw - 40px)); max-width: none; }
 
 figure { margin: 22px 0 26px; }
 figcaption { font-size: 16px; line-height: 1.5; color: var(--ink-soft); margin-top: 10px; }
@@ -123,6 +128,7 @@ figcaption b { color: var(--ink); font-weight: 600; }
   .lede { font-size: 19px; }
   .read { padding: 28px 18px 64px; }
   .page { padding: 24px 18px 60px; }
+  .wide, .page .wide { --w: 100%; }
   .stepper { grid-auto-flow: row; grid-auto-columns: auto; gap: 14px; }
   .stepper .stp { display: grid; grid-template-columns: 26px 1fr; column-gap: 10px; text-align: left; }
   .stepper .stp::before { display: none; }
