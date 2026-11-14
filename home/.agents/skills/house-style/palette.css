@@ -1,7 +1,18 @@
-/* House palette. Drop-in for any static site, learning guide or HTML report.
-   Theme: follows prefers-color-scheme; force one with <html data-theme="light|dark">. */
+/* House palette: the tokens every page names. Copy the kit folder whole (palette.css, base.css,
+   components.css, site.js, fonts/) into the site as kit/, and link palette.css first.
+   Theme: follows prefers-color-scheme; <html data-theme="light|dark"> forces one. */
 
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap");
+/* The two faces, served from the site itself, so no request leaves it. Each has a local
+   stand-in scaled to its metrics (measured in Chrome against the real files), so nothing
+   moves when the real face arrives. */
+@font-face { font-family: "Source Serif 4"; font-style: normal; font-weight: 200 900; font-display: swap; src: url("fonts/source-serif-4.woff2") format("woff2"); }
+@font-face { font-family: "Source Serif 4"; font-style: italic; font-weight: 200 900; font-display: swap; src: url("fonts/source-serif-4-italic.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/ibm-plex-mono-400.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: italic; font-weight: 400; font-display: swap; src: url("fonts/ibm-plex-mono-400-italic.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/ibm-plex-mono-500.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/ibm-plex-mono-600.woff2") format("woff2"); }
+@font-face { font-family: "Serif Stand-in"; src: local("Times New Roman"), local("Liberation Serif"), local("Tinos"); size-adjust: 98.8%; ascent-override: 105.3%; descent-override: 34.4%; line-gap-override: 0%; }
+@font-face { font-family: "Mono Stand-in"; src: local("Menlo"), local("DejaVu Sans Mono"), local("Courier New"); size-adjust: 99.7%; ascent-override: 102.3%; descent-override: 27.1%; line-gap-override: 0%; }
 
 :root {
   --paper: #f6f3ec;
@@ -26,9 +37,6 @@
   --orange-soft: #f1e1d1;
   --on-accent: #fbf9f4;
   --nav-bg: rgba(246, 243, 236, .95);
-  --serif: "Source Serif 4", Georgia, "Times New Roman", serif;
-  --mono: "IBM Plex Mono", Menlo, ui-monospace, SFMono-Regular, Consolas, monospace;
-  --read: 700px;
   color-scheme: light;
 }
 
@@ -88,7 +96,17 @@ html[data-theme="dark"] {
 
 /* Semantic roles: use these names in components, not raw colours. */
 :root, html[data-theme="dark"] {
-  --link: var(--blue);
+  /* A site's tint: the one hue it marks emphasis in (kickers, labels, part and figure numbers,
+     links). The house's is orange, warm against the teal of the focus ring and of information;
+     a site may pick another palette hue: :root { --tint: var(--purple); }. Orange is also the
+     warning hue, so a warning always carries its word (a chip, a label, a legend), never orange alone. */
+  --tint: var(--orange);
+  /* The voice: the hue for what moves or is most the site's own (the seal, a heading's italic
+     turn, the part being read and how far you have read, the wash). It is the tint unless the
+     site gives it a second hue: :root { --tint: var(--blue); --voice: var(--orange); } */
+  --voice: var(--tint);
+  --link: var(--tint);
+  /* The focus ring is always blue, the one place the keyboard is drawn. */
   --focus: var(--blue);
   --good: var(--aqua);
   --good-soft: var(--aqua-soft);
@@ -102,13 +120,48 @@ html[data-theme="dark"] {
   --accent-soft: var(--purple-soft);
   --secondary: var(--green);
   --secondary-soft: var(--green-soft);
+  /* Strokes that carry meaning in a drawing (connectors, arrows, a node's edge) reach 3:1 on
+     --paper, --card and --deep in both themes (WCAG 1.4.11); --rule is for decoration only. */
+  --stroke: color-mix(in srgb, var(--ink-soft) 75%, var(--rule));
 }
 
-html { background: var(--paper); }
-body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--serif); font-size: 19px; line-height: 1.65; -webkit-font-smoothing: antialiased; }
-a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 3px; }
-:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
-code, kbd, pre { font-family: var(--mono); }
-code { font-size: .8em; background: var(--deep); padding: 1px 5px; border-radius: 4px; }
-::selection { background: var(--blue-soft); }
-@media (max-width: 760px) { body { font-size: 17.5px; } }
+/* Type, space, motion and widths: the same on every page. */
+:root {
+  --serif: "Source Serif 4", "Serif Stand-in", Georgia, serif;
+  --mono: "IBM Plex Mono", "Mono Stand-in", ui-monospace, Menlo, monospace;
+
+  /* Fluid steps between a 360px and a 1280px window, in rem so zoom works: ratio 1.2 narrow and
+     1.25 wide from a 17.5px to 19px body; the title runs 42 to 64px.
+     Mono labels sit apart at 12 to 13px; no serif text on a page is under --step-small. */
+  --step-label: clamp(0.75rem, 0.7255rem + 0.1087vw, 0.8125rem);
+  --step-small: clamp(0.9375rem, 0.9130rem + 0.1087vw, 1rem);
+  --step-body: clamp(1.0938rem, 1.0571rem + 0.1630vw, 1.1875rem);
+  --step-large: clamp(1.3125rem, 1.2453rem + 0.2989vw, 1.4844rem);
+  --step-title: clamp(1.75rem, 1.5543rem + 0.8696vw, 2.25rem);
+  --step-display: clamp(2.625rem, 2.0870rem + 2.3913vw, 4rem);
+  --step-hero: clamp(3.5rem, 2.7174rem + 3.4783vw, 5.5rem);
+
+  /* The space ladder, on a 4px grid. Each rung separates one level, and each is wider than the
+     one inside it: set it as gap on the parent of the things it separates. */
+  --tie: 4px;      /* inside one mark, a number and its unit, a chord's keys */
+  --pair: 8px;     /* a mark and its words, a label and the heading it names */
+  --apart: 12px;   /* parts of one row, a caption from its figure */
+  --rows: 16px;    /* rows of a list, paragraph to paragraph */
+  --group: 24px;   /* groups inside a part, a frame's inset */
+  --block: 40px;   /* a figure, table or list from the prose around it */
+  --part: 96px;    /* part to part */
+  --gutter: clamp(18px, 0.3913rem + 3.2609vw, 48px); /* the page's edge */
+
+  /* The lines every block sits on, centred: prose holds the measure (about 70 characters of
+     body text), and a figure, table or board that needs more room breaks out to --wide, equally
+     on both sides. An overview sits on a --full desk, and the header bar and foot span it. */
+  --measure: calc(var(--step-body) * 32);
+  --wide: 880px;
+  --full: 1160px;
+
+  --radius: 4px;
+  --ease: cubic-bezier(0.23, 1, 0.32, 1);
+  --leave: 100ms;
+  --arrive: 160ms;
+  --settle: 260ms;
+}

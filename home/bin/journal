@@ -11,15 +11,18 @@
 #
 # carryover lists open items in the previous journal that the new body drops
 # and the ledger does not track; it exits 1 when any are missing. render writes
-# the themed HTML briefing. ledger keeps every item with a short id (J-12) so a
+# the briefing, The Morning Edge, in the house style with its kit and fonts inlined
+# so it stands alone in bb's frame. ledger keeps every item with a short id (J-12) so a
 # reply like "done 12 15, drop 20 not mine, snooze 31 mon" closes it for good;
 # apply also closes the cortex tasks behind items marked done (--no-cortex skips
 # that); sync closes items whose cortex tasks are done or whose pull requests are all merged or closed;
 # tidy moves links that old versions stored as match keys back to context; "private 7" keeps an
 # item off the shared site, "share 7" allows it again.
-# site builds the shareable static site from the archived briefings, leaving out
+# site builds the shareable static site from the archived briefings in the house
+# style (the kit, a Markdown twin per page and llms.txt beside them), leaving out
 # private items and anything that matches a sensitive pattern (sensitive.txt adds
-# patterns). Files live in $JOURNAL_HOME, by default ~/.local/share/journal.
+# patterns). JOURNAL_OWNER names the journal and JOURNAL_BYLINE signs the foot.
+# Files live in $JOURNAL_HOME, by default ~/.local/share/journal.
 
 # Standard library only; --disable-gems keeps stale native gems in the user gem dir from breaking it.
 ENV.delete('BUNDLE_GEMFILE')
@@ -27,7 +30,7 @@ ENV.delete('BUNDLE_GEMFILE')
 require_relative 'lib/journal'
 
 def usage(code)
-  puts(File.readlines(__FILE__)[3..22].map { |line| line.sub(/^# ?/, '') })
+  puts(File.readlines(__FILE__).drop(3).take_while { |line| line.start_with?('#') }.map { |line| line.sub(/^# ?/, '') })
   puts("\nrender's JSON:\n#{Journal::Render::SCHEMA}") if code.zero?
   exit code
 end

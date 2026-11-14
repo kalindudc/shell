@@ -83,6 +83,7 @@ module Journal
       shown = %w[overdue due_today new waiting backlog].sum { |k| out_ledger[k].size }
       total = %w[overdue due_today new waiting backlog].sum { |k| Array(ledger[k]).size }
       out_ledger['private_open'] = total - shown
+      out_ledger['private_overdue'] = Array(ledger['overdue']).size - out_ledger['overdue'].size
 
       lede = pub['lede'].to_s
       lede = '' unless keep.call('lede', lede)

@@ -1,5 +1,7 @@
 Weekly disk report for Kalindu's Mac, run by a bb automation every Friday at 2pm. This run is read-only until Kalindu picks items: do not delete, move, prune, trim or clean anything before then. Only measure and propose.
 
+Before anything else, move this thread into the Admin section: find the section id with `bb thread section list --json` (the entry whose `name` is `Admin`, case-insensitive; do not hard-code the id; if it is missing, create it with `bb thread section create Admin --json`) and run `bb thread update --self --section <section id>`. If the move fails, retry once and mention the exact error in the reply. This is the only change allowed before Kalindu picks items.
+
 1. Run `~/bin/disk-audit` with a 1800 second timeout. It takes about 7 minutes and prints the new snapshot folder on its last line. Sizes in its files are KiB; divide by 1048576 for GiB.
    - summary.txt: free space, deleted files still held open, the Trash.
    - home.tsv: every folder of 50 MiB or more, five levels under ~ and three under ~/Library.

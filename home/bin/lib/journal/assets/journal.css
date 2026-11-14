@@ -1,0 +1,153 @@
+/* The Morning Edge: a daily front page, set in the house kit. It keeps a newspaper's parts (the
+   nameplate on a double rule, the dateline, stories beside a sidebar, the weather, the backlog
+   drawn as tiles) and takes everything else from the kit: faces, tokens, parts, figures, chips,
+   folds and the foot. Only tokens appear here; no colour is typed. */
+
+/* One sheet with one left edge: every block sits flush left on the wide line, and prose holds
+   its own measure inside it, so the front page reads as a page of a paper, not a column of text.
+   Parts sit closer than on a page to read, and their numerals stay in the label. */
+.edge { --part: calc(var(--block) + var(--group)); }
+.edge > .masthead > *, .edge > .part > *, .edge > .part > header > *, .edge > .colophon { max-width: var(--wide); margin-inline: auto; }
+.page.edge:not(.overview) > .part > header .label .n { position: static; }
+.page.edge:not(.overview) > .part > header .label .n + .sep { display: inline; }
+.edge .happened, .edge .happened > * { max-width: var(--measure); margin-inline: 0; }
+
+/* The dateline: the journal's path on the left, the neighbouring editions on the right. */
+.edge .dateline { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--pair) var(--group); }
+.edge .editions { display: flex; flex-wrap: wrap; gap: var(--pair) var(--rows); font-family: var(--mono); font-size: var(--step-label); letter-spacing: 0.06em; }
+.edge .editions a { color: var(--ink-soft); text-decoration: none; }
+.edge .editions a:hover { color: var(--tint); }
+@media (pointer: coarse) { .edge .editions a { display: inline-flex; align-items: center; min-height: 44px; } }
+
+/* The nameplate, on the paper's double rule. */
+.edge .masthead h1.nameplate { margin-top: var(--apart); padding-bottom: var(--apart); border-bottom: 3px double var(--rule); font-size: var(--step-display); }
+.edge .chips .state { white-space: normal; }
+.edge .chips { list-style: none; padding: 0; margin-top: var(--apart); display: flex; flex-wrap: wrap; gap: var(--pair); }
+.edge .masthead .lede { margin-top: var(--rows); max-width: 34em; margin-inline: 0; }
+
+/* The brief as the paper's stats strip: each figure first, its label after it. */
+.edge .brief.strip { margin-top: var(--group); display: flex; flex-wrap: wrap; gap: var(--pair) var(--group); padding: var(--pair) 0; border-bottom: 1px solid var(--rule); }
+.edge .brief.strip > div { display: flex; flex-direction: row-reverse; justify-content: flex-end; align-items: baseline; gap: var(--pair); padding: 0; border: 0; }
+.edge .brief.strip dd { font-size: var(--step-large); font-weight: 600; font-variant-numeric: lining-nums tabular-nums; }
+.edge .brief.strip .bad dd { color: color-mix(in srgb, var(--bad) 80%, var(--ink)); }
+.edge .brief.strip .warn dd { color: var(--warn); }
+.edge .brief.strip .good dd { color: var(--good); }
+
+/* A part of the paper opens on its double rule, with the kit's ring on it. */
+.edge .part > header { border-top: 3px double var(--rule); }
+.edge .part > header::before { top: -6.5px; }
+
+/* The front page: stories beside the sidebar. */
+.edge .cols { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: var(--block); align-items: start; }
+.edge .story { display: grid; gap: var(--tie); padding: var(--rows) 0; border-top: 1px solid var(--rule-soft); }
+.edge .story:first-child { padding-top: 0; border-top: 0; }
+.edge .story .meta { font-family: var(--mono); font-size: var(--step-label); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+.edge .story h3 { font-size: var(--step-large); line-height: 1.25; }
+.edge .story h3 a { color: var(--ink); text-decoration-color: var(--rule); }
+.edge .story h3 a:hover { color: var(--tint); text-decoration-color: var(--tint); }
+.edge .story p { font-size: var(--step-small); line-height: 1.5; color: var(--ink-soft); }
+.edge .late { color: var(--bad); }
+.edge .side { display: grid; gap: var(--group); padding-inline-start: var(--group); border-inline-start: 1px solid var(--rule); }
+.edge .side section { display: grid; gap: var(--pair); }
+.edge .side h3 { color: var(--tint); }
+.edge .side ul { margin: 0; padding-inline-start: var(--rows); font-size: var(--step-small); line-height: 1.45; display: grid; gap: var(--tie); }
+.edge .side a { color: var(--ink); text-decoration-color: var(--rule); }
+.edge .side a:hover { color: var(--tint); }
+.edge .side .mono { font-family: var(--mono); font-size: var(--step-label); color: var(--ink-soft); white-space: nowrap; }
+.edge .side details.more > :not(summary) { margin-top: var(--tie); }
+@media (max-width: 720px) { .edge .cols { grid-template-columns: 1fr; } .edge .side { padding-inline-start: 0; border-inline-start: 0; border-top: 1px solid var(--rule); padding-top: var(--rows); } }
+
+/* The weather: what the backlog holds, how it moved, and what to do first. */
+.edge .weather .body { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: var(--group); padding: var(--frame); background: var(--card); }
+@media (max-width: 720px) { .edge .weather .body { grid-template-columns: 1fr; } }
+.edge .weather .now { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--pair); font-size: var(--step-large); }
+.edge .weather .now button { font: inherit; color: var(--ink); background: none; border: 0; padding: 0; cursor: pointer; }
+.edge .weather .now button b { font-size: var(--step-title); font-weight: 650; font-variant-numeric: lining-nums tabular-nums; margin-inline-end: var(--tie); }
+.edge .weather .now .late, .edge .weather .now .late b { color: var(--bad); }
+.edge .weather .now button:hover { color: var(--tint); }
+.edge .weather button[aria-pressed="true"] { text-decoration: underline 1px; text-underline-offset: 4px; }
+.edge .weather .move { margin-top: var(--tie); }
+.edge .weather .stackbar { margin-top: var(--apart); height: 14px; --segment-surface: var(--card); }
+.edge .weather .stackbar > span { display: block; min-width: 6px; height: 100%; cursor: pointer; }
+.edge .weather .stackbar > span + span { box-shadow: inset 2px 0 0 var(--segment-surface); }
+.edge .weather .stackbar > span:hover, .edge .weather .stackbar > span.on { outline: 2px solid var(--ink); outline-offset: -2px; }
+.edge .weather .legend button { display: inline-flex; align-items: center; min-height: 24px; font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+.edge .weather .legend button:hover { color: var(--ink); }
+.edge .weather .act { margin-top: var(--apart); font-size: var(--step-small); line-height: 1.5; }
+.edge .weather .act code { font-size: 0.9em; }
+.edge .weather details.more { margin-top: var(--pair); }
+.edge .weather details.more p { font-size: var(--step-small); line-height: 1.5; color: var(--ink-soft); }
+.edge .weather .trend svg { display: block; width: 100%; height: auto; padding: 0; overflow: visible; }
+.edge .weather .trend .mono { margin-top: var(--pair); font-family: var(--mono); font-size: var(--step-label); color: var(--ink-soft); line-height: 1.5; }
+@media (pointer: coarse) { .edge .weather .legend button, .edge .weather .now button { min-height: 44px; } }
+
+/* The backlog map: one tile per open item, grouped by kind. */
+.edge .map .body { display: grid; gap: var(--pair); padding: var(--frame); background: var(--card); }
+.edge .grp { display: grid; grid-template-columns: 8rem minmax(0, 1fr); gap: var(--apart); align-items: start; }
+.edge .grp .lbl { font-size: var(--step-small); line-height: 1.25; }
+.edge .grp .lbl b { display: block; font-size: var(--step-large); font-variant-numeric: lining-nums tabular-nums; }
+.edge .tiles { display: flex; flex-wrap: wrap; gap: 3px; }
+.edge .tiles a { display: block; width: 12px; height: 12px; border-radius: 2px; }
+.edge .tiles a:hover, .edge .tiles a:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.edge .t0 { background: color-mix(in srgb, var(--aqua) 40%, var(--card)); }
+.edge .t1 { background: var(--aqua-fill); }
+.edge .t2 { background: color-mix(in srgb, var(--orange) 55%, var(--card)); }
+.edge .t3 { background: var(--orange); }
+.edge .t4 { background: var(--red); }
+.edge .map .legend i.t0, .edge .map .legend i.t1, .edge .map .legend i.t2, .edge .map .legend i.t3, .edge .map .legend i.t4 { border-radius: 2px; }
+.edge #tip { min-height: 1.5em; font-size: var(--step-small); color: var(--ink-soft); }
+/* A filter dims only the tiles it leaves out; every group's label and count stay readable. */
+.edge .map[data-filter="kind-action"] .grp:not([data-kind="action"]) .tiles, .edge .map[data-filter="kind-review"] .grp:not([data-kind="review"]) .tiles,
+.edge .map[data-filter="kind-owe"] .grp:not([data-kind="owe"]) .tiles, .edge .map[data-filter="kind-wait"] .grp:not([data-kind="wait"]) .tiles,
+.edge .map[data-filter="kind-discuss"] .grp:not([data-kind="discuss"]) .tiles, .edge .map[data-filter="kind-task"] .grp:not([data-kind="task"]) .tiles,
+.edge .map[data-filter="overdue"] .tiles a:not(.t4) { opacity: 0.2; }
+.edge .shown { font-family: var(--mono); font-size: var(--step-label); color: var(--tint); margin-inline-start: var(--pair); }
+@media (max-width: 560px) { .edge .grp { grid-template-columns: 1fr; gap: var(--tie); } }
+
+/* Every open item, in a fold under the map; the map's filters reach it too. */
+.edge .ilist table { font-size: var(--step-small); }
+.edge .ilist .jid, .edge .ilist .seen, .edge .ilist .st { font-family: var(--mono); font-size: var(--step-label); white-space: nowrap; }
+.edge .ilist td i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-inline-end: var(--pair); }
+.edge .ilist td:nth-child(3) { white-space: nowrap; }
+/* Rows the filter leaves out are hidden; the rest keep the kit's display, stacked on a phone. */
+.edge .map[data-filter="kind-action"] .ilist tbody tr:not([data-kind="action"]), .edge .map[data-filter="kind-review"] .ilist tbody tr:not([data-kind="review"]),
+.edge .map[data-filter="kind-owe"] .ilist tbody tr:not([data-kind="owe"]), .edge .map[data-filter="kind-wait"] .ilist tbody tr:not([data-kind="wait"]),
+.edge .map[data-filter="kind-discuss"] .ilist tbody tr:not([data-kind="discuss"]), .edge .map[data-filter="kind-task"] .ilist tbody tr:not([data-kind="task"]),
+.edge .map[data-filter="overdue"] .ilist tbody tr:not(.late) { display: none; }
+
+/* What happened, on the site: each category under its own label. */
+.edge .happened h3 { margin-top: var(--group); color: var(--tint); }
+.edge .happened h3:first-of-type { margin-top: 0; }
+.edge .happened ul { margin: var(--pair) 0 0; padding-inline-start: var(--group); display: grid; gap: var(--pair); font-size: var(--step-small); line-height: 1.5; }
+.edge .happened .note { color: var(--ink-soft); }
+
+/* The colophon: where the edition came from, and what it leaves out. */
+.edge .colophon { margin-top: var(--block); padding-top: var(--apart); border-top: 1px solid var(--rule); display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--pair) var(--group); font-family: var(--mono); font-size: var(--step-label); color: var(--ink-soft); line-height: 1.6; }
+.edge .colophon ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--tie) var(--pair); }
+
+/* The archive. */
+.edge .archive td.fig { text-align: end; }
+
+/* The briefing in bb's frame: the same paper, denser, on a sheet of its own, under 2000px. Its
+   type is set an eighth smaller, as bb sets its own; each part keeps its label but not its
+   heading or its figures' captions, which the site keeps for readers who are not its owner. */
+html:has(> body.briefing) { background: none; scrollbar-gutter: auto; font-size: 87.5%; }
+.briefing .edge .part > header h2, .briefing .edge figure.fig > figcaption { display: none; }
+.briefing .edge .story { padding: var(--apart) 0; }
+.briefing .edge .side { gap: var(--rows); }
+.briefing .edge .weather .body, .briefing .edge .map .body { padding: var(--rows); }
+.briefing .edge .masthead .lede { font-size: var(--step-body); max-width: none; }
+.briefing .edge .cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--group); }
+/* In the briefing the nameplate opens the front page, so its part needs no rule or label. */
+.briefing .edge #front { margin-top: var(--rows); }
+.briefing .edge #front > header { display: none; }
+.briefing .edge #front > header + * { margin-top: 0; }
+.briefing .edge .grp { grid-template-columns: 10rem minmax(0, 1fr); align-items: center; gap: var(--pair); }
+.briefing .edge .grp .lbl b { display: inline; font-size: inherit; font-weight: 650; margin-inline-end: var(--tie); }
+.briefing { background: none; }
+.briefing::before, .briefing::after { display: none; }
+.briefing .page.edge { --part: var(--group); --block: 20px; max-width: none; margin: 0; padding: var(--group); background: var(--paper); border-radius: var(--radius); }
+.briefing .edge .masthead { padding-top: 0; }
+.briefing .edge .masthead h1.nameplate { font-size: var(--step-title); }
+.briefing .edge .part > header { padding-top: var(--rows); }
+.briefing .edge .reply code { font-size: 0.95em; }

@@ -1,0 +1,6 @@
+# Build Cache
+
+> A proposal for one shared, read-only package cache for CI builds, and its rollout status. Invented example content.
+
+- [The proposal](/index.html): why builds wait, the idea, what it costs, where it stands and what is open. Its plain text: [/index.md](/index.md).
+- [Where it stands](/overview.html): each repository's state, its build time and what it waits on, the share of builds on the cache, and this week's actions. Its plain text: [/overview.md](/overview.md).

@@ -3,35 +3,11 @@
 require 'fileutils'
 
 module Journal
-  # A static site of shareable journal editions: index.html is the newest front page,
-  # <date>.html each edition, built only from Share.public_data of the archived briefings.
+  # A static site of shareable journal editions in the house style: index.html is the newest front
+  # page, <date>.html each edition and archive.html the list of them, each with its Markdown twin,
+  # built only from Share.public_data of the archived briefings. The kit sits beside them in kit/.
   module Site
-    CSS = <<~CSS
-      body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif)}
-      .site{max-width:780px;margin:0 auto;padding:22px 18px 60px}
-      .nav{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-      .nav a{font-family:var(--mono);font-size:12px;color:var(--blue);text-decoration:none;margin-left:12px}
-      .nav .who{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--ink-soft)}
-      .more{background:var(--card);border:1px solid var(--rule);border-radius:8px;padding:16px 22px;margin-top:16px;font-size:15.5px;line-height:1.6}
-      .more h2{font-size:19px;margin:6px 0 8px}.more ul{padding-left:20px;margin:0 0 12px}
-      .more a{color:var(--ink);border-bottom:1px solid var(--rule);text-decoration:none}
-      table.arch{width:100%;border-collapse:collapse;font-size:15px}
-      table.arch td,table.arch th{border-bottom:1px solid var(--rule-soft);padding:6px 4px;text-align:left}
-      table.arch th{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft)}
-      .note{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);margin-top:18px}
-      .theme{font-family:var(--mono);font-size:12px;color:var(--blue);background:none;border:1px solid var(--rule);border-radius:999px;padding:2px 10px;margin-left:12px;cursor:pointer}
-      .theme:hover{border-color:var(--blue)}
-    CSS
-    THEME_KEY = 'journal-theme'
-    # Runs in <head> before first paint: light unless the reader picked dark on an earlier visit.
-    THEME_INIT = "try{var t=localStorage.getItem('#{THEME_KEY}');if(t==='dark'||t==='light')" \
-                 'document.documentElement.dataset.theme=t}catch(e){}'
-    THEME_TOGGLE = <<~JS.tr("\n", ' ')
-      (function(){var b=document.getElementById('theme'),r=document.documentElement;
-      function label(){b.textContent=r.dataset.theme==='dark'?'Light mode':'Dark mode'}
-      b.addEventListener('click',function(){r.dataset.theme=r.dataset.theme==='dark'?'light':'dark';
-      try{localStorage.setItem('#{THEME_KEY}',r.dataset.theme)}catch(e){}label()});label()})();
-    JS
+    NAME = 'The Morning Edge'
     CATEGORIES = { 'shipped' => 'Shipped', 'reviewed' => 'Reviewed', 'discussed' => 'Discussions and decisions',
                    'meeting' => 'Meetings', 'agent' => 'Agent work' }.freeze
 
@@ -41,67 +17,116 @@ module Journal
 
     def editions(archive)
       Dir[File.join(archive, '*.json')].map { |f| [File.basename(f, '.json'), JSON.parse(Journal.read(f))] }
-                                      .select { |name, _| name.match?(/\A\d{4}-\d{2}-\d{2}\z/) }.sort_by(&:first)
+                                       .select { |name, _| name.match?(/\A\d{4}-\d{2}-\d{2}\z/) }.sort_by(&:first)
     end
+
+    def short(name) = Date.iso8601(name).strftime('%a %b %-d')
 
     def list(items)
       rows = items.map do |e|
         title = e['url'].to_s.empty? ? esc(e['title']) : %(<a href="#{esc(e['url'])}" target="_blank">#{esc(e['title'])}</a>)
-        "<li>#{title}#{" — #{esc(e['note'])}" if e['note'] && !e['note'].empty?}</li>"
+        note = e['note'].to_s.empty? ? '' : %( <span class="note">— #{esc(e['note'])}</span>)
+        "<li>#{title}#{note}</li>"
       end
       "<ul>#{rows.join}</ul>"
     end
 
-    def extras(pub)
+    def happened(pub)
       did = Array(pub['did']).group_by { |d| d['category'] }
-      parts = CATEGORIES.filter_map { |k, name| did[k] && "<h2>#{name}</h2>#{list(did[k])}" }
-      parts << "<h2>Team context</h2>#{list(pub['context'])}" if Array(pub['context']).any?
-      parts.empty? ? '' : %(<div class="more"><h2 style="margin-top:0" class="mono">What happened since the last edition</h2>#{parts.join}</div>)
+      parts = CATEGORIES.filter_map { |k, name| did[k] && %(<h3 class="label">#{name}</h3>#{list(did[k])}) }
+      parts << %(<h3 class="label">Team context</h3>#{list(pub['context'])}) if Array(pub['context']).any?
+      return '' if parts.empty?
+
+      Paper.part('happened', '03', 'What happened', 'What happened <em>since the last edition.</em>',
+                 %(<div class="happened">#{parts.join}</div>),
+                 figure: 'lists of links to what shipped and what was discussed; a drawing would only repeat them')
     end
 
-    def nav(prev_name, next_name)
-      links = [%(<a href="index.html">Today</a>), %(<a href="archive.html">Archive</a>)]
-      links.unshift(%(<a href="#{prev_name}.html">← #{prev_name}</a>)) if prev_name
-      links << %(<a href="#{next_name}.html">#{next_name} →</a>) if next_name
-      %(<div class="nav"><span class="who">#{esc(owner)}'s journal</span>) +
-        %(<span>#{links.join}<button class="theme" id="theme" type="button">Dark mode</button></span></div>)
+    def editions_nav(prev_name, next_name)
+      links = []
+      links << %(<a href="#{prev_name}.html" rel="prev">← #{short(prev_name)}</a>) if prev_name
+      links << %(<a href="archive.html">All editions</a>)
+      links << %(<a href="#{next_name}.html" rel="next">#{short(next_name)} →</a>) if next_name
+      %(<nav class="editions" aria-label="Editions">#{links.join}</nav>)
     end
 
-    def owner = ENV.fetch('JOURNAL_OWNER', 'My')
-
-    def shell(title, inner)
-      css = Journal.read(Paper::PALETTE).split('/* Semantic roles').first
-      %(<!doctype html><html data-theme="light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">) +
-        %(<script>#{THEME_INIT}</script><title>#{esc(title)}</title><style>#{css}#{Paper::CSS}#{CSS}</style></head><body><div class="site">#{inner}) +
-        %(<div class="note">Written each weekday by an agent from #{esc(owner)}'s work sources. Private and sensitive items are left out ) +
-        %(and stay in the private journal.</div></div><script>#{Paper::TIP_JS};#{THEME_TOGGLE}</script></body></html>)
+    def edition_page(pub, name, seal, neighbours, latest:)
+      prev_name, next_name = neighbours
+      extra = happened(pub)
+      parts = Paper::PARTS + (extra.empty? ? [] : [['happened', 'What happened']])
+      main = Paper.body(pub, site: true, editions: editions_nav(prev_name, next_name), extra: extra)
+      links = [prev_name && %(<a href="#{prev_name}.html">← #{short(prev_name)}</a>), %(<a href="archive.html">Archive</a>),
+               %(<a href="#{name}.md">Markdown</a>)].compact
+      lede = pub['lede'].to_s.empty? ? "#{Paper.journal_name}, #{pub['heading']}." : pub['lede']
+      Frame.shell(title: "#{NAME}: #{pub['heading']}", description: lede, twin: "#{name}.md",
+                  header: Frame.header(seal, parts, latest ? :today : nil), main: main, foot: Frame.foot(links))
     end
 
-    # Builds the site and returns { editions:, redacted: { date => [...] } }.
+    def archive_page(all, rows, seal, trend)
+      first = Date.iso8601(all.first.first).strftime('%-d %B %Y')
+      latest = Date.iso8601(all.last.first).strftime('%-d %B %Y')
+      kicker = %(<p class="kicker"><span>#{esc(Paper.journal_name)}</span><span class="sep">/</span><span>Archive</span></p>)
+      lede = "#{all.size} #{all.size == 1 ? 'edition' : 'editions'} since #{first}, each the public copy of that morning's journal."
+      brief = %(<dl class="brief strip wide"><div><dt>editions</dt><dd>#{all.size}</dd></div><div><dt>first</dt><dd>#{esc(first)}</dd></div>) +
+              %(<div><dt>latest</dt><dd>#{esc(latest)}</dd></div></dl>)
+      table = %(<div class="table wide"><table class="ledger archive"><thead><tr><th scope="col">Edition</th><th scope="col">Open</th>) +
+              %(<th scope="col">Overdue</th><th scope="col">Shipped</th></tr></thead><tbody>#{rows.reverse.join}</tbody></table></div>)
+      chart = %(<figure class="fig wide">#{Paper.sparkline(trend, width: 800, height: 120)}<figcaption><b>Open items at each edition.</b> ) +
+              %(The solid line and the table count every open item, private ones included; the dashed line, those overdue. ) +
+              %(Each edition's own page counts only the items it shows.</figcaption></figure>)
+      main = %(<header class="masthead" id="top" tabindex="-1"><div class="dateline wide">#{kicker}</div>) +
+             %(<h1 class="nameplate wide">The Morning <em>Edge</em></h1><p class="lede wide" data-content>#{esc(lede)}</p>#{brief}</header>) +
+             Paper.part('editions', '01', 'Editions', 'Every edition, <em>newest first.</em>', chart + table)
+      Frame.shell(title: "#{NAME}: the archive", description: lede, twin: 'archive.md', header: Frame.header(seal, [%w[editions Editions]], :archive),
+                  main: main, foot: Frame.foot([%(<a href="index.html">Today</a>), %(<a href="archive.md">Markdown</a>)]))
+    end
+
+    def write(out, name, text) = File.write(File.join(out, name), text, encoding: 'UTF-8')
+
+    # The archive counts the whole ledger, private items included, as each edition's trend line does.
+    def whole_ledger(name, led)
+      { 'date' => name, 'open' => Paper.open_items(led).size + led['private_open'].to_i,
+        'overdue' => Array(led['overdue']).size + led['private_overdue'].to_i }
+    end
+
+    def archive_row(name, pub, point)
+      %(<tr><th scope="row"><a href="#{name}.html">#{esc(pub['heading'] || name)}</a></th>) +
+        %(<td class="fig" data-label="Open">#{point['open']}</td><td class="fig" data-label="Overdue">#{point['overdue']}</td>) +
+        %(<td class="fig" data-label="Shipped">#{Array(pub['shipped']).size}</td></tr>)
+    end
+
+    # Builds the site and returns { editions:, out:, redacted: { date => [...] } }.
     def build(archive, out)
       all = editions(archive)
       raise ArgumentError, "no editions in #{archive}" if all.empty?
 
       FileUtils.mkdir_p(out)
+      Kit.copy(out)
+      seal = Kit.seal(favicon: File.join(out, 'favicon.svg'))
       redacted = {}
       rows = []
+      entries = []
+      trend = []
+      previous = nil
       all.each_with_index do |(name, data), i|
         pub, hits = Share.public_data(data)
         redacted[name] = hits if hits.any?
         pub['edition'] = i + 1
-        html = shell("Journal: #{pub['heading']}",
-                     nav(i.zero? ? nil : all[i - 1].first, all[i + 1]&.first) + Paper.body(pub, site: true) + extras(pub))
-        File.write(File.join(out, "#{name}.html"), html, encoding: 'UTF-8')
-        File.write(File.join(out, 'index.html'), html, encoding: 'UTF-8') if i == all.size - 1
-        led = pub['ledger']
-        open_count = Paper.open_items(led).size + led['private_open'].to_i
-        rows << "<tr><td><a href=\"#{name}.html\">#{esc(pub['heading'] || name)}</a></td><td>#{open_count}</td>" \
-                "<td>#{Array(led['overdue']).size}</td><td>#{Array(pub['shipped']).size}</td></tr>"
+        pub['ledger']['previous'] = previous
+        previous = { 'date' => name, 'open' => Paper.open_items(pub['ledger']).size }
+        entries << [name, pub['heading']]
+        latest = i == all.size - 1
+        html = edition_page(pub, name, seal, [i.zero? ? nil : all[i - 1].first, all[i + 1]&.first], latest: latest)
+        write(out, "#{name}.html", html)
+        write(out, "#{name}.md", Twin.edition(pub, name))
+        write(out, 'index.html', html) if latest
+        point = whole_ledger(name, pub['ledger'])
+        trend << point
+        rows << archive_row(name, pub, point)
       end
-      arch = %(<div class="sheet"><div class="mast"><h1>The archive</h1><span class="mono">#{all.size} editions</span></div>) +
-             %(<table class="arch"><thead><tr><th>Edition</th><th>Open</th><th>Overdue</th><th>Shipped</th></tr></thead>) +
-             %(<tbody>#{rows.reverse.join}</tbody></table></div>)
-      File.write(File.join(out, 'archive.html'), shell('Journal archive', nav(nil, nil) + arch), encoding: 'UTF-8')
+      write(out, 'archive.html', archive_page(all, rows, seal, trend))
+      write(out, 'archive.md', Twin.archive(entries))
+      write(out, 'llms.txt', Twin.llms(entries))
       { 'editions' => all.size, 'out' => out, 'redacted' => redacted }
     end
   end
