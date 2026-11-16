@@ -202,6 +202,24 @@ function uxAudit(given) {
     if (n >= 4 && instruction.test(text)) instructions.push(item);
   }
 
+  const renderedFontSize = (el, size) => {
+    if (el instanceof SVGGraphicsElement) {
+      const m = el.getScreenCTM();
+      if (m) return size * Math.hypot(m.c, m.d);
+    }
+    let matrix = new DOMMatrix(), zoom = 1;
+    for (let e = el; e; e = e.parentElement) {
+      const c = getComputedStyle(e);
+      if (c.zoom && c.zoom !== "normal") zoom *= parseFloat(c.zoom) / (c.zoom.endsWith("%") ? 100 : 1);
+      if (c.transform !== "none") matrix = new DOMMatrix(c.transform).multiply(matrix);
+      if (c.scale && c.scale !== "none") {
+        const [x, y = x, z = 1] = c.scale.split(/\s+/).map(Number);
+        matrix = new DOMMatrix().scale(x, y, z).multiply(matrix);
+      }
+    }
+    return size * zoom * Math.hypot(matrix.m21, matrix.m22, matrix.m23);
+  };
+
   const contrast = [];
   const unknownContrast = [];
   let inactiveLowContrast = 0;
@@ -232,7 +250,8 @@ function uxAudit(given) {
     if (!bg.known) unknownContrast.push(item);
     else if (r < need && inactive(el)) inactiveLowContrast += 1;
     else if (r < need) contrast.push(item);
-    if (size < opts.minFont) smallText.push({ path: pathOf(el), text: sample(el), size });
+    const renderedSize = renderedFontSize(el, size);
+    if (renderedSize < opts.minFont) smallText.push({ path: pathOf(el), text: sample(el), size: renderedSize });
     if (s.display === "block" || s.display === "list-item" || el.tagName === "P") {
       const ch = el.getBoundingClientRect().width / (size * 0.5);
       if (ch > opts.maxLineCh && (el.innerText || "").length > opts.maxLineCh) longLines.push({ path: pathOf(el), text: sample(el), approxCh: Math.round(ch) });
@@ -262,31 +281,47 @@ function uxAudit(given) {
     if (!name && !labelled) unnamed.push({ path: pathOf(el) });
   });
 
+  const clipAxes = (c) => {
+    const paint = /\b(paint|strict|content)\b/.test(c.contain);
+    const clamp = Boolean(c.webkitLineClamp && c.webkitLineClamp !== "none");
+    return { x: paint || clamp || c.overflowX !== "visible", y: paint || clamp || c.overflowY !== "visible" };
+  };
+  const clipTo = (el, r) => {
+    const o = { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    for (let e = el; e && e !== document.documentElement; e = e.parentElement) {
+      const { x, y } = clipAxes(getComputedStyle(e));
+      if (!x && !y) continue;
+      const q = e.getBoundingClientRect();
+      if (x) { o.left = Math.max(o.left, q.left); o.right = Math.min(o.right, q.right); }
+      if (y) { o.top = Math.max(o.top, q.top); o.bottom = Math.min(o.bottom, q.bottom); }
+    }
+    return { ...o, width: Math.max(0, o.right - o.left), height: Math.max(0, o.bottom - o.top) };
+  };
+
   const truncated = [];
   const overflowX = [];
+  let clippedOverflow = false;
   for (const el of root.querySelectorAll("*")) {
     if (!visible(el)) continue;
     const s = getComputedStyle(el);
     if (s.textOverflow === "ellipsis" && el.scrollWidth > el.clientWidth + 1) truncated.push({ path: pathOf(el), text: sample(el), hasTitle: Boolean(el.title || el.closest("[title]")) });
     const r = el.getBoundingClientRect();
-    if (r.right > vw + 1 && s.position !== "fixed" && el.closest("[style*='overflow'], .overflow-x-auto, .overflow-auto") === null) overflowX.push({ path: pathOf(el), right: Math.round(r.right) });
+    if (r.right > vw + 1 && s.position !== "fixed") {
+      const shown = clipTo(el.parentElement, r);
+      if (shown.width > 0 && shown.height > 0 && shown.right > vw + 1) overflowX.push({ path: pathOf(el), right: Math.round(shown.right) });
+      else clippedOverflow = true;
+    }
   }
 
   // Layout defects: text that spills from its box or card, text drawn over text, sticky bars over content,
   // and in diagrams, labels wider than their shape, connector ends that touch no shape, shapes cut by the frame.
-  const clipTo = (el, r) => {
-    const o = { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
-    for (let e = el; e && e !== document.documentElement; e = e.parentElement) {
-      const c = getComputedStyle(e);
-      if (c.overflowX !== "visible" || c.overflowY !== "visible" || (c.webkitLineClamp && c.webkitLineClamp !== "none")) {
-        const q = e.getBoundingClientRect();
-        o.left = Math.max(o.left, q.left); o.right = Math.min(o.right, q.right); o.top = Math.max(o.top, q.top); o.bottom = Math.min(o.bottom, q.bottom);
-      }
-    }
-    return { ...o, width: Math.max(0, o.right - o.left), height: Math.max(0, o.bottom - o.top) };
-  };
   const inkOf = (el) => { const range = document.createRange(); range.selectNodeContents(el); return clipTo(el, range.getBoundingClientRect()); };
-  const clips = (from, to) => { for (let e = from; e && e !== to; e = e.parentElement) { const c = getComputedStyle(e); if (c.overflowX !== "visible" || c.overflowY !== "visible") return true; } return false; };
+  // Clipped descendants can enlarge scrollWidth without painting past the viewport.
+  const documentOverflow = document.documentElement.scrollWidth > vw + 1 && (!clippedOverflow || [root, ...textEls].some((el) => {
+    const r = el === root ? clipTo(el.parentElement, el.getBoundingClientRect()) : inkOf(el);
+    return r.width > 0 && r.height > 0 && r.right > vw + 1;
+  }));
+  const clips = (from, to) => { for (let e = from; e && e !== to; e = e.parentElement) { const { x, y } = clipAxes(getComputedStyle(e)); if (x || y) return true; } return false; };
   const boxed = (e) => { const c = getComputedStyle(e); return parseFloat(c.borderTopWidth) > 0 || parseFloat(c.borderLeftWidth) > 0 || !/^(rgba\(0, 0, 0, 0\)|transparent)$/.test(c.backgroundColor) || c.boxShadow !== "none"; };
   const blockText = textEls.filter((el) => !el.closest("svg") && getComputedStyle(el).display !== "inline");
   const textSpill = [];
@@ -440,7 +475,7 @@ function uxAudit(given) {
       truncatedText: truncated.length,
       truncatedWithoutTitle: truncated.filter((t) => !t.hasTitle).length,
       longLines: longLines.length,
-      horizontalOverflow: overflowX.length || (document.documentElement.scrollWidth > vw + 1 ? 1 : 0),
+      horizontalOverflow: overflowX.length || (documentOverflow ? 1 : 0),
       textSpill: textSpill.length,
       textOutsideBox: textOutsideBox.length,
       overlappingText: overlappingText.length,

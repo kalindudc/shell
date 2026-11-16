@@ -1,0 +1,39 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Clipped pan window</title>
+<style>
+  body { margin: 0; font: 16px/20px Arial; }
+  #pan { position: absolute; left: 40px; top: 40px; width: 160px; height: 80px; }
+  #pan.paint { contain: paint; }
+  #pan.layout-paint { contain: layout paint; }
+  #pan.strict { contain: strict; }
+  #pan.content { contain: content; }
+  #pan.clip { overflow: clip; }
+  #pan.hidden { overflow: hidden; }
+  #pan.auto { overflow: auto; }
+  #pan.x-clip { overflow-x: clip; }
+  #pan.y-clip { overflow-y: clip; }
+  #wide { width: 1200px; height: 20px; }
+  #hidden-label { position: absolute; left: 180px; top: 40px; width: 180px; }
+  #outside-label { position: absolute; left: 220px; top: 80px; width: 180px; }
+</style>
+<div id="pan">
+  <div id="wide">Wide child</div>
+  <div id="hidden-label">Hidden map label</div>
+</div>
+<div id="outside-label">Outside map label</div>
+<script>
+  const mode = new URLSearchParams(location.search).get("clip");
+  document.querySelector("#pan").className = mode.startsWith("y-hidden") ? "y-clip" : mode;
+  if (mode.startsWith("y-hidden")) {
+    document.querySelector("#wide").style.cssText = "position: absolute; top: 200px";
+    document.querySelector("#hidden-label").remove();
+    document.querySelector("#outside-label").remove();
+  }
+  if (mode === "y-hidden-spill") {
+    const spill = document.createElement("div");
+    spill.style.cssText = "position: absolute; left: 40px; top: 160px; width: 100px; white-space: nowrap";
+    spill.textContent = "Unclipped text ".repeat(50);
+    document.body.append(spill);
+  }
+</script>

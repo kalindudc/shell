@@ -1,0 +1,29 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Rendered label and target sizes</title>
+<style>
+  body { margin: 0; font-family: Arial; }
+  #outer, #inner { transform-origin: top left; }
+  #outer { margin: 40px; }
+  #label { display: block; width: 120px; font-size: 11px; line-height: 22px; }
+  button { display: inline-block; box-sizing: border-box; width: 30px; height: 30px; padding: 0; border: 0; font-size: 16px; }
+  #targets { display: flex; }
+</style>
+<div id="outer"><div id="inner">
+  <span id="label">Map label</span>
+  <div id="targets"><button aria-label="First"></button><button aria-label="Second"></button></div>
+</div></div>
+<script>
+  const mode = new URLSearchParams(location.search).get("mode");
+  const outer = document.querySelector("#outer"), inner = document.querySelector("#inner"), label = document.querySelector("#label");
+  if (mode === "down" || mode === "inline") outer.style.transform = "scale(0.7)";
+  if (mode === "inline") label.style.display = "inline";
+  if (mode === "up") {
+    outer.style.transform = "scale(2)"; label.style.fontSize = "8px";
+    for (const button of document.querySelectorAll("button")) { button.style.width = "16px"; button.style.height = "16px"; }
+  }
+  if (mode === "zoom") outer.style.zoom = "0.7";
+  if (mode === "nested") { outer.style.transform = "scale(0.5)"; inner.style.transform = "scale(1.4)"; }
+  if (mode === "mixed") { outer.style.zoom = "0.5"; inner.style.transform = "scale(1.4)"; }
+  if (mode === "individual") outer.style.scale = "0.7";
+</script>

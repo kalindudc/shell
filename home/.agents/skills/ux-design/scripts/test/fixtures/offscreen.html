@@ -1,0 +1,16 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Unclipped viewport overflow</title>
+<style>
+  body { margin: 0; font: 16px/20px Arial; }
+  #first, #second { position: absolute; left: 900px; width: 140px; }
+  #first { top: 40px; }
+  #second { top: 80px; }
+</style>
+<div style="overflow: visible">
+  <div id="first">First offscreen</div>
+  <div id="second">Second offscreen</div>
+</div>
+<script>
+  if (new URLSearchParams(location.search).has("plain")) document.querySelector("[style]").removeAttribute("style");
+</script>
