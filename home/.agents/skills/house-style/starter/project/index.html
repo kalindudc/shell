@@ -1,0 +1,166 @@
+<!doctype html>
+<!-- The model project hub, built from the kit. Invented content; replace every word and number.
+     A project site (main.page.overview.project) keeps the status page's desk and adds cards: the
+     headline of what is built, what has moved and what is left, a tally, a phase strip and a
+     timeline. Every number comes from a data file, with its source and as-of time in its tip. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f6f3ec">
+<title>The new queue runs, three big senders are left.</title>
+<meta name="description" content="Every service but fourteen sends its jobs to the new queue. Three of the fourteen send nine in ten of the old queue's jobs, and each has a plan.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="The new queue runs, three big senders are left.">
+<meta property="og:description" content="Every service but fourteen sends its jobs to the new queue. Three of the fourteen send nine in ten of the old queue's jobs, and each has a plan.">
+<script>
+  try {
+    const t = localStorage.getItem("theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch {}
+  document.documentElement.classList.add("js");
+</script>
+<link rel="preload" href="kit/fonts/source-serif-4.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="kit/fonts/ibm-plex-mono-500.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="kit/palette.css">
+<link rel="stylesheet" href="kit/base.css">
+<link rel="stylesheet" href="kit/components.css">
+<style>
+  /* The example's own voice: a project site may lead in one of the category hues (rule 15). */
+  :root { --tint: var(--blue); --voice: var(--blue); }
+</style>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate" type="text/markdown" href="index.md">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the page</a>
+
+<header class="topbar">
+  <div class="inner">
+    <a class="home" href="index.html"><svg class="mark seal" viewBox="0 0 32 32" aria-hidden="true"><circle class="edge" cx="16" cy="16" r="14.75"/><path class="glyph" transform="translate(8.54 21.05) scale(0.02313)" d="M454.1 243.3Q376.7 243.3 322.7 212.1Q268.7 180.8 242.7 121.2Q216.6 61.6 223.8 -22.6H328.3Q323.5 42.8 340.7 86.2Q358 129.5 395.2 150.9Q432.5 172.2 486.6 172.2Q523.5 172.2 550.3 166Q577.2 159.8 604.8 146.8L620.9 180.9Q589.3 207.4 548.2 225.4Q507.1 243.3 454.1 243.3ZM281.6 16.7Q210.3 16.7 155.6 -14.9Q100.9 -46.4 69.6 -107.1Q38.3 -167.7 38.3 -255.3Q38.3 -323.5 54.6 -386.4Q70.8 -449.4 101.8 -502.7Q132.8 -556 176.7 -595.9Q220.7 -635.8 276.3 -658Q331.9 -680.3 396.6 -680.3Q470.3 -680.3 525.4 -647.4Q580.6 -614.5 611 -553.6Q641.4 -492.7 641.4 -408.2Q641.4 -339.3 625.1 -276.2Q608.9 -213.1 577.9 -159.7Q546.8 -106.2 502.6 -66.8Q458.5 -27.5 403 -5.4Q347.5 16.7 281.6 16.7ZM292.9 -33.9Q326.2 -33.9 356 -48.2Q385.8 -62.6 411 -88.7Q436.1 -114.7 456.8 -151.1Q477.4 -187.4 491.8 -231.4Q506.3 -275.5 513.9 -325.3Q521.5 -375.1 521.5 -428Q521.5 -491.4 507.7 -536.5Q493.8 -581.5 464.5 -605.6Q435.2 -629.7 386.8 -629.7Q354 -629.7 324.2 -615.5Q294.4 -601.3 268.7 -575.2Q242.9 -549.2 222.6 -513.2Q202.3 -477.2 187.9 -433.5Q173.4 -389.8 165.6 -340.2Q157.8 -290.6 157.8 -237Q157.8 -173.9 172 -128.4Q186.1 -82.9 215.9 -58.4Q245.8 -33.9 292.9 -33.9Z"/></svg><span class="name">Job queue retirement</span></a>
+    <div class="index">
+      <nav class="pages" aria-label="Pages"><a href="index.html" aria-current="page">The hub</a><a href="board.html">The board</a></nav>
+      <nav class="route" aria-label="Parts"><ol><li><a href="#stands">Where it stands</a></li><li><a href="#phases">Phases</a></li><li><a href="#jobs">Where the jobs are</a></li><li><a href="#next">Next</a></li></ol></nav>
+    </div>
+    <div class="actions">
+      <button type="button" class="iconbtn" data-open-keys aria-label="Keys" title="Keys (?)"><kbd>?</kbd></button>
+      <div class="switch" role="radiogroup" aria-label="Theme">
+        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-choice="light" aria-label="Light" title="Light"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg></button>
+        <button type="button" role="radio" aria-checked="true" tabindex="0" data-choice="system" aria-label="Match System" title="Match System"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" stroke="none"/></svg></button>
+        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-choice="dark" aria-label="Dark" title="Dark"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/></svg></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="page overview project" id="main">
+
+<header class="masthead" id="top" tabindex="-1">
+  <p class="kicker"><span>Job queue</span><span class="sep">/</span><span>retirement</span><span class="sep">/</span><span>example content</span></p>
+  <h1>The new queue runs, <em>three big senders are left.</em></h1>
+  <p class="lede" data-content>Every service but fourteen sends its jobs to the new queue. Three of the fourteen send nine in ten of the old queue's jobs, and each has a plan.</p>
+</header>
+
+<section class="part" id="stands" tabindex="-1" aria-labelledby="stands-h">
+  <header>
+    <p class="label"><span class="n">01</span><span class="sep">/</span>Where it stands</p>
+    <h2 id="stands-h">Built, moved, <em>and what is left.</em></h2>
+  </header>
+  <p data-content>The new queue is finished and most services have moved. What is left sits in three services, so the last moves matter more than their count.</p>
+  <div class="headline">
+    <article class="card soft c1">
+      <p class="label">Built</p>
+      <p class="big"><b><span class="fact" tabindex="0" data-tip="Cluster inventory, 13 November 2026">14</span></b> clusters run the new queue</p>
+      <p class="note">9 in production, across 3 regions</p>
+      <ul><li>Retries with a dead-letter queue</li><li>Quotas for each tenant</li><li>A dashboard and a backlog alert</li><li>A replay tool for failed jobs</li></ul>
+    </article>
+    <article class="card soft c2">
+      <p class="label">Moved</p>
+      <p class="big"><b><span class="fact" tabindex="0" data-tip="Job audit, 13 November 2026">38</span></b> of 52 services moved</p>
+      <p class="note">Billing, the first big one, since 4 November</p>
+      <ul><li><span class="fact" tabindex="0" data-tip="Job audit, 13 November 2026">214 of 260</span> job types off the old queue</li><li><span class="fact" tabindex="0" data-tip="The PR board, 13 November 2026, 14:05">9 of 16</span> cleanup PRs merged</li><li>Owners asked about 9 idle job types</li></ul>
+    </article>
+    <article class="card soft c3">
+      <p class="label">Left</p>
+      <p class="big"><b><span class="fact" tabindex="0" data-tip="Job audit, 13 November 2026">3</span></b> services send <span class="fact" tabindex="0" data-tip="Old-queue job counts, week to 13 November 2026">91%</span> of old jobs</p>
+      <p class="note">Search indexing, Mail and Exports, each with a plan</p>
+      <ul><li>6 smaller services in progress</li><li>5 not started</li><li>The old queue switches off after the last move</li></ul>
+    </article>
+  </div>
+  <div class="tally" role="group" aria-label="The 52 services by state">
+    <p class="label">52 services</p>
+    <span><i class="sw" style="--sw: var(--aqua-fill)"></i>Done <b>38</b></span>
+    <span><i class="sw" style="--sw: var(--blue)"></i>In progress <b>6</b></span>
+    <span><i class="sw" style="--sw: var(--cat-3)"></i>Not started <b>5</b></span>
+    <span><i class="sw" style="--sw: var(--ink)"></i>Needs a new path <b>3</b></span>
+    <span class="bar" role="img" aria-label="38 done, 6 in progress, 5 not started, 3 need a new path"><span style="width: 73.1%; --sw: var(--aqua-fill)"></span><span style="width: 11.5%; --sw: var(--blue)"></span><span style="width: 9.6%; --sw: var(--cat-3)"></span><span style="width: 5.8%; --sw: var(--ink)"></span></span>
+  </div>
+  <p class="source"><span>Job audit, 13 November 2026</span><span class="sep">·</span><span>each number's tip names its source</span></p>
+</section>
+
+<section class="part" id="phases" tabindex="-1" aria-labelledby="phases-h">
+  <header>
+    <p class="label"><span class="n">02</span><span class="sep">/</span>Phases</p>
+    <h2 id="phases-h">Four phases, <em>the second nearly done.</em></h2>
+  </header>
+  <p data-content>Building the queue is done. Moving services is three quarters of the way there, and the big senders move once the holiday freeze lifts.</p>
+  <ol class="phases">
+    <li><a class="card good" href="board.html#rollouts"><span class="n">01</span><h3>Build the new queue</h3><span class="count">5 of 5 done</span><span class="mini" role="img" aria-label="5 of 5 done"><span style="width: 100%; --sw: var(--aqua-fill)"></span></span></a></li>
+    <li><a class="card info" href="board.html#prs"><span class="n">02</span><h3>Move the services</h3><span class="count">38 of 52 moved, 6 moving</span><span class="mini" role="img" aria-label="38 of 52 moved, 6 moving"><span style="width: 73.1%; --sw: var(--aqua-fill)"></span><span style="width: 11.5%; --sw: var(--blue)"></span></span></a></li>
+    <li><a class="card" href="board.html#rollouts"><span class="n">03</span><h3>Move the big senders</h3><span class="count">0 of 3, plans ready</span><span class="mini" role="img" aria-label="0 of 3 moved"></span></a></li>
+    <li><a class="card" href="#next"><span class="n">04</span><h3>Switch off the old queue</h3><span class="count">after the last move</span><span class="mini" role="img" aria-label="Not started"></span></a></li>
+  </ol>
+</section>
+
+<section class="part" id="jobs" tabindex="-1" aria-labelledby="jobs-h">
+  <header>
+    <p class="label"><span class="n">03</span><span class="sep">/</span>Where the jobs are</p>
+    <h2 id="jobs-h">Three services send <em>most of the old queue's jobs.</em></h2>
+  </header>
+  <p data-content>Search indexing alone sends over half. Moving these three services ends nine in ten of the jobs the old queue still carries.</p>
+  <figure class="full">
+    <div class="stackbar" role="img" aria-label="Old-queue jobs by service: Search indexing 54%, Mail 23%, Exports 14%, every other service 9%">
+      <span style="width: 54%; background: var(--cat-1)" title="Search indexing 54%"></span><span style="width: 23%; background: var(--cat-2)" title="Mail 23%"></span><span style="width: 14%; background: var(--cat-3)" title="Exports 14%"></span><span style="width: 9%; background: var(--cat-7)" title="Every other service 9%"></span>
+    </div>
+    <ul class="legend"><li><i style="background: var(--cat-1)"></i>Search indexing 54%</li><li><i style="background: var(--cat-2)"></i>Mail 23%</li><li><i style="background: var(--cat-3)"></i>Exports 14%</li><li><i style="background: var(--cat-7)"></i>Every other service 9%</li></ul>
+    <figcaption data-content>Share of the old queue's jobs in the week to 13 November, by service. <b>91% come from three services.</b></figcaption>
+  </figure>
+</section>
+
+<section class="part" id="next" tabindex="-1" aria-labelledby="next-h" data-figure="dated steps in order; the timeline is their drawing">
+  <header>
+    <p class="label"><span class="n">04</span><span class="sep">/</span>Next</p>
+    <h2 id="next-h">What happens next, <em>in order.</em></h2>
+  </header>
+  <p data-content>Each big sender moves on its own date, one at a time, and the old queue stays as the way back until the last one is done.</p>
+  <ol class="timeline">
+    <li class="done"><time datetime="2026-11-04">4 Nov</time><span><b>Billing moved.</b> The first big service, with no lost jobs.</span></li>
+    <li class="current"><time datetime="2026-11-20">20 Nov</time><span><b>Exports moves.</b> Its plan is approved and its owner runs it.</span></li>
+    <li><time datetime="2026-12-02">2 Dec</time><span><b>Mail moves.</b> After the holiday freeze lifts.</span></li>
+    <li><time datetime="2026-12-09">9 Dec</time><span><b>Search indexing moves.</b> Replays first, then live jobs.</span></li>
+    <li><time datetime="2026-12-16">16 Dec</time><span><b>The old queue switches off.</b> Read-only for a week, then removed.</span></li>
+  </ol>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="inner"><span><a href="board.html">The board</a><a href="index.md">Markdown</a><a href="#main">Back to the top</a></span><span class="by">by Kalindu De Costa</span></div>
+</footer>
+
+<dialog class="keys" id="keys" aria-labelledby="keys-h">
+  <h2 id="keys-h">Keys</h2>
+  <dl>
+    <div><dt><kbd>j</kbd></dt><dd>Next part</dd></div>
+    <div><dt><kbd>k</kbd></dt><dd>Previous part</dd></div>
+    <div><dt><kbd>g</kbd></dt><dd>Top of the page</dd></div>
+    <div><dt><kbd>G</kbd></dt><dd>Last part</dd></div>
+    <div><dt><kbd>?</kbd></dt><dd>Show or hide this list; Escape closes it</dd></div>
+  </dl>
+  <form method="dialog"><label class="toggle"><input type="checkbox" data-keys-toggle checked>Character shortcuts</label><button class="btn" type="submit">Close</button></form>
+</dialog>
+
+<script src="kit/site.js" defer></script>
+</body>
+</html>

@@ -14,6 +14,7 @@
   const root = page.documentElement;
   const main = page.querySelector("main");
   const overview = main?.classList.contains("overview") === true;
+  const project = main?.classList.contains("project") === true;
   const shown = (element) => element?.isConnected === true && element.checkVisibility();
   const meta = (selector) => page.querySelector(selector)?.getAttribute("content")?.trim() ?? "";
   const loads = async (address, drawing) => {
@@ -62,10 +63,24 @@
   if (titles !== 1) missing.push(`one <h1>, the page's title: it has ${titles}`);
   if (page.querySelector(".topbar .home svg.mark.seal .edge") === null) missing.push("the site's seal in the header's home link: draw it with scripts/mark.py");
   if (page.querySelector('.topbar [role="radiogroup"][aria-label="Theme"]') === null) missing.push('the theme switch in the header: role="radiogroup" aria-label="Theme", with Light, Match System and Dark');
-  if ([...page.querySelectorAll(".masthead .brief > div")].length < 2) missing.push('the brief under the lede: <dl class="brief"> with the two to five facts a reader needs first (status, what is asked, owner, updated)');
+  const briefed = [...page.querySelectorAll(".masthead .brief > div")].length >= 2;
+  if (project && !overview) missing.push('the project form on the status page\'s desk: <main class="page overview project">');
+  if (project && !briefed && page.querySelectorAll("main .headline > .card").length < 2) missing.push('the brief or the headline: a project page opens on <dl class="brief"> or a .headline of two to three cards (built, moved, left)');
+  else if (!project && !briefed) missing.push('the brief under the lede: <dl class="brief"> with the two to five facts a reader needs first (status, what is asked, owner, updated)');
   const first = page.querySelector("a[href], button, input, select, textarea, [tabindex]:not([tabindex='-1'])");
   const skipsTo = first?.getAttribute("href")?.startsWith("#") ? first.getAttribute("href") : "";
   if (skipsTo.length < 2 || page.getElementById(decodeURIComponent(skipsTo.slice(1))) === null) missing.push("a skip link, the first thing focus reaches, to the page's main part");
+
+  // Controls the page draws: no system menu, and nothing in the header that comes and goes.
+  const native = [...page.querySelectorAll("select")].find(shown);
+  if (native) missing.push(`a system dropdown ("${(native.getAttribute("aria-label") || native.name || native.id).slice(0, 30)}"): load kit/site.js, which draws every <select> as the page's own`);
+  if (page.querySelector(".topbar .live, .topbar [data-live], .topbar [aria-live]") !== null) missing.push("live status in the header: put it in the page beside what it describes, so the header keeps its shape");
+  // Every number a project page draws from data names its source and when it was true.
+  const unsourced = [...page.querySelectorAll("main .fact")].find((fact) => shown(fact) && !(fact.dataset.tip ?? "").trim());
+  if (unsourced) missing.push(`a number without its source ("${named(unsourced).slice(0, 30)}"): give each .fact a data-tip with its source and as-of time`);
+  // A group whose every item is done starts folded, so what still needs work stays in view.
+  const doneOpen = [...page.querySelectorAll("details.group[open]")].find((group) => { const states = [...group.querySelectorAll(".rows .state")]; return states.length > 0 && states.every((state) => state.classList.contains("good")); });
+  if (doneOpen) missing.push(`a group that is all done but open ("${named(doneOpen.querySelector("summary")).slice(0, 30)}"): fold it by leaving out open`);
 
   // The Keys list opens on ? and Escape closes it, with focus back where it was.
   const keysHeading = () => [...page.querySelectorAll("dialog h2, dialog h3")].find((heading) => named(heading) === "Keys");
@@ -221,6 +236,16 @@
     if (ink === null) continue;
     const measured = ratio(ink, washed);
     if (measured < (large ? 3 : 4.5)) { missing.push(`text on the wash at ${measured.toFixed(2)}:1 ("${text.textContent.trim().slice(0, 30)}" in <${element.localName}>, ${ratio(ink, paper).toFixed(2)}:1 on plain paper): use a stronger colour or lower --wash-hue`); break; }
+  }
+
+  // Category chips (the pastel category set): each word must read on its own pastel fill, 4.5:1.
+  for (const chip of page.querySelectorAll(".cat")) {
+    if (!shown(chip) || !chip.textContent.trim()) continue;
+    const style = getComputedStyle(chip);
+    const ink = rgb(style.color), fill = rgb(style.backgroundColor);
+    if (ink === null || fill === null || /rgba\(0, 0, 0, 0\)|transparent/.test(style.backgroundColor)) { missing.push(`a category chip ("${chip.textContent.trim().slice(0, 30)}") without a pastel fill: give it a class from .cat.c1 to .cat.c7`); break; }
+    const measured = ratio(ink, fill);
+    if (measured < 4.5) { missing.push(`a category chip at ${measured.toFixed(2)}:1 ("${chip.textContent.trim().slice(0, 30)}"): use its --cat-N-ink on its --cat-N-soft`); break; }
   }
 
   // The kit, not a stranger's: fonts from the site, and no colour typed into the markup.

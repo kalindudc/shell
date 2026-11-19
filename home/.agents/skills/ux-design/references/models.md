@@ -7,7 +7,7 @@ Which model to run each mode on, and how AI designers and reviewers fail. The pi
 | Mode | Model | Effort | Runner-up | Why |
 |---|---|---|---|---|
 | Plan and build | Claude Opus 5.5 | high or more | Claude Fable 5.2 (twice the price), Claude Sonnet 5.5 for routine screens | Tied for first on Arena's WebDev board (1818 versus Fable 5.2's 1832 on 2026-11-09, within noise); practitioners prefer it for open-ended UI; half Fable's price |
-| Review | GPT-6.1 Sol | xhigh | none without the person's approval | Another family than the designer, at a cost a loop of many reviews can carry; the person's choice on 2026-11-11; no study ranks current models at UI critique |
+| Review | GPT-6.2 Sol | xhigh | none without the person's approval | Another family than the designer, at a cost a loop of many reviews can carry; the person's choice on 2026-11-11 (GPT-6.1 Sol then, moved to 6.2 at the same price on 2026-11-18); no study ranks current models at UI critique |
 
 Run the reviewer on another model family than the designer when you can: a model is blind to its own habits. No published evidence shows that maximum effort improves design or critique, and coding data shows small losses past high; more effort for a designer exploring widely is a reasonable bet, not a proven one.
 

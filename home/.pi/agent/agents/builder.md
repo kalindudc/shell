@@ -1,7 +1,7 @@
 ---
 name: builder
-description: Implementation agent on GPT-6.1 Sol -- makes a change from a clear brief (files, behaviour, how to verify), runs the checks and reports what changed. Use for planned features, fixes and refactors; keep design calls and high-risk changes on your own model.
-model: openai/gpt-6.1-sol
+description: Implementation agent on GPT-6.2 Sol -- makes a change from a clear brief (files, behaviour, how to verify), runs the checks and reports what changed. Use for planned features, fixes and refactors; keep design calls and high-risk changes on your own model.
+model: openai-1m/gpt-6.2-sol
 thinking: xhigh
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: ux-reviewer
-description: Independent UX reviewer on GPT-6.1 Sol -- reviews a brief, a mock or a shipped UI against the person's jobs with the ux-design skill's procedure, measured checks and Nielsen severities, changing nothing it reviews. Use after ux-designer builds, or to audit an existing UI; it runs on another model than the designer on purpose.
-model: openai/gpt-6.1-sol
+description: Independent UX reviewer on GPT-6.2 Sol -- reviews a brief, a mock or a shipped UI against the person's jobs with the ux-design skill's procedure, measured checks and Nielsen severities, changing nothing it reviews. Use after ux-designer builds, or to audit an existing UI; it runs on another model than the designer on purpose.
+model: openai-1m/gpt-6.2-sol
 thinking: xhigh
 tools: read, grep, find, ls, bash, write, web_fetch
 ---

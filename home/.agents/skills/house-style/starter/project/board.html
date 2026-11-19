@@ -1,0 +1,192 @@
+<!doctype html>
+<!-- The model project board, built from the kit. Invented content; replace every word and number.
+     A board opens on its tally, then a filter row (a search field and dropdowns; kit/site.js draws
+     each <select>), then one card per team that folds once every PR in it is merged. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f6f3ec">
+<title>9 of 16 cleanup PRs merged, seven still open.</title>
+<meta name="description" content="Every pull request that moves a service off the old queue or removes its code, grouped by team.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="9 of 16 cleanup PRs merged, seven still open.">
+<meta property="og:description" content="Every pull request that moves a service off the old queue or removes its code, grouped by team.">
+<script>
+  try {
+    const t = localStorage.getItem("theme");
+    if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+  } catch {}
+  document.documentElement.classList.add("js");
+</script>
+<link rel="preload" href="kit/fonts/source-serif-4.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="kit/fonts/ibm-plex-mono-500.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="kit/palette.css">
+<link rel="stylesheet" href="kit/base.css">
+<link rel="stylesheet" href="kit/components.css">
+<style>
+  /* The example's own voice: a project site may lead in one of the category hues (rule 15). */
+  :root { --tint: var(--blue); --voice: var(--blue); }
+</style>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate" type="text/markdown" href="board.md">
+</head>
+<body>
+<a class="skip" href="#main">Skip to the page</a>
+
+<header class="topbar">
+  <div class="inner">
+    <a class="home" href="index.html"><svg class="mark seal" viewBox="0 0 32 32" aria-hidden="true"><circle class="edge" cx="16" cy="16" r="14.75"/><path class="glyph" transform="translate(8.54 21.05) scale(0.02313)" d="M454.1 243.3Q376.7 243.3 322.7 212.1Q268.7 180.8 242.7 121.2Q216.6 61.6 223.8 -22.6H328.3Q323.5 42.8 340.7 86.2Q358 129.5 395.2 150.9Q432.5 172.2 486.6 172.2Q523.5 172.2 550.3 166Q577.2 159.8 604.8 146.8L620.9 180.9Q589.3 207.4 548.2 225.4Q507.1 243.3 454.1 243.3ZM281.6 16.7Q210.3 16.7 155.6 -14.9Q100.9 -46.4 69.6 -107.1Q38.3 -167.7 38.3 -255.3Q38.3 -323.5 54.6 -386.4Q70.8 -449.4 101.8 -502.7Q132.8 -556 176.7 -595.9Q220.7 -635.8 276.3 -658Q331.9 -680.3 396.6 -680.3Q470.3 -680.3 525.4 -647.4Q580.6 -614.5 611 -553.6Q641.4 -492.7 641.4 -408.2Q641.4 -339.3 625.1 -276.2Q608.9 -213.1 577.9 -159.7Q546.8 -106.2 502.6 -66.8Q458.5 -27.5 403 -5.4Q347.5 16.7 281.6 16.7ZM292.9 -33.9Q326.2 -33.9 356 -48.2Q385.8 -62.6 411 -88.7Q436.1 -114.7 456.8 -151.1Q477.4 -187.4 491.8 -231.4Q506.3 -275.5 513.9 -325.3Q521.5 -375.1 521.5 -428Q521.5 -491.4 507.7 -536.5Q493.8 -581.5 464.5 -605.6Q435.2 -629.7 386.8 -629.7Q354 -629.7 324.2 -615.5Q294.4 -601.3 268.7 -575.2Q242.9 -549.2 222.6 -513.2Q202.3 -477.2 187.9 -433.5Q173.4 -389.8 165.6 -340.2Q157.8 -290.6 157.8 -237Q157.8 -173.9 172 -128.4Q186.1 -82.9 215.9 -58.4Q245.8 -33.9 292.9 -33.9Z"/></svg><span class="name">Job queue retirement</span></a>
+    <div class="index">
+      <nav class="pages" aria-label="Pages"><a href="index.html">The hub</a><a href="board.html" aria-current="page">The board</a></nav>
+      <nav class="route" aria-label="Parts"><ol><li><a href="#prs">Pull requests</a></li><li><a href="#rollouts">Rollouts</a></li></ol></nav>
+    </div>
+    <div class="actions">
+      <button type="button" class="iconbtn" data-open-keys aria-label="Keys" title="Keys (?)"><kbd>?</kbd></button>
+      <div class="switch" role="radiogroup" aria-label="Theme">
+        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-choice="light" aria-label="Light" title="Light"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg></button>
+        <button type="button" role="radio" aria-checked="true" tabindex="0" data-choice="system" aria-label="Match System" title="Match System"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor" stroke="none"/></svg></button>
+        <button type="button" role="radio" aria-checked="false" tabindex="-1" data-choice="dark" aria-label="Dark" title="Dark"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10z"/></svg></button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="page overview project" id="main">
+
+<header class="masthead" id="top" tabindex="-1">
+  <p class="kicker"><span>Job queue</span><span class="sep">/</span><span>pull requests</span><span class="sep">/</span><span>example content</span></p>
+  <h1>9 of 16 cleanup PRs merged, <em>seven still open.</em></h1>
+  <p class="lede" data-content>Every pull request that moves a service off the old queue or removes its code, grouped by team. A team folds away once all its PRs are merged.</p>
+  <dl class="brief">
+    <div><dt>Status</dt><dd><span class="state warn">Moving</span>7 PRs open across 2 teams</dd></div>
+    <div><dt>Next</dt><dd>Mail's two open PRs need a reviewer</dd></div>
+    <div><dt>Updated</dt><dd><time datetime="2026-11-13T14:05">13 November 2026, 14:05</time></dd></div>
+  </dl>
+</header>
+
+<section class="part" id="prs" tabindex="-1" aria-labelledby="prs-h">
+  <header>
+    <p class="label"><span class="n">01</span><span class="sep">/</span>Pull requests</p>
+    <h2 id="prs-h">Every PR, <em>by team.</em></h2>
+  </header>
+  <p data-content>The tally counts every PR on the board. Narrow it by stage or team; a team's card folds once all of its PRs are merged.</p>
+  <div class="tally" role="group" aria-label="The 16 PRs by stage">
+    <p class="label">16 PRs</p>
+    <span><i class="sw" style="--sw: var(--stroke)"></i>Draft <b>1</b></span>
+    <span><i class="sw" style="--sw: var(--blue)"></i>Open <b>4</b></span>
+    <span><i class="sw" style="--sw: var(--purple)"></i>Approved <b>2</b></span>
+    <span><i class="sw" style="--sw: var(--aqua-fill)"></i>Merged <b>9</b></span>
+    <span class="bar" role="img" aria-label="1 draft, 4 open, 2 approved, 9 merged"><span style="width: 6.25%; --sw: var(--stroke)"></span><span style="width: 25%; --sw: var(--blue)"></span><span style="width: 12.5%; --sw: var(--purple)"></span><span style="width: 56.25%; --sw: var(--aqua-fill)"></span></span>
+  </div>
+  <div class="filters">
+    <input type="search" id="q" placeholder="Search PRs, services or people" aria-label="Search PRs">
+    <select id="stage" aria-label="Stage" data-filter><option value="all">Any stage</option><option value="draft">Draft</option><option value="open">Open</option><option value="approved">Approved</option><option value="merged">Merged</option></select>
+    <select id="team" aria-label="Team" data-filter><option value="all">Every team</option><option value="billing">Billing</option><option value="mail">Mail</option><option value="search">Search</option></select>
+    <span class="count" id="count" aria-live="polite">16 of 16 PRs</span>
+  </div>
+  <p class="live" data-state="live">Live: PR states refresh every 5 minutes, last at 14:05</p>
+  <div class="groups">
+    <details class="group" data-team="billing">
+      <summary><span class="name">Billing <small>3 services</small></span><span class="mini" role="img" aria-label="4 of 4 merged"><span style="width: 100%; --sw: var(--aqua-fill)"></span></span><span class="counts">4 merged</span></summary>
+      <ul class="rows">
+        <li data-stage="merged"><span class="state good">Merged</span><a href="#prs">#1002 Move invoice jobs to the new queue</a><span class="who">Ana · 9 Nov</span></li>
+        <li data-stage="merged"><span class="state good">Merged</span><a href="#prs">#1007 Move payout jobs</a><span class="who">Ana · 9 Nov</span></li>
+        <li data-stage="merged"><span class="state good">Merged</span><a href="#prs">#1011 Remove old-queue clients</a><span class="who">Ben · 10 Nov</span></li>
+        <li data-stage="merged"><span class="state good">Merged</span><a href="#prs">#1015 Drop the old retry table</a><span class="who">Ben · 11 Nov</span></li>
+      </ul>
+    </details>
+    <details class="group" data-team="mail" open>
+      <summary><span class="name">Mail <small>2 services</small></span><span class="mini" role="img" aria-label="3 merged, 1 approved, 2 open"><span style="width: 50%; --sw: var(--aqua-fill)"></span><span style="width: 16.7%; --sw: var(--purple)"></span><span style="width: 33.3%; --sw: var(--blue)"></span></span><span class="counts">2 open · 1 approved · 3 merged</span></summary>
+      <ul class="rows">
+        <li data-stage="open"><span class="state info">Open</span><a href="#prs">#1043 Send receipts through the new queue</a><span class="who">Cleo · 3 days</span></li>
+        <li data-stage="open"><span class="state info">Open</span><a href="#prs">#1051 Remove old-queue retries</a><span class="who">Cleo · 2 days</span></li>
+        <li data-stage="approved"><span class="state accent">Approved</span><a href="#prs">#1038 Add the dead-letter alert</a><span class="who">Dev · 1 day</span></li>
+        <li data-stage="merged"><span class="state good">Merged</span><a href="#prs">#1012 Move digest emails</a><span class="who">Dev · 8 Nov</span></li>
+        <li data-stage="merged"><span class="state good">Merged</span><a href="#prs">#1019 Move bounce handling</a><span class="who">Dev · 9 Nov</span></li>
+        <li data-stage="merged"><span class="state good">Merged</span><a href="#prs">#1024 Move unsubscribe jobs</a><span class="who">Cleo · 10 Nov</span></li>
+      </ul>
+    </details>
+    <details class="group" data-team="search" open>
+      <summary><span class="name">Search <small>1 service</small></span><span class="mini" role="img" aria-label="2 merged, 1 approved, 2 open, 1 draft"><span style="width: 33.3%; --sw: var(--aqua-fill)"></span><span style="width: 16.7%; --sw: var(--purple)"></span><span style="width: 33.3%; --sw: var(--blue)"></span><span style="width: 16.7%; --sw: var(--stroke)"></span></span><span class="counts">1 draft · 2 open · 1 approved · 2 merged</span></summary>
+      <ul class="rows">
+        <li data-stage="draft"><span class="state ">Draft</span><a href="#prs">#1060 Replay indexing jobs on the new queue</a><span class="who">Eli · today</span></li>
+        <li data-stage="open"><span class="state info">Open</span><a href="#prs">#1057 Split the indexing worker</a><span class="who">Eli · 4 days</span></li>
+        <li data-stage="open"><span class="state info">Open</span><a href="#prs">#1049 Rate-limit the reindex job</a><span class="who">Fay · 5 days</span></li>
+        <li data-stage="approved"><span class="state accent">Approved</span><a href="#prs">#1031 Add indexing quotas</a><span class="who">Fay · 2 days</span></li>
+        <li data-stage="merged"><span class="state good">Merged</span><a href="#prs">#1004 Move suggestion jobs</a><span class="who">Eli · 7 Nov</span></li>
+        <li data-stage="merged"><span class="state good">Merged</span><a href="#prs">#1009 Move synonym jobs</a><span class="who">Fay · 8 Nov</span></li>
+      </ul>
+    </details>
+  </div>
+</section>
+
+<section class="part" id="rollouts" tabindex="-1" aria-labelledby="rollouts-h" data-figure="each move's steps in order; its timeline is their drawing">
+  <header>
+    <p class="label"><span class="n">02</span><span class="sep">/</span>Rollouts</p>
+    <h2 id="rollouts-h">Each big move, <em>step by step.</em></h2>
+  </header>
+  <p data-content>Each tab is one service's move, with its steps in order. A link to a step inside a tab opens that tab, so old links keep working.</p>
+  <div class="tabs" role="tablist" aria-label="Moves">
+    <button type="button" role="tab" id="tab-billing" aria-controls="move-billing" aria-selected="false">Billing<span class="n">done</span></button>
+    <button type="button" role="tab" id="tab-exports" aria-controls="move-exports" aria-selected="true">Exports<span class="n">20 Nov</span></button>
+  </div>
+  <div role="tabpanel" id="move-billing" aria-labelledby="tab-billing" hidden>
+    <ol class="timeline">
+      <li class="done"><time datetime="2026-10-28">28 Oct</time><span><b>Both queues take jobs.</b> The new queue gets a copy of each.</span></li>
+      <li class="done"><time datetime="2026-10-31">31 Oct</time><span><b>Workers read the new queue.</b> The old one is the way back.</span></li>
+      <li class="done"><time datetime="2026-11-04">4 Nov</time><span><b>The old queue stops.</b> No lost jobs in a week of checks.</span></li>
+    </ol>
+  </div>
+  <div role="tabpanel" id="move-exports" aria-labelledby="tab-exports">
+    <ol class="timeline">
+      <li class="done"><time datetime="2026-11-12">12 Nov</time><span><b>The plan is approved.</b> The owner runs each step.</span></li>
+      <li class="current"><time datetime="2026-11-20">20 Nov</time><span><b>Both queues take jobs.</b> A day of copies, compared by count.</span></li>
+      <li><time datetime="2026-11-21">21 Nov</time><span><b>Workers read the new queue.</b> One region first, then the rest.</span></li>
+      <li><time datetime="2026-11-25">25 Nov</time><span><b>The old queue stops.</b> Kept read-only for a week.</span></li>
+    </ol>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="inner"><span><a href="index.html">The hub</a><a href="board.md">Markdown</a><a href="#main">Back to the top</a></span><span class="by">by Kalindu De Costa</span></div>
+</footer>
+
+<dialog class="keys" id="keys" aria-labelledby="keys-h">
+  <h2 id="keys-h">Keys</h2>
+  <dl>
+    <div><dt><kbd>j</kbd></dt><dd>Next part</dd></div>
+    <div><dt><kbd>k</kbd></dt><dd>Previous part</dd></div>
+    <div><dt><kbd>g</kbd></dt><dd>Top of the page</dd></div>
+    <div><dt><kbd>G</kbd></dt><dd>Last part</dd></div>
+    <div><dt><kbd>?</kbd></dt><dd>Show or hide this list; Escape closes it</dd></div>
+  </dl>
+  <form method="dialog"><label class="toggle"><input type="checkbox" data-keys-toggle checked>Character shortcuts</label><button class="btn" type="submit">Close</button></form>
+</dialog>
+
+<script>
+  // The example's filters: words, a stage and a team. Each team's card hides when none of its PRs match.
+  (() => {
+    const rows = [...document.querySelectorAll("#prs .rows > li")];
+    const [q, stage, team, count] = ["q", "stage", "team", "count"].map((id) => document.getElementById(id));
+    const apply = () => {
+      let shown = 0;
+      for (const row of rows) {
+        const hit = row.textContent.toLowerCase().includes(q.value.trim().toLowerCase())
+          && (stage.value === "all" || row.dataset.stage === stage.value)
+          && (team.value === "all" || row.closest(".group").dataset.team === team.value);
+        row.hidden = !hit;
+        if (hit) shown += 1;
+      }
+      for (const group of document.querySelectorAll("#prs .group")) group.hidden = !group.querySelector(".rows > li:not([hidden])");
+      count.textContent = `${shown} of ${rows.length} PRs`;
+    };
+    for (const field of [q, stage, team]) field.addEventListener("input", apply);
+  })();
+</script>
+<script src="kit/site.js" defer></script>
+</body>
+</html>

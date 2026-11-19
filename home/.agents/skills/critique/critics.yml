@@ -13,9 +13,13 @@
 # BenchLeader, Google's Gemini 4 Argon took ~12 s per step on real reviews, and the user
 # ruled out Gemini, GLM, DeepSeek and Grok. The Anthropic critic therefore shares a vendor
 # with the first pass, so it may share its blind spots; three vendors still vote, so no
-# single vendor reaches the quorum alone. Never make the reviewing model itself a critic:
-# since 2026-11-05 Shuttle's thorough reviews run on claude-fable-5-1, so Opus 5.5 took
-# Fable's seat.
+# single vendor reaches the quorum alone.
+#
+# Use these entries exactly as written, even when one is the reviewing model, and NEVER
+# swap a seat for another model. Since 2026-11-11 Shuttle's thorough reviews run on
+# claude-opus-5-5, so the Opus seat is the reviewing model; the user chose on 2026-11-18 to
+# keep it there. Runs that swapped it for claude-fable-5-1 cost $1.54 and ~19 min per
+# critic (median of 19, Nov 11-18) against $0.42 and ~1 min for Opus (101 runs).
 #
 # 2026-11-05, PR 78515 (three findings, all three KEEP from each critic; seconds per
 # round): claude-opus-5-5 high 131 s, gpt-6.1-sol 200 s, kimi-k3 299 s.
@@ -26,6 +30,9 @@
 #   gpt-6.1-sol       xhigh   68 s  index 67.2  $1.60 / $8.00
 #   kimi-k3           high    53 s  index 62.1  $3.00 / $15.00
 #   claude-fable-5-1  high    84 s  index 67.1  $8.40 / $42.00  (the most thorough)
+# The measurements above are for gpt-6.1-sol; on 2026-11-18 its seat moved to gpt-6.2-sol,
+# at the same price, through the openai-1m provider (1M-context window; input above 272K
+# tokens is billed at the higher tier).
 # Also measured there: gpt-6.1-terra 40 s (index 65.2, a second OpenAI vote);
 # gpt-6-astra 56 s ($8.20 / $41); claude-sonnet-5-5 22 s but shallow (3 tool calls, the
 # only dissent of 9); gemini-4-argon 368 s at medium and 102 s at low; glm-5p3 67 s.
@@ -34,7 +41,7 @@
 # fireworks/fireworks:accounts/... . Do not shorten it: a shorter form can resolve,
 # silently, to another build (it did for DeepSeek, to the dated -1017 one).
 critics:
-  - model: openai/gpt-6.1-sol
+  - model: openai-1m/gpt-6.2-sol
     thinking: xhigh
     name: GPT
   - model: fireworks/fireworks:accounts/fireworks/models/kimi-k3

@@ -279,7 +279,7 @@ Harness configuration owns actual tool availability and enforcement. Shared poli
 
 A minion with no `agent` and no `model` runs on your own model, usually the most expensive one. Name a persona on every `spawn` task:
 
-- `builder` (GPT-6.1 Sol) for implementation from a clear brief; `researcher` (Claude Sonnet 5.5) for read-only research.
+- `builder` (GPT-6.2 Sol) for implementation from a clear brief; `researcher` (Claude Sonnet 5.5) for read-only research.
 - PR reviews keep their models: reviewers, `verifier` and critics use what their skill names. NEVER move them to a cheaper model.
 - Leave `agent` and `model` unset only for work that needs your judgment (a design decision, a high-risk or high-impact change) or a model the user asked for, and say why in the task.
 

@@ -1,5 +1,6 @@
 // House script: the theme switch, the page keys and their list, the header's route and strip,
-// checklists that remember, blocks that arrive once, and a helper that hands charts the theme's colours. The page is whole without
+// dropdowns drawn by the page, tabs, checklists that remember, blocks that arrive once, and a
+// helper that hands charts the theme's colours. The page is whole without
 // it; the head's inline script has already applied a stored theme and set class="js" on <html>.
 // Load it with <script src="kit/site.js" defer></script>.
 
@@ -230,7 +231,7 @@
   };
   document.addEventListener("keydown", (event) => {
     if (event.metaKey || event.ctrlKey || event.altKey) return;
-    if (event.target.closest?.("input, textarea, select, [contenteditable]")) return;
+    if (event.target.closest?.("input, textarea, select, [contenteditable], [role='listbox']")) return;
     if (!lettersOn()) return;
     if (event.key === "?" && keys) {
       event.preventDefault();
@@ -251,6 +252,237 @@
     if (!inside) keys.close();
   });
   document.querySelectorAll("[data-open-keys]").forEach((button) => button.addEventListener("click", () => keys?.showModal()));
+
+  // Dropdowns are drawn by the page, never the system menu. Every <select> (but a multiple one or
+  // a list box with a size) becomes a button naming its choice and a list in the page's palette,
+  // including a <select> a script adds later. The <select> stays in the page, hidden, holding the
+  // value and firing input and change, and a script that sets its value, class or options is
+  // followed. house.pick(box, { label, options: [[value, text], …], value, onChange }) draws one
+  // from options a script holds, and returns { value, set(v), update(options) } for live counts.
+  // Keys: Enter, Space or the arrows open it; the arrows, Home, End or a letter move; Enter or
+  // Space choose; Escape closes it and Tab moves on. The list opens in the top layer.
+  const topLayer = typeof HTMLElement.prototype.showPopover === "function";
+  let openPick = null;
+  let pickSeq = 0;
+  const placePick = (pick) => {
+    if (!topLayer || pick.list.hidden) return;
+    const b = pick.button.getBoundingClientRect();
+    pick.list.style.minWidth = `${Math.round(b.width)}px`;
+    const { offsetHeight: h, offsetWidth: w } = pick.list;
+    const below = innerHeight - b.bottom - 8;
+    const top = below < h && b.top > below ? b.top - h - 4 : b.bottom + 4;
+    pick.list.style.top = `${Math.round(Math.max(8, top))}px`;
+    pick.list.style.left = `${Math.round(Math.max(8, Math.min(b.left, innerWidth - w - 8)))}px`;
+  };
+  const closePick = (pick, refocus) => {
+    if (!pick) return;
+    if (topLayer && pick.list.matches(":popover-open")) pick.list.hidePopover();
+    pick.list.hidden = true;
+    pick.button.setAttribute("aria-expanded", "false");
+    if (openPick === pick) openPick = null;
+    if (refocus) pick.button.focus();
+  };
+  house.pick = (box, config) => {
+    const id = `pick-${(pickSeq += 1)}`;
+    const filter = config.filter !== false;
+    let value = config.value ?? config.options[0]?.[0];
+    let items = [];
+    box.classList.add("pick-wrap");
+    box.replaceChildren();
+    const button = document.createElement("button");
+    button.type = "button";
+    button.id = id;
+    button.setAttribute("aria-haspopup", "listbox");
+    button.setAttribute("aria-expanded", "false");
+    button.setAttribute("aria-controls", `${id}-list`);
+    const name = document.createElement("span");
+    name.className = "sr";
+    name.textContent = `${config.label}: `;
+    const shown = document.createElement("span");
+    shown.className = "pick-value";
+    button.append(name, shown);
+    const list = document.createElement("ul");
+    list.className = "pick-list";
+    list.id = `${id}-list`;
+    list.setAttribute("role", "listbox");
+    list.setAttribute("aria-labelledby", id);
+    list.tabIndex = -1;
+    list.hidden = true;
+    if (topLayer) list.popover = "manual";
+    box.append(button, list);
+    const pick = { button, list };
+    const fill = () => {
+      list.replaceChildren(...config.options.map(([v, text], i) => {
+        const li = document.createElement("li");
+        li.id = `${id}-o${i}`;
+        li.setAttribute("role", "option");
+        li.dataset.v = v;
+        li.tabIndex = -1;
+        li.textContent = text;
+        return li;
+      }));
+      items = [...list.children];
+    };
+    const show = () => {
+      const chosen = config.options.find(([v]) => v === value) ?? config.options[0] ?? ["", ""];
+      shown.textContent = chosen[1];
+      button.className = ["pick", config.className, filter && config.options.length && value !== config.options[0][0] ? "on" : ""].filter(Boolean).join(" ");
+      for (const li of items) li.setAttribute("aria-selected", String(li.dataset.v === value));
+    };
+    const open = () => {
+      if (openPick && openPick !== pick) closePick(openPick, false);
+      list.hidden = false;
+      if (topLayer) list.showPopover();
+      placePick(pick);
+      button.setAttribute("aria-expanded", "true");
+      openPick = pick;
+      (items.find((li) => li.dataset.v === value) ?? items[0])?.focus();
+    };
+    const choose = (li) => {
+      value = li.dataset.v;
+      show();
+      closePick(pick, true);
+      config.onChange?.(value);
+    };
+    button.addEventListener("click", () => (list.hidden ? open() : closePick(pick, false)));
+    button.addEventListener("keydown", (event) => {
+      if (["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) { event.preventDefault(); open(); }
+    });
+    list.addEventListener("click", (event) => { const li = event.target.closest("li"); if (li) choose(li); });
+    list.addEventListener("keydown", (event) => {
+      const i = items.indexOf(document.activeElement);
+      const move = (to) => { event.preventDefault(); items[Math.max(0, Math.min(items.length - 1, to))]?.focus(); };
+      if (event.key === "ArrowDown") move(i + 1);
+      else if (event.key === "ArrowUp") move(i - 1);
+      else if (event.key === "Home") move(0);
+      else if (event.key === "End") move(items.length - 1);
+      else if (event.key === "Enter" || event.key === " ") { event.preventDefault(); if (i > -1) choose(items[i]); }
+      else if (event.key === "Escape") { event.preventDefault(); closePick(pick, true); }
+      else if (event.key === "Tab") closePick(pick, false);
+      else if (event.key.length === 1 && !event.metaKey && !event.ctrlKey && !event.altKey) {
+        const letter = event.key.toLowerCase();
+        const after = [...items.slice(i + 1), ...items.slice(0, i + 1)];
+        const next = after.find((li) => li.textContent.trim().toLowerCase().startsWith(letter));
+        if (next) { event.preventDefault(); next.focus(); }
+      }
+    });
+    fill();
+    show();
+    return {
+      button,
+      get value() { return value; },
+      set: (v) => { value = v; show(); },
+      restyle: (className) => { config.className = className; show(); },
+      update: (options) => {
+        const same = options.length === items.length && options.every(([v], i) => items[i].dataset.v === String(v));
+        config.options = options;
+        if (same) options.forEach(([, text], i) => { if (items[i].textContent !== text) items[i].textContent = text; });
+        else fill();
+        show();
+      },
+    };
+  };
+  const selectValue = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value");
+  const drawSelect = (select) => {
+    if (select.dataset.pick || select.multiple || select.size > 1) return;
+    select.dataset.pick = "on";
+    const options = () => [...select.options].map((o) => [o.value, o.textContent.trim()]);
+    const label = () => {
+      if (select.getAttribute("aria-label")) return select.getAttribute("aria-label");
+      const owner = select.labels?.[0];
+      if (!owner) return select.name || "Choose";
+      const copy = owner.cloneNode(true);
+      copy.querySelectorAll("select, .pick-wrap").forEach((n) => n.remove());
+      return copy.textContent.replace(/\s+/g, " ").trim();
+    };
+    const box = document.createElement("span");
+    select.after(box);
+    const pick = house.pick(box, {
+      label: label(), options: options(), value: selectValue.get.call(select), className: select.className, filter: "filter" in select.dataset,
+      onChange: (v) => {
+        selectValue.set.call(select, v);
+        select.dispatchEvent(new Event("input", { bubbles: true }));
+        select.dispatchEvent(new Event("change", { bubbles: true }));
+      },
+    });
+    select.hidden = true;
+    select.tabIndex = -1;
+    select.setAttribute("aria-hidden", "true");
+    Object.defineProperty(select, "value", {
+      configurable: true,
+      get: () => selectValue.get.call(select),
+      set: (v) => { selectValue.set.call(select, v); pick.set(selectValue.get.call(select)); },
+    });
+    new MutationObserver((records) => {
+      for (const record of records) {
+        if (record.type === "attributes") pick.restyle(select.className);
+        else { pick.update(options()); pick.set(selectValue.get.call(select)); }
+      }
+    }).observe(select, { attributes: true, attributeFilter: ["class"], childList: true, subtree: true, characterData: true });
+    for (const owner of select.labels ?? []) owner.addEventListener("click", (event) => { if (!box.contains(event.target)) { event.preventDefault(); pick.button.focus(); } });
+  };
+  const drawSelects = (node) => {
+    if (node.localName === "select") drawSelect(node);
+    else if (node.getElementsByTagName?.("select").length) node.querySelectorAll("select").forEach(drawSelect);
+  };
+  drawSelects(document.documentElement);
+  new MutationObserver((records) => {
+    for (const record of records) for (const node of record.addedNodes) if (node.nodeType === 1) drawSelects(node);
+  }).observe(document.documentElement, { childList: true, subtree: true });
+  document.addEventListener("click", (event) => { if (openPick && !openPick.button.parentNode.contains(event.target)) closePick(openPick, false); });
+  addEventListener("scroll", () => openPick && placePick(openPick), { passive: true, capture: true });
+  addEventListener("resize", () => openPick && placePick(openPick));
+
+  // Tabs: a [role="tablist"] of [role="tab"] buttons, each with aria-controls naming its
+  // [role="tabpanel"]. A click or the arrow keys (with Home and End) open a tab; a link whose
+  // #hash names a panel, or an element inside one, opens that tab, so old links keep working.
+  const tabLists = [...document.querySelectorAll('[role="tablist"]')];
+  const openTab = (tab, focus) => {
+    const list = tab.closest('[role="tablist"]');
+    for (const other of list.querySelectorAll('[role="tab"]')) {
+      const on = other === tab;
+      other.setAttribute("aria-selected", String(on));
+      other.tabIndex = on ? 0 : -1;
+      const panel = document.getElementById(other.getAttribute("aria-controls"));
+      if (panel) panel.hidden = !on;
+    }
+    if (focus) tab.focus();
+  };
+  for (const list of tabLists) {
+    const tabs = [...list.querySelectorAll('[role="tab"]')];
+    openTab(tabs.find((tab) => tab.getAttribute("aria-selected") === "true") ?? tabs[0], false);
+    list.addEventListener("click", (event) => { const tab = event.target.closest('[role="tab"]'); if (tab) openTab(tab, false); });
+    list.addEventListener("keydown", (event) => {
+      const i = tabs.indexOf(document.activeElement);
+      if (i < 0) return;
+      const to = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[event.key];
+      if (to === undefined) return;
+      event.preventDefault();
+      openTab(tabs[(to + tabs.length) % tabs.length], true);
+    });
+  }
+  const followHash = () => {
+    const target = location.hash.length > 1 ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
+    const panel = target?.closest('[role="tabpanel"]');
+    const tab = panel && document.querySelector(`[role="tab"][aria-controls="${panel.id}"]`);
+    if (!tab) return;
+    openTab(tab, false);
+    requestAnimationFrame(() => target.scrollIntoView({ block: "start" }));
+  };
+  if (tabLists.length) { followHash(); addEventListener("hashchange", followHash); }
+
+  // Tips (WCAG 1.4.13): Escape hides the tip that is showing without moving the pointer or focus;
+  // it shows again once the pointer has left its target and focus has moved elsewhere.
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    for (const target of document.querySelectorAll("[data-tip]")) {
+      if (target.classList.contains("tip-off") || !target.matches(":hover, :focus-visible")) continue;
+      target.classList.add("tip-off");
+      const back = () => setTimeout(() => { if (!target.matches(":hover") && document.activeElement !== target) target.classList.remove("tip-off"); }, 0);
+      target.addEventListener("mouseleave", back, { once: true });
+      target.addEventListener("blur", back, { once: true });
+    }
+  }, true);
 
   // Checklists remember their ticks: give each box a data-key that is stable across edits.
   for (const box of document.querySelectorAll('.checklist input[type="checkbox"][data-key]')) {

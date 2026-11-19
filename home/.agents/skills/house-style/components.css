@@ -370,6 +370,17 @@ table.ledger td:last-child { color: var(--ink-soft); }
 .state.info { background: var(--info-soft); color: var(--info); }
 .state.accent { background: var(--accent-soft); color: var(--accent); }
 
+/* A category: the state chip's shape on a pastel category fill (palette.css, the pastel category
+   set), for groups that are not states. A bar, swatch or edge for the same group uses --cat-N. */
+.cat { display: inline-flex; align-items: center; justify-self: start; padding: 0 6px; border-radius: 2px; font-family: var(--mono); font-size: var(--step-label); font-weight: 500; line-height: 1.65; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+.cat.c1 { background: var(--cat-1-soft); color: var(--cat-1-ink); }
+.cat.c2 { background: var(--cat-2-soft); color: var(--cat-2-ink); }
+.cat.c3 { background: var(--cat-3-soft); color: var(--cat-3-ink); }
+.cat.c4 { background: var(--cat-4-soft); color: var(--cat-4-ink); }
+.cat.c5 { background: var(--cat-5-soft); color: var(--cat-5-ink); }
+.cat.c6 { background: var(--cat-6-soft); color: var(--cat-6-ink); }
+.cat.c7 { background: var(--cat-7-soft); color: var(--cat-7-ink); }
+
 /* ── Folds, sheets, quotes, asides and sources ─────────────────────────────────────────────── */
 
 @media (pointer: coarse) { details.more > summary { min-height: 44px; align-items: center; } }
@@ -468,10 +479,13 @@ figure.code .btn { position: absolute; top: var(--pair); right: var(--pair); min
 .seg button:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
 .seg button[aria-pressed="true"] { background: var(--tint); border-color: var(--tint); color: var(--on-accent); }
 
-/* Put extra detail in data-tip="…" and add tabindex="0" on targets that do not take focus. */
+/* Put extra detail in data-tip="…" and add tabindex="0" on targets that do not take focus. A tip meets
+   WCAG 1.4.13: it stays while its target is hovered or focused, the pointer can move onto it (it
+   takes pointer events, and a transparent top border bridges the gap), and Escape hides it
+   (site.js marks it .tip-off until the pointer and focus have both left). */
 [data-tip] { position: relative; cursor: help; text-decoration: underline dotted var(--rule); text-underline-offset: 0.25em; }
-[data-tip]:hover::after, [data-tip]:focus-visible::after { content: attr(data-tip); position: absolute; z-index: 30; left: 0; top: calc(100% + 6px); width: max-content; max-width: 320px; padding: var(--apart) var(--rows); background: var(--ink); color: var(--paper); border-radius: var(--radius); font-family: var(--serif); font-size: var(--step-small); font-style: normal; font-weight: 400; line-height: 1.45; letter-spacing: 0; text-align: start; text-transform: none; white-space: normal; box-shadow: 0 6px 20px color-mix(in srgb, var(--ink) 18%, transparent); pointer-events: none; }
-.tip-left[data-tip]:hover::after, .tip-left[data-tip]:focus-visible::after { left: auto; right: 0; }
+[data-tip]:is(:hover, :focus-visible):not(.tip-off)::after { --tip-gap: 6px; content: attr(data-tip); position: absolute; z-index: 30; left: 0; top: 100%; width: max-content; max-width: 320px; padding: var(--apart) var(--rows); border-top: var(--tip-gap) solid transparent; background: var(--ink) padding-box; color: var(--paper); border-radius: var(--radius) / calc(var(--radius) + var(--tip-gap)) calc(var(--radius) + var(--tip-gap)) var(--radius) var(--radius); font-family: var(--serif); font-size: var(--step-small); font-style: normal; font-weight: 400; line-height: 1.45; letter-spacing: 0; text-align: start; text-transform: none; white-space: normal; box-shadow: 0 8px 20px -4px color-mix(in srgb, var(--ink) 18%, transparent); pointer-events: auto; cursor: text; }
+.tip-left[data-tip]::after { left: auto; right: 0; }
 
 /* ── Keys: ? opens the list, Escape closes it ──────────────────────────────────────────────── */
 
@@ -513,4 +527,180 @@ dialog.keys .toggle input { width: 16px; height: 16px; margin: 0; accent-color: 
   .stepper > li::before { display: none; }
   .stepper .dot { grid-row: span 2; }
   .foot .by { margin-left: 0; }
+}
+
+/* ── Dropdowns: drawn by the page, never the system menu ─────────────────────────────────────
+   site.js draws every <select> as a button that names its choice and a list in the page's own
+   palette and type, and house.pick(box, options) draws one from options a script holds. The
+   <select> stays in the page, hidden, holding the value and firing change, so a page written for
+   a native control works unchanged. The list opens in the top layer, so a card that clips its
+   overflow never cuts it off. A filter (<select data-filter>, or any house.pick) wears a tinted
+   edge while it is set to anything but its first choice. */
+
+.pick-wrap { position: relative; display: inline-block; vertical-align: middle; }
+.pick { position: relative; display: inline-flex; align-items: center; gap: var(--pair); min-height: 36px; padding: 6px 34px 6px var(--apart); border: 1px solid var(--rule); border-radius: var(--radius); background: var(--card); color: var(--ink); font-family: var(--mono); font-size: var(--step-label); white-space: nowrap; cursor: pointer; }
+.pick::after { content: ""; position: absolute; right: var(--apart); top: 50%; width: 6px; height: 6px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; opacity: 0.7; transform: translateY(-70%) rotate(45deg); transition: transform var(--arrive) var(--ease); }
+.pick[aria-expanded="true"]::after { transform: translateY(-20%) rotate(225deg); }
+.pick:hover, .pick[aria-expanded="true"] { border-color: var(--tint); }
+.pick.on { border-color: var(--tint); box-shadow: inset 0 0 0 1px var(--tint); }
+.pick.on .pick-value { color: var(--tint); font-weight: 500; }
+.pick-list { position: absolute; z-index: 25; top: calc(100% + var(--tie)); left: 0; min-width: 100%; max-height: min(60vh, 420px); overflow: auto; margin: 0; padding: var(--tie); list-style: none; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--card); color: var(--ink); font-family: var(--mono); font-size: var(--step-label); font-weight: 400; letter-spacing: 0; text-transform: none; box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 14%, transparent); }
+.pick-list[hidden] { display: none; }
+.pick-list[popover] { position: fixed; inset: auto; margin: 0; }
+.pick-list li { position: relative; display: flex; align-items: center; gap: var(--pair); min-height: 32px; padding: 0 var(--apart) 0 28px; border-radius: 2px; white-space: nowrap; cursor: pointer; }
+.pick-list li:hover, .pick-list li:focus { background: var(--deep); outline: none; }
+.pick-list li:focus-visible { box-shadow: inset 0 0 0 2px var(--focus); }
+.pick-list li[aria-selected="true"] { color: var(--tint); font-weight: 500; }
+.pick-list li[aria-selected="true"]::before { content: ""; position: absolute; left: var(--apart); top: 50%; width: 4px; height: 8px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-65%) rotate(45deg); }
+@media (pointer: coarse) { .pick, .pick-list li { min-height: 44px; } }
+@media (forced-colors: active) { .pick-list li[aria-selected="true"] { outline: 1px solid Highlight; } }
+
+/* ── The project site: a hub and its boards, for a long-running project with a lot going on ──
+   <main class="page overview project"> keeps the status page's desk and adds the pieces a
+   project needs on top of it: cards (the one form where cards are the unit, rule 16), a
+   headline of three cards, a tally, a phase strip, groups that fold when every item in them is
+   done, a timeline, tabs, a filter row and a live line. The header's row holds the site's pages
+   and the switch over a reading line and never the route, so it keeps one shape from the first
+   paint; from 1680px the route runs down the margin index with the page centred between equal
+   margins, and on a phone the strip's list holds every page and part. */
+
+.project :is(.masthead, .part) > :is(.cards, .headline, .tally, .phases, .groups, .timeline, .filters, .tabs, [role="tabpanel"]) { max-width: none; }
+
+/* Cards: a hairline frame on --card with a 3px top edge in the group's category or state colour.
+   No shadow, no card inside a card: a card holds lines, rows and a small bar, never more cards. */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(256px, 1fr)); gap: var(--apart); }
+.card { display: grid; align-content: start; gap: var(--pair); min-width: 0; padding: var(--apart) var(--rows) var(--rows); border: 1px solid var(--rule); border-top: 3px solid var(--edge, var(--rule)); border-radius: var(--radius); background: var(--fill, var(--card)); color: var(--ink); }
+a.card { text-decoration: none; }
+a.card:hover { border-color: var(--tint); border-top-color: var(--edge, var(--tint)); }
+.card.c1 { --edge: var(--cat-1); } .card.c2 { --edge: var(--cat-2); } .card.c3 { --edge: var(--cat-3); } .card.c4 { --edge: var(--cat-4); }
+.card.c5 { --edge: var(--cat-5); } .card.c6 { --edge: var(--cat-6); } .card.c7 { --edge: var(--cat-7); }
+.card.good { --edge: var(--aqua-fill); } .card.info { --edge: var(--blue); } .card.warn { --edge: var(--orange); } .card.bad { --edge: var(--red); }
+/* A soft card is filled with its category's pastel; its words stay --ink and --ink-soft. */
+.card.soft.c1 { --fill: var(--cat-1-soft); } .card.soft.c2 { --fill: var(--cat-2-soft); } .card.soft.c3 { --fill: var(--cat-3-soft); } .card.soft.c4 { --fill: var(--cat-4-soft); }
+.card.soft.c5 { --fill: var(--cat-5-soft); } .card.soft.c6 { --fill: var(--cat-6-soft); } .card.soft.c7 { --fill: var(--cat-7-soft); }
+.card.soft { border-color: transparent; border-top-color: var(--edge); }
+.card > .label { margin: 0; color: var(--ink-soft); }
+.card h3 { margin: 0; font-size: var(--step-body); font-weight: 620; line-height: 1.3; }
+.card .big { margin: 0; line-height: 1.2; }
+.card .big b { font-size: var(--step-title); font-weight: 600; font-variant-numeric: lining-nums tabular-nums; margin-inline-end: var(--tie); }
+.card .note { margin: 0; font-size: var(--step-small); line-height: 1.45; color: var(--ink-soft); }
+.card ul { margin: var(--tie) 0 0; padding: var(--apart) 0 0; border-top: 1px solid color-mix(in srgb, var(--edge, var(--rule)) 35%, transparent); list-style: none; display: grid; gap: var(--tie); font-size: var(--step-small); line-height: 1.45; }
+.card li { position: relative; padding-inline-start: 14px; }
+.card li::before { content: ""; position: absolute; left: 2px; top: 0.62em; width: 5px; height: 5px; border-radius: 50%; background: var(--edge, var(--stroke)); }
+
+/* The headline: three soft cards on a desk (what is built, what has moved, what is left), each a
+   big number, its meaning and a short list. Its items live in a small data file the keeper edits. */
+.headline { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--apart); }
+@media (max-width: 900px) { .headline { grid-template-columns: minmax(0, 1fr); } }
+
+/* A number from a data file: its source and as-of time in the tip. */
+.fact { font-variant-numeric: lining-nums tabular-nums; }
+
+/* The tally: counts by state on one line, with a thin bar of the same counts. */
+.tally { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pair) var(--group); padding: var(--pair) var(--rows); border: 1px solid var(--rule); border-radius: var(--radius); background: var(--card); font-family: var(--mono); font-size: var(--step-label); color: var(--ink-soft); }
+.tally > .label { margin: 0; }
+.tally > span:not(.bar) { display: inline-flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.tally b { font-family: var(--serif); font-size: var(--step-body); font-weight: 600; color: var(--ink); font-variant-numeric: lining-nums tabular-nums; }
+.sw { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 2px; align-self: center; background: var(--sw, var(--deep)); }
+.tally .bar { flex: 1 1 160px; min-width: 120px; display: flex; height: 8px; border-radius: 2px; overflow: hidden; background: var(--deep); }
+:is(.tally .bar, .mini) > span { display: block; height: 100%; background: var(--sw, var(--stroke)); }
+.tally .bar > span + span { box-shadow: inset 2px 0 0 var(--card); }
+
+/* The phase strip: one linked card per phase, its edge in its state, a count and a mini bar. */
+.phases { display: grid; grid-template-columns: repeat(auto-fit, minmax(256px, 1fr)); gap: var(--apart); margin-block-end: 0; padding: 0; list-style: none; }
+.phases > li { display: grid; }
+.phases .n { font-family: var(--mono); font-size: var(--step-label); color: var(--tint); }
+.phases .count { font-family: var(--mono); font-size: var(--step-label); color: var(--ink-soft); }
+.mini { display: flex; height: 6px; border-radius: 2px; overflow: hidden; background: var(--deep); }
+.mini > span + span { box-shadow: inset 2px 0 0 var(--fill, var(--card)); }
+
+/* Groups: a card per team or app that folds. A group whose every item is done starts folded,
+   with a done state in its summary, so what still needs work stays in view. */
+.groups { display: grid; gap: var(--apart); }
+details.group { border: 1px solid var(--rule); border-radius: var(--radius); background: var(--card); overflow: hidden; }
+details.group > summary { list-style: none; display: grid; grid-template-columns: minmax(0, 1fr) minmax(96px, 160px) auto; align-items: center; gap: var(--pair) var(--rows); min-height: 44px; padding: var(--pair) var(--rows); background: var(--deep); cursor: pointer; }
+details.group > summary::-webkit-details-marker { display: none; }
+details.group[open] > summary { border-bottom: 1px solid var(--rule); }
+details.group > summary .name { display: flex; align-items: baseline; gap: var(--pair); min-width: 0; font-weight: 620; }
+details.group > summary .name::before { content: ""; flex: none; width: 6px; height: 6px; border-right: 1.5px solid var(--ink-soft); border-bottom: 1.5px solid var(--ink-soft); transform: translateY(-2px) rotate(-45deg); transition: transform var(--arrive) var(--ease); }
+details.group[open] > summary .name::before { transform: translateY(-4px) rotate(45deg); }
+details.group > summary .name small { font-family: var(--mono); font-size: var(--step-label); font-weight: 400; color: var(--ink-soft); }
+details.group > summary .counts { font-family: var(--mono); font-size: var(--step-label); color: var(--ink-soft); white-space: nowrap; }
+details.group > summary:hover .name { color: var(--tint); }
+@media (max-width: 640px) { details.group > summary { grid-template-columns: minmax(0, 1fr); gap: var(--tie); } details.group > summary .counts { white-space: normal; } }
+.rows { margin: 0; padding: 0; list-style: none; }
+.rows > li { display: grid; grid-template-columns: 9rem minmax(0, 1fr) auto; align-items: baseline; gap: var(--pair) var(--rows); padding: var(--apart) var(--rows); font-size: var(--step-small); line-height: 1.45; }
+.rows > li + li { border-top: 1px solid var(--rule-soft); }
+:is(.rows > li, details.group, .card)[hidden] { display: none; }
+.rows .who { font-family: var(--mono); font-size: var(--step-label); color: var(--ink-soft); white-space: nowrap; }
+@media (max-width: 640px) { .rows > li { grid-template-columns: minmax(0, 1fr); gap: var(--tie); } }
+
+/* A timeline: dated steps down a line, the done ones filled, the current one ringed. For a
+   short sequence of numbered steps the reader follows, use the stepper instead. */
+.timeline { position: relative; display: grid; gap: var(--rows); margin-block-end: 0; padding: 0; list-style: none; }
+.timeline > li { position: relative; display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: var(--tie) var(--rows); padding-inline-start: 22px; font-size: var(--step-small); line-height: 1.45; }
+.timeline > li::before { content: ""; position: absolute; left: 0; top: 0.45em; width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--stroke); background: var(--paper); box-sizing: border-box; }
+.timeline > li:not(:last-child)::after { content: ""; position: absolute; left: 4.25px; top: calc(0.45em + 12px); bottom: calc(-1 * var(--rows) + 2px); width: 1.5px; background: var(--rule); }
+.timeline > li.done::before { background: var(--aqua-fill); border-color: var(--aqua-fill); }
+.timeline > li.done::after { background: var(--aqua-fill); }
+.timeline > li.current::before { background: var(--voice); border-color: var(--voice); box-shadow: 0 0 0 3px var(--paper), 0 0 0 4.5px color-mix(in srgb, var(--voice) 50%, var(--paper)); }
+.timeline time { font-family: var(--mono); font-size: var(--step-label); color: var(--ink-soft); white-space: nowrap; padding-top: 2px; }
+.timeline b { font-weight: 620; }
+@media (max-width: 480px) { .timeline > li { grid-template-columns: minmax(0, 1fr); } }
+
+/* Tabs: parallel tracks of one part (one timeline per rollout, one list per group). site.js
+   moves between them with the arrows and opens the tab a link's #hash names. */
+.tabs { display: flex; flex-wrap: wrap; gap: var(--tie); border-bottom: 1px solid var(--rule); }
+.tabs [role="tab"] { min-height: 40px; margin-bottom: -1px; padding: var(--pair) var(--apart); border: 0; border-bottom: 2px solid transparent; background: none; color: var(--ink-soft); font-family: var(--mono); font-size: var(--step-label); cursor: pointer; }
+.tabs [role="tab"]:hover { color: var(--ink); }
+.tabs [role="tab"][aria-selected="true"] { color: var(--ink); border-bottom-color: var(--tint); }
+.tabs [role="tab"] .n { margin-inline-start: var(--pair); color: var(--ink-soft); }
+[role="tabpanel"] { padding-top: var(--group); }
+[role="tabpanel"][hidden] { display: none; }
+@media (pointer: coarse) { .tabs [role="tab"] { min-height: 44px; } }
+
+/* The filter row: a search field, dropdowns, and how many show. */
+.filters { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pair); }
+.filters input[type="search"] { flex: 1 1 14rem; min-width: 0; min-height: 36px; font-size: var(--step-small); }
+.filters .count { margin-inline-start: auto; font-family: var(--mono); font-size: var(--step-label); color: var(--ink-soft); white-space: nowrap; }
+
+/* The live line: where live data stands, in the page beside what it describes, never in the
+   header, so the header never changes shape. */
+.live { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-family: var(--mono); font-size: var(--step-label); color: var(--ink-soft); }
+.live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--rule); }
+.live[data-state="live"]::before { background: var(--aqua-fill); }
+.live[data-state="error"]::before { background: var(--red); }
+
+.skeleton-frame { display: grid; align-content: start; gap: var(--apart); padding: var(--rows); border: 1px solid var(--rule-soft); border-radius: var(--radius); background: var(--card); }
+.skeleton-line { display: block; block-size: var(--pair); inline-size: 72%; background: var(--rule); border-radius: var(--radius); }
+.skeleton-line.short { inline-size: 42%; }
+.skeleton-line.tall { block-size: var(--group); }
+.skeleton-status { margin: 0 0 var(--pair); color: var(--ink-soft); font-family: var(--mono); font-size: var(--step-label); }
+.skeleton-status:empty, :root:not(.js) :is(.skeleton-frame, .skeleton-status) { display: none; }
+
+/* The project header. From 861px the row shows the site's pages and the switch over a reading
+   line; the route is in the margin index from 1680px and in the strip's list on a phone. */
+@media (min-width: 861px) {
+  :root:has(main.project) .topbar :is(.route, .here) { display: none; }
+  :root.js:has(main.project) .topbar .progress { display: block; }
+}
+@media (min-width: 1680px) {
+  :root:has(main.project) { --rail: 264px; }
+  main.project { max-width: min(calc(var(--full) + 2 * var(--gutter)), calc(100vw - 2 * (var(--rail) + var(--apart)))); }
+  :root:has(main.project) .topbar { position: static; height: 0; border: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  :root.js:has(main.project) .topbar :is(.here, .progress) { display: none; }
+  :root:has(main.project) .topbar .inner { display: contents; }
+  :root:has(main.project) .topbar .home { position: fixed; z-index: 20; top: var(--group); left: var(--gutter); width: var(--rail); }
+  :root:has(main.project) .topbar .home .name { white-space: nowrap; }
+  :root:has(main.project) .topbar .actions { position: fixed; z-index: 20; top: var(--group); right: var(--gutter); }
+  :root:has(main.project) .topbar .index { position: fixed; z-index: 20; top: calc(var(--group) + 64px); bottom: var(--group); left: calc(var(--gutter) - var(--pair)); width: calc(var(--rail) + var(--pair)); padding-inline-start: var(--pair); box-sizing: border-box; overflow: hidden auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--group); align-content: start; }
+  :root:has(main.project) .topbar .pages { flex-direction: column; gap: 0; padding-bottom: var(--apart); border-bottom: 1px solid var(--rule-soft); }
+  :root:has(main.project) .topbar .pages a { min-height: 32px; padding-block: var(--tie); white-space: normal; line-height: 1.5; }
+  :root:has(main.project) .topbar .route { display: block; overflow: visible; }
+  :root:has(main.project) .route ol { display: grid; }
+  :root:has(main.project) .route li { position: relative; display: block; }
+  :root:has(main.project) .route li::after { position: absolute; left: 4px; top: 27px; bottom: -11px; width: 1px; height: auto; min-width: 0; margin: 0; background: linear-gradient(to bottom, var(--route-fill) var(--seg, 0%), var(--rule) var(--seg, 0%)); }
+  :root:has(main.project) .route a { align-items: flex-start; gap: var(--apart); min-height: 0; padding-block: var(--pair); white-space: normal; overflow-wrap: anywhere; line-height: 1.5; }
+  :root:has(main.project) .route a::before { margin-top: 5px; }
+  :root:has(main.project) .route li + li { margin-top: var(--pair); }
 }

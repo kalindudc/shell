@@ -1,0 +1,6 @@
+# Job queue retirement
+
+> The model project site: a hub and a board for a long-running project with a lot going on. Invented example content.
+
+- [The hub](/index.html): what is built, what has moved and what is left, the phases, where the work is and what happens next. Its plain text: [/index.md](/index.md).
+- [The board](/board.html): every pull request by team, with a tally, filters, cards that fold when done, and each move's steps. Its plain text: [/board.md](/board.md).

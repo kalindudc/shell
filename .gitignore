@@ -35,6 +35,8 @@ home/.pi/agent/**/*interview*
 home/.agents/skills/*/SKILL_NOTES.md
 # impact-review org pack (internal forms, ids, adapters); the generic skill is tracked
 home/.agents/skills/impact-review/private/
+# pr-reviewer internal forges and host bridge (private/forges.json); the generic skill is tracked
+home/.agents/skills/pr-reviewer/private/
 __pycache__/
 
 home/.config/ghostty/config-os

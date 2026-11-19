@@ -123,6 +123,19 @@ html[data-theme="dark"] {
   /* Strokes that carry meaning in a drawing (connectors, arrows, a node's edge) reach 3:1 on
      --paper, --card and --deep in both themes (WCAG 1.4.11); --rule is for decoration only. */
   --stroke: color-mix(in srgb, var(--ink-soft) 75%, var(--rule));
+
+  /* The pastel category set: seven groups that are not states (teams, tracks, traffic groups,
+     phases, catalog tags), for a site that labels many groups at once. Each has a solid for bars,
+     swatches and top edges, a pastel fill, and an ink that reaches 4.5:1 on that fill in both
+     themes. Red's ink is mixed toward the ink, because dark red on its soft tint is 4.44:1.
+     A category never stands for a state: the word on the chip or in the legend says which group. */
+  --cat-1: var(--blue);      --cat-1-soft: var(--blue-soft);   --cat-1-ink: var(--blue);
+  --cat-2: var(--aqua-fill); --cat-2-soft: var(--aqua-soft);   --cat-2-ink: var(--aqua);
+  --cat-3: var(--orange);    --cat-3-soft: var(--orange-soft); --cat-3-ink: var(--orange);
+  --cat-4: var(--purple);    --cat-4-soft: var(--purple-soft); --cat-4-ink: var(--purple);
+  --cat-5: var(--red);       --cat-5-soft: var(--red-soft);    --cat-5-ink: color-mix(in srgb, var(--red) 85%, var(--ink));
+  --cat-6: var(--green);     --cat-6-soft: var(--green-soft);  --cat-6-ink: var(--green);
+  --cat-7: var(--ink-soft);  --cat-7-soft: var(--deep);        --cat-7-ink: var(--ink-soft);
 }
 
 /* Type, space, motion and widths: the same on every page. */

@@ -22,7 +22,7 @@ Clear does not mean long. A request for clearer words must not turn titles into 
 
 ## The Walk, by Kind of Page
 
-Each part answers the question the one before it raised. Use these as starting orders and drop any part with nothing true to say.
+Each part answers the question the one before it raised. Use these as starting orders and drop any part with nothing true to say. A project hub's headline counts what is done in each sense, not only finished items: a project that has built its replacement and moved its first app has done a lot even when few apps are finished, so say what was built and moved before what is left, and say which unit each number uses.
 
 | Kind | Parts, in order |
 | --- | --- |
@@ -31,6 +31,8 @@ Each part answers the question the one before it raised. Use these as starting o
 | Review, concluded work | What it was; what it found; where it went; what stayed behind |
 | Incident | What happened; who was affected; why; what fixed it; what changes now |
 | Status overview | Where it stands; what moves next; each item and what it waits on; this week |
+| Project hub | What is built, what has moved, what is left (the headline); the unit that measures progress (the tally); the phases; where the work is; what happens next |
+| Project board | The tally; the filters; each group and what its items wait on; the live line |
 | Learning guide | The picture in one figure; then one idea a part, each building on the last; a check at the end |
 
 Name parts with a plain label ("02 / The idea") above a heading that says the part's point, never a heading that only names the topic ("Architecture"). The label's words are the part's stop on the route too, so keep them to one or two words.
@@ -66,6 +68,7 @@ The memo head ends in a brief: two to five lines that a reader acting on the pag
 - Every label, empty state, error and prompt is written as carefully as the prose.
 - Buttons are Title Case; headings and navigation are sentence case, like the page; messages are sentences with their full stop.
 - One name for each thing everywhere: the same word in the list, the drawer, the keys and the docs.
+- Name what is loading in the affected region (“Loading namespaces…”), not the whole page. Name a failed request as a failure, never as an empty list; say how to try again. During a refresh, keep the last usable data and say when it was current.
 - An error says what happened and what to do, in words people will paste into a search or a chat.
 - Nothing nags: no "don't forget", no badge pleading for attention.
 
