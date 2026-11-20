@@ -75,6 +75,7 @@ Dispatch builds on two skills from the same folder: `delegation`, for which mode
 
 | File | What it's for |
 | --- | --- |
+| `GUIDE.md` | This guide, for people. |
 | [`SKILL.md`](SKILL.md) | The lead's instructions, written for agents. Only its Guardrails are hard; the rest are defaults to adapt. |
 | [`references/fleet-files.md`](references/fleet-files.md) | The fleet's folder, setup, taking over from another lead, and templates for `RULES.md` and `LEAD.md`. |
 | [`references/briefs.md`](references/briefs.md) | Starting members, brief templates, steering and critic reviews. |
