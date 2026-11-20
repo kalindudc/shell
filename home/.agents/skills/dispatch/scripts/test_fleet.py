@@ -359,29 +359,66 @@ class FleetTests(unittest.TestCase):
         self.init()
         self.spawn(role='permanent', prompt='HOLD!')
         self.until(lambda: (self.cwd / 'held').exists())
+        # With the broker down, its own scan can't reap the orphan first, so the command under test must.
+        self.cli('down')
         member = self.metadata('worker')
         os.kill(member['runner_pid'], signal.SIGKILL)
         self.until(lambda: not fleet_runtime.lease_held(self.root / 'agents/worker/.runner.lease'))
-        # The broker's own recovery may already have stopped the orphan; either way it must not survive.
+        self.assertTrue(fleet_runtime.group_alive(member['turn_pid']))
         return member['turn_pid']
 
     def test_pause_stops_a_turn_whose_runner_died(self):
         turn = self.orphan_turn()
         self.cli('pause', 'worker', '--tree')
-        self.until(lambda: not fleet_runtime.group_alive(turn))
+        self.assertFalse(fleet_runtime.group_alive(turn))
         self.assertEqual(self.metadata('worker')['status'], 'paused')
         self.assertIsNone(self.metadata('worker')['turn_pid'])
 
-    def test_tell_stops_an_orphaned_turn_before_starting_another(self):
+    def test_broker_recovery_stops_an_orphaned_turn_and_keeps_its_first_input(self):
         turn = self.orphan_turn()
         (self.cwd / 'release').touch()
+        self.cli('up')
+        self.until(lambda: self.metadata('worker')['status'] == 'failed')
+        self.assertFalse(fleet_runtime.group_alive(turn))
+        self.assertIn('[stuck from claimed sender worker]', self.cli('wait', '--timeout', '5').stdout)
         self.cli('tell', 'worker', 'after the crash')
         self.until(lambda: (self.root / 'agents/worker/final.md').exists())
-        self.assertFalse(fleet_runtime.group_alive(turn))
         final = (self.root / 'agents/worker/final.md').read_text()
         self.assertTrue(final.startswith('start: '), final[:200])
         self.assertIn('HOLD!', final)
         self.assertIn('after the crash', final)
+
+    def test_messages_read_during_a_first_turn_are_not_delivered_again(self):
+        self.init()
+        self.spawn(role='permanent', prompt='HOLD!')
+        self.until(lambda: (self.cwd / 'held').exists())
+        self.cli('tell', 'worker', 'msg-one')
+        self.assertIn('msg-one', self.cli('inbox', env={'FLEET_MEMBER': 'worker'}).stdout)
+        (self.cwd / 'release').touch()
+        self.until(lambda: self.metadata('worker')['session_id'] and not self.metadata('worker')['runner_pid'])
+        time.sleep(.3)
+        self.assertEqual(self.metadata('worker')['runs'], 1)
+        self.assertIsNone(self.metadata('worker')['first_input'])
+
+    def test_recovery_leaves_a_reused_process_id_alone(self):
+        self.init()
+        self.spawn(role='permanent', prompt='HOLD!')
+        self.until(lambda: (self.cwd / 'held').exists())
+        self.cli('down')
+        member = self.metadata('worker')
+        os.kill(member['runner_pid'], signal.SIGKILL)
+        fleet_runtime.stop_group(member['turn_pid'])
+        time.sleep(1.1)  # ps reports start times to the second
+        bystander = subprocess.Popen(['sleep', '30'], start_new_session=True)
+        self.addCleanup(bystander.kill)
+        path = self.root / 'agents/worker/agent.json'
+        data = json.loads(path.read_text())
+        data['turn_pid'] = bystander.pid
+        path.write_text(json.dumps(data))
+        self.cli('up')
+        self.until(lambda: self.metadata('worker')['status'] == 'failed')
+        time.sleep(.3)
+        self.assertIsNone(bystander.poll())
 
     def late_session_turn(self):
         # Like Claude Code, this harness reports its session id only when the turn ends.

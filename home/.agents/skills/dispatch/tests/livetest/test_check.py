@@ -189,10 +189,11 @@ class CheckerRegressionTests(unittest.TestCase):
 
     def test_bb_jobs_reads_only_the_roster_threads(self):
         import sqlite3
+        from contextlib import closing
         with tempfile.TemporaryDirectory() as tmp:
             db = Path(tmp) / "plugins" / "wakeup" / "data.db"
             db.parent.mkdir(parents=True)
-            with sqlite3.connect(db) as con:
+            with closing(sqlite3.connect(db)) as con, con:
                 con.execute("CREATE TABLE jobs (id TEXT, thread_id TEXT, state TEXT, data TEXT)")
                 for job_id, thread in (("wk_b", "thr_watch"), ("wk_a", "thr_watch"), ("wk_x", "thr_other")):
                     con.execute("INSERT INTO jobs VALUES (?, ?, 'delivered', ?)",
@@ -264,7 +265,7 @@ class CheckerRegressionTests(unittest.TestCase):
 
     def test_successful_read_quoting_permission_error_is_not_a_denial(self):
         self.setup_alert("codex")
-        path = check.KIT.parents[1] / "references" / "harnesses.md"
+        path = check.KIT.parents[1] / "references" / "bare-harness.md"
         item = {"type": "command_execution", "command": f"cat {path}",
                 "aggregated_output": f"cat: {path}: Operation not permitted"}
         for exit_code in (0, 1):

@@ -178,6 +178,23 @@ def group_alive(pid):
     return True
 
 
+def process_start(pid):
+    try:
+        out = subprocess.run(['ps', '-o', 'lstart=', '-p', str(pid)], capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return out.stdout.strip() or None
+
+
+def turn_alive(member):
+    pid = member['turn_pid']
+    if not group_alive(pid):
+        return False
+    leader = process_start(pid)
+    # Without its leader, a live group's id can't have been reused; with one, the start time tells a reused id apart.
+    return leader is None or member.get('turn_started') in {None, leader}
+
+
 def stop_group(pid, timeout=5.0):
     kill_group(pid)
     deadline = time.monotonic() + timeout
@@ -380,7 +397,7 @@ class Fleet:
     def reap_orphan_turn(self, member):
         # A harness runs in its own session, so it outlives a runner that dies; running() can't see it.
         pid = member['turn_pid']
-        if pid and not self.running(member) and group_alive(pid) and not stop_group(pid):
+        if pid and not self.running(member) and turn_alive(member) and not stop_group(pid):
             raise FleetError(f"{member['name']}: orphaned turn in process group {pid} did not stop; kill it by hand")
 
     def can_launch(self):
@@ -398,7 +415,7 @@ class Fleet:
                 error = ('runner exited during the first turn; its brief and messages are kept, '
                          'so retry with tell or resume (see runner.log)')
                 self.save(member, status='failed', runner_pid=None, turn_pid=None, input_held=True,
-                          updated_at=time.time(), error=error)
+                          updated_at=time.time(), error=error, **self.first_input(member))
                 if member['parent']:
                     self.send(self.agent(member['parent']), member['name'], 'stuck', error)
                 return
@@ -407,6 +424,11 @@ class Fleet:
         if member['start_pending'] or self.pending(member)[0]:
             self.save(member, runner_pid=self.detached(member['name'], 'runner'), status='running',
                       stop_requested=False, updated_at=time.time())
+
+    @staticmethod
+    def first_input(member):
+        held = member.get('first_input')
+        return {'start_pending': held['start_pending'], 'cursor': held['cursor']} if held else {}
 
     def send(self, target, sender, kind, text, *, wake_id=None):
         msg = {'id': str(uuid.uuid4()), 'ts': time.time(), 'from': sender, 'kind': kind, 'text': text}
@@ -485,10 +507,12 @@ class Fleet:
                     if not member['session_id']:
                         member['session_profile'] = {'extra_args': adapter.get('extra_args', []),
                                                      'customized': adapter['customized_extra_args']}
-                    # Until the harness confirms a session, the first input stays pending so nothing is lost.
-                    taken = {} if establishing else {'start_pending': False, 'cursor': cursor}
-                    self.save(member, runs=number, turn_pid=proc.pid, status='running', input_held=False,
-                              updated_at=time.time(), **taken)
+                    # Until the harness confirms a session, keep the first input so a lost turn can give it again.
+                    first = ({'start_pending': starting, 'cursor': member['cursor']} if establishing
+                             else member.get('first_input'))
+                    self.save(member, runs=number, turn_pid=proc.pid, turn_started=process_start(proc.pid),
+                              status='running', input_held=False, start_pending=False, cursor=cursor,
+                              first_input=first, updated_at=time.time())
             if proc:
                 code = proc.wait()
                 try:
@@ -511,11 +535,11 @@ class Fleet:
                 kind = text = notification = None
                 held = proc is not None and establishing and not captured
                 if held:
-                    member['input_held'] = True
+                    member.update(input_held=True, **self.first_input(member))
                     if error:
                         error += '; the brief and queued messages are kept, so retry with tell or resume'
-                elif proc is not None and establishing:
-                    member.update(start_pending=False, cursor=cursor)
+                elif captured:
+                    member['first_input'] = None
                 if not (blocked or stopped):
                     if error:
                         status, kind, text = 'failed', 'stuck', f'{error} (see {log})'
@@ -549,7 +573,8 @@ class Fleet:
     def stop(self, member, status=None):
         if self.running(member):
             self.save(member, stop_requested=True, status=status or member['status'], updated_at=time.time())
-            kill_group(member['turn_pid'])
+            if turn_alive(member):
+                kill_group(member['turn_pid'])
             return
         self.reap_orphan_turn(member)
         changes = {'turn_pid': None, 'runner_pid': None} if member['turn_pid'] else {}
@@ -592,7 +617,7 @@ class Fleet:
                 for name in self.subtree(root):
                     member = self.agent(name)
                     if (member['status'] not in {'paused', 'archived'} or self.running(member) or self.attached(name)
-                            or group_alive(member['turn_pid'])
+                            or turn_alive(member)
                             or any(lease_held(self.wake_lease(name, loop)) for loop in self.wakes(name))):
                         active.append(name)
             if not active:
@@ -736,7 +761,7 @@ class Fleet:
     def archive(self, name, force):
         member = self.agent(name)
         if not force:
-            if self.running(member) or group_alive(member['turn_pid']):
+            if self.running(member) or turn_alive(member):
                 raise FleetError(f'{name} is running; stop it or use --force')
             if any(other['parent'] == name and other['status'] != 'archived' for other in self.roster()):
                 raise FleetError(f'{name} has unarchived children; archive them first or use --force')

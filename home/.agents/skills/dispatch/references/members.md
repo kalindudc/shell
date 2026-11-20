@@ -81,24 +81,31 @@ A sentinel is a read-only script that a member runs as a conditional wake-up (`u
 
 - It finishes in under about 40 seconds and batches or parallelizes its reads.
 - It compares the live state with a snapshot file and prints the differences. It exits 0 when something material changed, 1 when nothing did, and 2 on any fetch, parse or coverage failure, so a broken read is never taken as "unchanged".
-- Material means a state the lead cares about: merged, closed, ready for review, approved, changes requested, checks newly failing, or a new head commit.
+- Watch for what blocks the goal as well as what completes it. For a PR, that means changes requested on the current head, new PR or review comments (including merge queue messages), failing checks, or a new head commit, as well as ready for review, approved, closed, or merged.
 - Typical settings are a check every 300 seconds and an explicit deadline such as 43200 seconds (12 hours). Only exit 0 wakes the member, never exit 2, so on every deadline wake, run the script once by hand. Exit 1 means nothing changed, so reschedule silently. Exit 2 means reads are failing, so record it and tell the lead if it persists.
 - After waking, the member updates the snapshot only for the rows it reviewed, so later changes aren't lost.
 
 For another status command, write a small read-only script in the same shape: run the command, compare its output with a snapshot file the member saved, and exit 0 only when they differ, 1 when they match and 2 when the command fails. Keep the script where members can't write it (Guardrail 6 in `SKILL.md`); the snapshot may live under `$FLEET`.
 
-For PRs on a forge `gh` can read, use `scripts/pr-sentinel.py` as is. On another forge, write a sentinel in the same shape that covers the same states. It reads a registry of `{repo, number}` entries, fetches each PR's state, draft flag, review decision, head and check results, treats missing or unrecognized check data as unknown rather than passing, and compares them with the snapshot:
+Use `scripts/pr-sentinel.py` on any forge with a GitHub-compatible REST API. It reads a registry of `{"repo": "owner/repo", "number": 123}` objects. It compares each PR's state, draft and merged flags, head commit, current-head review decision, check results, the number of reviews and comments, and the time of the latest review or comment, so an edited or replaced comment counts too, with the snapshot. Missing or unrecognized check data is unknown, not passing.
+
+Use `--api CMD` on both `snapshot` and `check` to select a different read-only CLI. The command must return JSON for `{endpoint}` and can also use `{repo}`. The sentinel substitutes those values in individual arguments and never runs a shell. Omit `--api` to use `gh api {endpoint}`.
 
 ```bash
-SKILL=~/.agents/skills/dispatch   # wherever your harness finds this skill (harnesses.md)
-python3 $SKILL/scripts/pr-sentinel.py snapshot $FLEET/tracker/prs.json $FLEET/tracker/snapshot.json
-# the conditional wake-up's check, every 300 s:
-python3 $SKILL/scripts/pr-sentinel.py check $FLEET/tracker/prs.json $FLEET/tracker/snapshot.json
-# on a bare harness, armed as:
+SKILL=~/.agents/skills/dispatch   # wherever your harness finds this skill (bare-harness.md)
+REGISTRY="$FLEET/tracker/prs.json"
+SNAPSHOT="$FLEET/tracker/snapshot.json"
+API='gh api {endpoint}'
+# For another GitHub-compatible CLI, for example:
+# API='forge api --repo {repo} {endpoint} --json'
+python3 "$SKILL/scripts/pr-sentinel.py" snapshot "$REGISTRY" "$SNAPSHOT" --api "$API"
+# Use this command for the conditional wake-up, every 300 s:
+CHECK="python3 '$SKILL/scripts/pr-sentinel.py' check '$REGISTRY' '$SNAPSHOT' --api '$API'"
+# On a bare harness, list the expanded check in broker.wake_checks before arming it:
 fleet.py wake self --id sentinel --every 300 --deadline 43200 --message "Follow $FLEET/tracker/CHECK.md" \
-  --check "python3 $SKILL/scripts/pr-sentinel.py check $FLEET/tracker/prs.json $FLEET/tracker/snapshot.json"
-# after reviewing what changed:
-python3 $SKILL/scripts/pr-sentinel.py snapshot ... --only owner/repo#123
+  --check "$CHECK"
+# After reviewing what changed, update only the rows you handled:
+python3 "$SKILL/scripts/pr-sentinel.py" snapshot "$REGISTRY" "$SNAPSHOT" --api "$API" --only owner/repo#123
 ```
 
 The same shape works for deploy checks (`pre` saves state, `post` compares) and rollout progress.

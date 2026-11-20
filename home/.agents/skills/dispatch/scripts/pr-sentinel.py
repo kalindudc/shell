@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Read-only PR sentinel for a keeper's `ScheduleWakeup until.check`.
 
-  pr-sentinel.py check    <registry.json> <snapshot.json>   exit 0 changed, 1 unchanged, 2 error
-  pr-sentinel.py snapshot <registry.json> <snapshot.json> [--only owner/repo#1,owner/repo#2]
+  pr-sentinel.py check    <registry.json> <snapshot.json> [--api CMD]
+  pr-sentinel.py snapshot <registry.json> <snapshot.json> [--api CMD] [--only owner/repo#1,owner/repo#2]
 
 The registry is a JSON list of {"repo": "owner/name", "number": 123} objects (extra fields are
-ignored). `check` fetches every registered PR with gh, compares the material fields with the
-snapshot and prints one line per change. A PR missing from the snapshot counts as a change.
+ignored). `check` compares live PRs with the snapshot and prints one line per change, exiting 0
+on a change or 1 if unchanged. A PR missing from the snapshot counts as a change.
+`--api` selects a read-only command that returns JSON from a GitHub-compatible REST API.
+The default is `gh api {endpoint}`. The template can also use `{repo}`.
 A fetch, parse or registry coverage failure exits 2, so a broken read is never mistaken for "unchanged".
 Missing, empty or unrecognized check data is reported as unknown, not a pass.
 `snapshot` writes the current state. With --only, it updates just the PRs you reviewed and keeps
@@ -14,11 +16,17 @@ the rest, so changes you haven't handled yet stay pending.
 """
 import argparse
 import json
+import shlex
 import subprocess
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor
 
-FIELDS = "state,isDraft,reviewDecision,headRefOid,statusCheckRollup"
+DEFAULT_API = "gh api {endpoint}"
+READ_TIMEOUT = 25
+FETCH_TIMEOUT = 37
+PAGE_SIZE = 100
+MAX_PAGES = 30
 FAILED = {"FAILURE", "ERROR", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE"}
 PENDING = {"PENDING", "QUEUED", "IN_PROGRESS", "EXPECTED", "WAITING", "REQUESTED"}
 PASSING = {"SUCCESS", "NEUTRAL", "SKIPPED"}
@@ -50,22 +58,103 @@ def summarize_checks(rollup):
     return overall, sorted(set(failing))
 
 
-def fetch(pr):
-    out = subprocess.run(
-        ["gh", "pr", "view", str(pr["number"]), "--repo", pr["repo"], "--json", FIELDS],
-        capture_output=True, text=True, timeout=25,
-    )
+def read_api(api, repo, endpoint, deadline):
+    timeout = min(READ_TIMEOUT, deadline - time.monotonic())
+    if timeout <= 0:
+        raise RuntimeError(f"{endpoint}: fetch deadline exceeded")
+    command = [arg.format(repo=repo, endpoint=endpoint) for arg in api]
+    try:
+        out = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(f"{endpoint}: API command timed out") from e
     if out.returncode != 0:
-        raise RuntimeError(f"{key(pr)}: {out.stderr.strip() or 'gh failed'}")
-    data = json.loads(out.stdout)
-    checks, failing = summarize_checks(data.get("statusCheckRollup"))
+        detail = out.stderr.strip() or f"API command exited {out.returncode}"
+        raise RuntimeError(f"{endpoint}: {detail}")
+    try:
+        return json.loads(out.stdout)
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"{endpoint}: API response is not valid JSON: {e}") from e
+
+
+def read_pages(api, repo, endpoint, deadline, field=None):
+    rows = []
+    page = 1
+    separator = "&" if "?" in endpoint else "?"
+    while True:
+        if page > MAX_PAGES:
+            raise RuntimeError(f"{endpoint}: more than {MAX_PAGES} pages")
+        url = endpoint if page == 1 else f"{endpoint}{separator}page={page}"
+        data = read_api(api, repo, url, deadline)
+        if field is None:
+            if not isinstance(data, list) or not all(isinstance(row, dict) for row in data):
+                raise RuntimeError(f"{url}: expected a JSON array of objects")
+            items = data
+            # Some servers cap pages below the size asked for, so only an empty page ends the list.
+            has_more = bool(items)
+        else:
+            items = data.get(field) if isinstance(data, dict) else None
+            if not isinstance(items, list):
+                return rows + [None]
+            total = data.get("total_count")
+            has_more = isinstance(total, int) and len(rows) + len(items) < total
+            if has_more and not items:
+                return rows + [None]
+        rows.extend(items)
+        if not has_more:
+            return rows
+        page += 1
+
+
+def review_decision(reviews, head):
+    latest = {}
+    for review in reviews:
+        state = review["state"]
+        if state in ("APPROVED", "CHANGES_REQUESTED", "DISMISSED") and review["user"] is not None:
+            latest[review["user"]["login"]] = review
+    current = {review["state"] for review in latest.values() if review.get("commit_id") == head}
+    if "CHANGES_REQUESTED" in current:
+        return "CHANGES_REQUESTED"
+    return "APPROVED" if "APPROVED" in current else ""
+
+
+def latest_activity(rows):
+    stamps = [row.get(field) for row in rows for field in ("updated_at", "submitted_at", "created_at")]
+    return max((stamp for stamp in stamps if isinstance(stamp, str)), default="")
+
+
+def fetch(pr, api, requests, deadline):
+    repo, number = pr["repo"], pr["number"]
+    pull = f"repos/{repo}/pulls/{number}"
+    page = f"?per_page={PAGE_SIZE}"
+    details = requests.submit(read_api, api, repo, pull, deadline)
+    reviews = requests.submit(read_pages, api, repo, f"{pull}/reviews{page}", deadline)
+    issue_comments = requests.submit(
+        read_pages, api, repo, f"repos/{repo}/issues/{number}/comments{page}", deadline,
+    )
+    review_comments = requests.submit(read_pages, api, repo, f"{pull}/comments{page}", deadline)
+
+    data = details.result()
+    state, draft, merged, head = data["state"], data["draft"], data["merged"], data["head"]["sha"]
+    if state not in ("open", "closed") or not isinstance(draft, bool) or not isinstance(merged, bool):
+        raise RuntimeError(f"{pull}: invalid PR state, draft or merged field")
+    if not isinstance(head, str) or not head:
+        raise RuntimeError(f"{pull}: missing head SHA")
+    commit = f"repos/{repo}/commits/{head}"
+    runs = requests.submit(read_pages, api, repo, f"{commit}/check-runs{page}", deadline, "check_runs")
+    statuses = requests.submit(read_pages, api, repo, f"{commit}/status", deadline, "statuses")
+    checks, failing = summarize_checks(runs.result() + statuses.result())
+    reviews, comments = reviews.result(), issue_comments.result() + review_comments.result()
     return key(pr), {
-        "state": data["state"],
-        "draft": data["isDraft"],
-        "review": data.get("reviewDecision") or "",
-        "head": data["headRefOid"],
+        "state": state,
+        "draft": draft,
+        "merged": merged,
+        "head": head,
+        "review": review_decision(reviews, head),
         "checks": checks,
         "failing": failing,
+        "reviews": len(reviews),
+        "comments": len(comments),
+        "activity": latest_activity(reviews + comments),
     }
 
 
@@ -86,9 +175,10 @@ def load_registry(path):
     return reg
 
 
-def fetch_all(reg):
-    with ThreadPoolExecutor(max_workers=8) as pool:
-        return dict(pool.map(fetch, reg))
+def fetch_all(reg, api):
+    deadline = time.monotonic() + FETCH_TIMEOUT
+    with ThreadPoolExecutor(max_workers=24) as requests, ThreadPoolExecutor(max_workers=10) as prs:
+        return dict(prs.map(lambda pr: fetch(pr, api, requests, deadline), reg))
 
 
 def main():
@@ -97,10 +187,14 @@ def main():
     p.add_argument("registry")
     p.add_argument("snapshot")
     p.add_argument("--only", default="")
+    p.add_argument("--api", default=DEFAULT_API, help="read-only JSON API command template (default: %(default)s)")
     a = p.parse_args()
     try:
+        api = shlex.split(a.api)
+        if not any("{endpoint}" in arg for arg in api):
+            raise RuntimeError("--api must contain {endpoint}")
         reg = load_registry(a.registry)
-        live = fetch_all(reg)
+        live = fetch_all(reg, api)
         if len(live) != len(reg):
             raise RuntimeError(f"fetched {len(live)} of {len(reg)} PRs")
         if a.mode == "snapshot":

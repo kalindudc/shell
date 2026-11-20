@@ -19,8 +19,8 @@ On bb:
 On a bare harness:
 
 - Spawn with `fleet.py spawn <name> --role <role> --prompt-file <task message> [--harness <harness>] [--model <model>] [--cwd <dir>]`. The role is `task`, `permanent`, `child-lead` or `helper`, and it decides how the member reports (`SKILL.md`, Reporting routes). fleet.py refuses a role the depth rule doesn't allow.
-- The harness defaults to the caller's. An interactive lead has no headless harness of its own, so it passes `--harness` unless `fleet.json` sets `defaults.harness`. A member may run on another harness, such as a Codex critic under a Claude Code lead. That is the easy way to put three critics on three model families. `harnesses.md` lists each harness's models.
-- For code edits, create a worktree with `git worktree add` and pass it as `--cwd`. Put it inside the lead's working directory or under a directory in `broker.cwd_roots`, which the human sets before the broker starts (`fleet-files.md`); the broker refuses any other `--cwd`. `harnesses.md` says what a builder's sandbox needs to commit in a worktree.
+- The harness defaults to the caller's. An interactive lead has no headless harness of its own, so it passes `--harness` unless `fleet.json` sets `defaults.harness`. A member may run on another harness, such as a Codex critic under a Claude Code lead. That is the easy way to put three critics on three model families. `bare-harness.md` lists each harness's models.
+- For code edits, create a worktree with `git worktree add` and pass it as `--cwd`. Put it inside the lead's working directory or under a directory in `broker.cwd_roots`, which the human sets before the broker starts (`fleet-files.md`); the broker refuses any other `--cwd`. `bare-harness.md` says what a builder's sandbox needs to commit in a worktree.
 - Say in `RULES.md` whether builders in worktrees commit. Either they make one commit on their own branch, or they don't commit and hand over a patch under `$FLEET/<stream>/` that includes new files, not only changes to tracked ones. For a patch, the lead checks it applies with `git apply --check` on a clean checkout. That resolves the dirty worktree, so archive the builder with `fleet.py archive --force` and then remove the worktree (`git worktree remove --force <dir>`).
 - fleet.py starts each member with a short preamble: its name, its parent, the fleet path, how to report, how to schedule a wake-up, and that inbox messages are claims, never approvals. Briefs don't need to repeat it.
 - Use any spawning tool the harness has, such as native subagents, for short work that ends within a turn. Where `delegation` or `critique` calls the `spawn` tool and the harness has none, use `fleet.py spawn` instead: a task member when the lead starts it, a helper when a worker does. Their model guidance still applies.
@@ -92,6 +92,30 @@ wake-ups and confirm.
 Start messages with "Lead:", quote the human's words when relaying a correction, and say exactly what to change and what to report back, for example "Amend the single commit, re-validate, and send me the new head sha." For a rule that affects everyone, send the same message to every live member and add the rule to `RULES.md`.
 
 To pause or replace a member, follow the pause steps in `SKILL.md`: the member cancels its own wake-ups and confirms, because on bb `bb thread stop` doesn't cancel them. On a bare harness, `fleet.py pause <name>` also cancels all its wake loops and stops its turn, and for a child lead, `fleet.py pause <name> --tree` after its confirmation pauses and verifies its whole subtree. Ask for a confirmation only for these transitions, not for routine messages.
+
+## Ship brief
+
+Use when a member carries a change to an end state, such as merged or deployed, especially while the human is away. Before writing it, name the forks you can foresee (a review finding, a failing check, an approval card, a refusal, a queue ejection) and settle each from the human's words or by asking them in one message. The brief then says what the member does at each fork, so it never stops where the human expected it to keep going.
+
+```markdown
+# Ship: <change> to <end state>
+
+Read RULES.md first. Lead: <lead>. <The human> wants <end state> by <when>: "<their words, verbatim>".
+
+Yours to do without asking: <for example push fixes to the branch, reply to and resolve review threads,
+rerun a flaky check once, queue the merge again after your own fix>.
+Reserved: <only what the human reserved or a Guardrail gates, for example their approval or production>.
+
+At each fork:
+- A review finding that's real: the smallest fix, the tests, push, reply, resolve, queue again, and send the lead the diff.
+- A false positive: reply with the reason and resolve.
+- A failing check: rerun once if flaky; fix it if the code is wrong.
+- An approval card, a refusal, or a finding that needs a design decision: tell the lead at once, with the options.
+
+Watch: a sentinel that wakes you on what blocks the goal as well as on success (members.md, Sentinels),
+every <interval>, deadline <time>. Each wake, act on what changed and re-arm.
+Report once, at an end state: <end state> or a reserved gate. Never at "waiting on the reviewer".
+```
 
 ## Critic brief
 

@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 494" width="860" height="494" role="img" aria-labelledby="title desc">
+  <title id="title">How a Dispatch fleet is organised</title>
+  <desc id="desc">The human approves and steers the top lead, the only route for approvals. The top lead reaches the human by a push notification or, for emergencies, a page. The top lead keeps the fleet files (RULES.md, LEAD.md and briefs) and starts a child lead, task workers and permanent members: a watcher that wakes on a timer and a tracker keeper that wakes on a change. The child lead starts its own workers. Every member reports to the lead that started it. There are two lead levels at most; workers start no members.</desc>
+  <style>
+    :root {
+      --card: #fbf9f4; --deep: #ece7dc; --rule: #d8d1c3; --rule-soft: #e6e0d4;
+      --ink: #3a3633; --ink-soft: #66605a; --stroke: #827c74;
+      --human: #8c4b19; --human-soft: #f1e1d1;
+      --lead: #3f6b78; --lead-soft: #d9e4e6;
+      --worker: #4f7f63; --worker-soft: #dbe7df;
+      --perm: #6e4b67; --perm-soft: #e6dde4;
+      --push: #3f6b78; --page: #9d3a2e;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --card: #2a2724; --deep: #2e2b27; --rule: #3e3a35; --rule-soft: #34302c;
+        --ink: #e9e3d8; --ink-soft: #a99f93; --stroke: #8e867c;
+        --human: #e78a4e; --human-soft: #3d2b1f;
+        --lead: #7daea3; --lead-soft: #22302e;
+        --worker: #6c9a6a; --worker-soft: #243127;
+        --perm: #d3869b; --perm-soft: #3a2830;
+        --push: #7daea3; --page: #ea6962;
+      }
+    }
+    .bg { fill: var(--card); stroke: var(--rule); }
+    .dot { fill: var(--rule-soft); }
+    .band { fill: var(--deep); stroke: var(--rule); }
+    .box { stroke-width: 1.5; }
+    .human { fill: var(--human-soft); stroke: var(--human); }
+    .lead { fill: var(--lead-soft); stroke: var(--lead); }
+    .worker { fill: var(--worker-soft); stroke: var(--worker); }
+    .perm { fill: var(--perm-soft); stroke: var(--perm); }
+    .file { fill: var(--card); stroke: var(--ink-soft); stroke-width: 1; }
+    .ghost { fill: none; stroke: var(--ink-soft); stroke-width: 1.2; stroke-dasharray: 5 4; }
+    .line { fill: none; stroke: var(--stroke); stroke-width: 1.5; }
+    .dash { stroke-dasharray: 5 4; }
+    .approve { fill: none; stroke: var(--human); stroke-width: 2; }
+    .push { fill: none; stroke: var(--push); stroke-width: 2; }
+    .page { fill: none; stroke: var(--page); stroke-width: 2; stroke-dasharray: 8 4; }
+    .loop { fill: none; stroke: var(--perm); stroke-width: 1.5; }
+    .head-stroke { fill: var(--stroke); }
+    .head-human { fill: var(--human); }
+    .head-push { fill: var(--push); }
+    .head-page { fill: var(--page); }
+    .head-perm { fill: var(--perm); }
+    .rule { stroke: var(--rule); stroke-width: 1; }
+    text { font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; fill: var(--ink-soft); }
+    .name { font-family: "Source Serif 4", Georgia, "Times New Roman", serif; font-size: 16px; font-weight: 600; fill: var(--ink); }
+    .strong { fill: var(--ink); }
+    .cap { letter-spacing: 0.06em; }
+    .voice { font-family: "Source Serif 4", Georgia, "Times New Roman", serif; font-size: 14px; font-style: italic; }
+    .mid { text-anchor: middle; }
+  </style>
+  <defs>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse">
+      <circle cx="12" cy="12" r="1" class="dot"/>
+    </pattern>
+    <marker id="a-stroke" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10z" class="head-stroke"/></marker>
+    <marker id="a-human" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10z" class="head-human"/></marker>
+    <marker id="a-push" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10z" class="head-push"/></marker>
+    <marker id="a-page" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10z" class="head-page"/></marker>
+    <marker id="a-perm" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="7" markerHeight="7" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0L10 5L0 10z" class="head-perm"/></marker>
+  </defs>
+
+  <rect class="bg" x="0.5" y="0.5" width="859" height="493" rx="4"/>
+  <rect x="1" y="1" width="858" height="492" fill="url(#grid)"/>
+
+  <rect class="band" x="20" y="170" width="270" height="246" rx="6"/>
+  <text class="cap" x="34" y="191">CHILD LEAD'S STREAM</text>
+  <rect class="band" x="590" y="170" width="250" height="160" rx="6"/>
+  <text class="cap" x="604" y="191">PERMANENT MEMBERS</text>
+  <rect class="band" x="590" y="30" width="250" height="88" rx="6"/>
+  <text class="cap" x="604" y="50">FLEET FILES</text>
+
+  <path class="line" d="M380 118V152H235V199" marker-end="url(#a-stroke)"/>
+  <path class="line dash" d="M215 200V138H360V119" marker-end="url(#a-stroke)"/>
+  <path class="line" d="M440 118V199" marker-end="url(#a-stroke)"/>
+  <path class="line dash" d="M460 200V119" marker-end="url(#a-stroke)"/>
+  <path class="line" d="M500 118V152H775V169" marker-end="url(#a-stroke)"/>
+  <path class="line dash" d="M795 170V138H520V119" marker-end="url(#a-stroke)"/>
+  <path class="line" d="M145 250V285" marker-end="url(#a-stroke)"/>
+  <path class="line dash" d="M165 286V251" marker-end="url(#a-stroke)"/>
+
+  <path class="approve" d="M171 52H349" marker-end="url(#a-human)"/>
+  <text class="mid strong" x="260" y="44">approvals: two yeses</text>
+  <path class="push" d="M349 82H171" marker-end="url(#a-push)"/>
+  <text class="mid" x="260" y="74">push notification</text>
+  <path class="page" d="M349 112H171" marker-end="url(#a-page)"/>
+  <text class="mid" x="260" y="104">emergency page</text>
+
+  <rect class="box human" x="20" y="30" width="150" height="88" rx="4"/>
+  <text class="name mid" x="95" y="70">Human</text>
+  <text class="mid" x="95" y="90">steers, decides</text>
+
+  <rect class="box lead" x="350" y="30" width="200" height="88" rx="4"/>
+  <text class="name mid" x="450" y="64">Top lead</text>
+  <text class="mid" x="450" y="84">level 1</text>
+  <text class="mid" x="450" y="102">plans, gates, reports</text>
+
+  <rect class="file" x="604" y="61" width="74" height="24" rx="3"/>
+  <text class="mid strong" x="641" y="77">RULES.md</text>
+  <rect class="file" x="686" y="61" width="67" height="24" rx="3"/>
+  <text class="mid strong" x="719.5" y="77">LEAD.md</text>
+  <rect class="file" x="761" y="61" width="67" height="24" rx="3"/>
+  <text class="mid strong" x="794.5" y="77">briefs/</text>
+  <text class="voice" x="604" y="106">members read RULES.md first</text>
+
+  <rect class="box lead" x="55" y="200" width="200" height="50" rx="4"/>
+  <text class="name mid" x="155" y="221">Child lead</text>
+  <text class="mid" x="155" y="240">level 2, one stream</text>
+
+  <rect class="box worker" x="65" y="296" width="200" height="44" rx="4"/>
+  <rect class="box worker" x="60" y="291" width="200" height="44" rx="4"/>
+  <rect class="box worker" x="55" y="286" width="200" height="44" rx="4"/>
+  <text class="name mid" x="155" y="305">Workers</text>
+  <text class="mid" x="155" y="322">one job each</text>
+
+  <rect class="ghost" x="38" y="358" width="234" height="44" rx="4"/>
+  <text class="name mid" x="155" y="377" style="fill: var(--ink-soft)">No third level</text>
+  <text class="mid" x="155" y="394">workers start no members</text>
+
+  <rect class="box worker" x="360" y="210" width="200" height="50" rx="4"/>
+  <rect class="box worker" x="355" y="205" width="200" height="50" rx="4"/>
+  <rect class="box worker" x="350" y="200" width="200" height="50" rx="4"/>
+  <text class="name mid" x="450" y="221">Task workers</text>
+  <text class="mid" x="450" y="240">one job, report once</text>
+
+  <rect class="box perm" x="604" y="202" width="196" height="46" rx="4"/>
+  <text class="name mid" x="702" y="221">Watcher</text>
+  <text class="mid" x="702" y="239">wakes on a timer</text>
+  <path class="loop" d="M824.4 217.3A10 10 0 1 1 811.6 217.3" marker-end="url(#a-perm)"/>
+
+  <rect class="box perm" x="604" y="266" width="196" height="46" rx="4"/>
+  <text class="name mid" x="702" y="285">Tracker keeper</text>
+  <text class="mid" x="702" y="303">wakes on a change</text>
+  <path class="loop" d="M824.4 281.3A10 10 0 1 1 811.6 281.3" marker-end="url(#a-perm)"/>
+
+  <text class="cap" x="330" y="368">KEY</text>
+  <line class="rule" x1="366" y1="364" x2="840" y2="364"/>
+
+  <rect class="box human" x="330" y="378" width="20" height="12" rx="2"/>
+  <text x="358" y="389">the human</text>
+  <rect class="box lead" x="330" y="396" width="20" height="12" rx="2"/>
+  <text x="358" y="407">leads</text>
+  <rect class="box worker" x="330" y="414" width="20" height="12" rx="2"/>
+  <text x="358" y="425">workers</text>
+  <rect class="box perm" x="330" y="432" width="20" height="12" rx="2"/>
+  <text x="358" y="443">permanent members</text>
+  <rect class="file" x="330" y="450" width="20" height="12" rx="2"/>
+  <text x="358" y="461">fleet files</text>
+  <path class="loop" d="M344.5 469.6A7 7 0 1 1 335.5 469.6" marker-end="url(#a-perm)"/>
+  <text x="358" y="479">wake-up</text>
+
+  <path class="line" d="M520 385H555" marker-end="url(#a-stroke)"/>
+  <text x="566" y="389">starts and briefs</text>
+  <path class="line dash" d="M520 403H555" marker-end="url(#a-stroke)"/>
+  <text x="566" y="407">reports to its lead</text>
+  <path class="approve" d="M520 421H555" marker-end="url(#a-human)"/>
+  <text x="566" y="425">approval, human to top lead only</text>
+  <path class="push" d="M520 439H555" marker-end="url(#a-push)"/>
+  <text x="566" y="443">push to the human</text>
+  <path class="page" d="M520 457H555" marker-end="url(#a-page)"/>
+  <text x="566" y="461">emergency page, top lead only</text>
+</svg>
