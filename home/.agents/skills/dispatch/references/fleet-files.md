@@ -55,7 +55,7 @@ The human writes this to `$FLEET/lead-prompt.md` before `init`. fleet.py adds a 
 # Start: top lead <lead name> for <what the fleet is for>
 
 You are the top lead of a fleet run by fleet.py, in a headless <harness> session that fleet.py resumes on
-every message and wake-up. Fleet storage: <absolute path> ($FLEET). Orchestrator skill: <absolute path>/SKILL.md.
+every message and wake-up. Fleet storage: <absolute path> ($FLEET). Dispatch skill: <absolute path>/SKILL.md.
 The human: <name, time zone>. They read your replies in $FLEET/agents/<lead>/final.md <and as notifications>.
 
 ## First

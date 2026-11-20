@@ -1,6 +1,6 @@
 # Fix the calculator and monitor its alerts
 
-Please lead this work using the orchestrator skill at `@SKILL@`. The checkout
+Please lead this work using the dispatch skill at `@SKILL@`. The checkout
 for this run is `@RUN@`. Use only fresh sessions, threads, and any new
 worktrees needed for this run. Use any tools available to you. Don't touch
 existing checkouts, fleets, or threads. Don't contact people, commit, or push.

@@ -53,7 +53,7 @@ A child lead follows this instead of the top lead's setup in `SKILL.md`:
 # Child lead charter: <stream>
 
 You are a child lead, level 2, for top lead <thread id or fleet.py name>. Top fleet: <FLEET>. Follow "Setup for a child lead"
-in references/child-leads.md of the orchestrator skill. Re-read this charter on every wake. The top lead may edit it.
+in references/child-leads.md of the dispatch skill. Re-read this charter on every wake. The top lead may edit it.
 
 ## Scope
 <What the stream is for, what's in and out, and what "done" means.>

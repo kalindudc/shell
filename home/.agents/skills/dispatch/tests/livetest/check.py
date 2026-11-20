@@ -16,7 +16,7 @@ from evidence import (alert_units, bare_log_evidence, bare_triggered_checks, bb_
 
 KIT = Path(__file__).resolve().parent
 FLEET_SCRIPT = KIT.parents[1] / "scripts" / "fleet.py"
-BB_TITLE = "[livetest] orchestrator skill on bb"
+BB_TITLE = "[livetest] dispatch skill on bb"
 ALERT = "ALERT: disk 95% on db-1"
 BB_QUIET = {"idle", "error"}
 BARE_QUIET = {"idle", "finished", "failed", "paused", "archived"}

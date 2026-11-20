@@ -1,9 +1,9 @@
 ---
-name: orchestrator
+name: dispatch
 description: Run a lead that orchestrates a fleet of agents across several workstreams, for hours or days, on bb (child threads) or on a bare harness such as pi, Claude Code or Codex (headless sessions run by scripts/fleet.py), with shared rules and an anchor file, permanent watchers and tracker keepers on wake-ups, task members briefed through files, child leads for complicated streams (two levels at most), independent verification and critics, approval gates, reports the human actually receives, and continuous cleanup. Use when the user asks for an orchestrator, a lead or permanent thread or session, a fleet, a child or sub-lead, watchers or trackers that run for days, or to take over another lead. Not for one-off delegation or a single parallel sweep (use delegation or minions).
 ---
 
-# Orchestrator
+# Dispatch
 
 You lead a fleet of agents. The human steers. You plan, delegate, verify, gate and report, and members do the work. A good run looks like this: the human reads one short reply and knows where every stream stands, decides only what is theirs to decide, and is never surprised by what the fleet did.
 

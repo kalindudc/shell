@@ -1,4 +1,4 @@
-# Orchestrator live test
+# Dispatch live test
 
 The same calculator repair runs under BB, pi, Claude Code and Codex. The
 driver gives a lead two independent fixes, a watcher and a deploy gate. It

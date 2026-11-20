@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prepare, drive, score and clean up the isolated orchestrator live test."""
+"""Prepare, drive, score and clean up the isolated dispatch live test."""
 
 import argparse
 import json
@@ -67,7 +67,7 @@ def make_run(root, out):
         if storage:
             root = Path(storage) / "livetest"
         elif out is None:
-            return Path(tempfile.mkdtemp(prefix="orchestrator-livetest-")).resolve()
+            return Path(tempfile.mkdtemp(prefix="dispatch-livetest-")).resolve()
         else:
             raise ValueError("--out requires --root, FLEET, or BB_THREAD_STORAGE")
     root = root.expanduser().resolve()
@@ -114,7 +114,7 @@ def prepare(run, dry, sentinel):
                                   "/result.json\n/result.md\n", encoding="utf-8")
     if not dry:
         git("add", "--", "calc.py", "test_calc.py", "deploy.sh", "signals/alerts.txt")
-        git("-c", "user.name=Orchestrator live test", "-c", "user.email=livetest@example.invalid",
+        git("-c", "user.name=Dispatch live test", "-c", "user.email=livetest@example.invalid",
             "-c", "commit.gpgsign=false", "commit", "-m", "Seed isolated scenario")
 
 

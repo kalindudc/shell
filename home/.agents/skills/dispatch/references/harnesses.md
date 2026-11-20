@@ -9,7 +9,7 @@ Members use the human's normal harness configuration, including extensions, MCP 
 Run setup from the directory the lead should work in, or pass its absolute path to `init --cwd`. Set aside the fleet directory and any worktree roots before starting. The broker approves member working directories under the lead's working directory or under `broker.cwd_roots`.
 
 ```sh
-SKILL=/Users/me/.agents/skills/orchestrator
+SKILL=/Users/me/.agents/skills/dispatch
 FLEET=/Users/me/fleets/ci-refactor
 PYTHON=$(python3 -c 'import sys; print(sys.executable)')
 mkdir -p "$FLEET/watch" "$FLEET/worktrees"
@@ -27,8 +27,8 @@ Save this worked example as `$FLEET/fleet.json` before `init`. Replace all examp
       "interactive_extra_args": []
     },
     "claude": {
-      "extra_args": ["--permission-prompts", "none", "--add-dir", "/Users/me/.agents/skills/orchestrator", "/Users/me/fleets/ci-refactor", "--allowedTools", "Read", "Bash(/usr/bin/python3 /Users/me/.agents/skills/orchestrator/scripts/fleet.py *)"],
-      "interactive_extra_args": ["--add-dir", "/Users/me/.agents/skills/orchestrator", "/Users/me/fleets/ci-refactor"]
+      "extra_args": ["--permission-prompts", "none", "--add-dir", "/Users/me/.agents/skills/dispatch", "/Users/me/fleets/ci-refactor", "--allowedTools", "Read", "Bash(/usr/bin/python3 /Users/me/.agents/skills/dispatch/scripts/fleet.py *)"],
+      "interactive_extra_args": ["--add-dir", "/Users/me/.agents/skills/dispatch", "/Users/me/fleets/ci-refactor"]
     },
     "codex": {
       "extra_args": ["--add-dir", "/Users/me/fleets/ci-refactor"],
@@ -37,7 +37,7 @@ Save this worked example as `$FLEET/fleet.json` before `init`. Replace all examp
   },
   "broker": {
     "cwd_roots": ["/Users/me/fleets/ci-refactor/worktrees"],
-    "wake_checks": ["/usr/bin/python3 /Users/me/.agents/skills/orchestrator/scripts/pr-sentinel.py check /Users/me/fleets/ci-refactor/watch/prs.json /Users/me/fleets/ci-refactor/watch/snapshot.json"]
+    "wake_checks": ["/usr/bin/python3 /Users/me/.agents/skills/dispatch/scripts/pr-sentinel.py check /Users/me/fleets/ci-refactor/watch/prs.json /Users/me/fleets/ci-refactor/watch/snapshot.json"]
   },
   "notify": {
     "command": ["/usr/bin/osascript", "-e", "on run argv\n  display notification (item 2 of argv) with title (item 1 of argv)\nend run", "{title}", "{body}"],
@@ -86,7 +86,7 @@ For a bare fleet, type both explicit yeses into the same interactive or attached
 For the worked example, prepare `watch/prs.json` as a JSON list of `{"repo":"owner/name","number":123}` records and seed `watch/snapshot.json` with `pr-sentinel.py snapshot` using those paths. Run the matched check from the watcher:
 
 ```sh
-"$PYTHON" "$SKILL/scripts/fleet.py" wake self --id ci --every 600 --check '/usr/bin/python3 /Users/me/.agents/skills/orchestrator/scripts/pr-sentinel.py check /Users/me/fleets/ci-refactor/watch/prs.json /Users/me/fleets/ci-refactor/watch/snapshot.json'
+"$PYTHON" "$SKILL/scripts/fleet.py" wake self --id ci --every 600 --check '/usr/bin/python3 /Users/me/.agents/skills/dispatch/scripts/pr-sentinel.py check /Users/me/fleets/ci-refactor/watch/prs.json /Users/me/fleets/ci-refactor/watch/snapshot.json'
 ```
 
 `--check` always needs a live broker and an exact match in `broker.wake_checks`. A check fires once on exit 0; after handling the change, the member updates the snapshot and re-arms. Exit 0 only on a **change**, never on “still green”. The PR sentinel reports missing, empty or unrecognized check data as unknown, not green. Removing a command revokes future runs immediately; a new grant needs a broker restart from a normal terminal. If the broker is down or a check was revoked, the loop skips the check, records `last_result: policy-blocked` in its wake state, and stays armed unless its deadline expires. Host checks have a 60-second bound. An allowlist checks the command string, not what the script does; keep scripts read-only and outside agent-writable paths. Timer wakes without `--check` need no broker to queue. `unwake NAME --all` cancels every loop; `--id LOOP` cancels one. `wait` defaults to 540 seconds; use a lower `--timeout` when inside a shell tool.

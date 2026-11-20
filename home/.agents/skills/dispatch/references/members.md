@@ -88,7 +88,7 @@ For another status command, write a small read-only script in the same shape: ru
 For PRs, use `scripts/pr-sentinel.py` as is. It reads a registry of `{repo, number}` entries, fetches each PR's state, draft flag, review decision, head and check results, treats missing or unrecognized check data as unknown rather than passing, and compares them with the snapshot:
 
 ```bash
-SKILL=~/.agents/skills/orchestrator   # wherever your harness finds this skill (harnesses.md)
+SKILL=~/.agents/skills/dispatch   # wherever your harness finds this skill (harnesses.md)
 python3 $SKILL/scripts/pr-sentinel.py snapshot $FLEET/tracker/prs.json $FLEET/tracker/snapshot.json
 # the conditional wake-up's check, every 300 s:
 python3 $SKILL/scripts/pr-sentinel.py check $FLEET/tracker/prs.json $FLEET/tracker/snapshot.json
