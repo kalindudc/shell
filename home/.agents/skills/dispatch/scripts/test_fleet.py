@@ -375,11 +375,15 @@ class FleetTests(unittest.TestCase):
         self.assertIsNone(self.metadata('worker')['turn_pid'])
 
     def test_broker_recovery_stops_an_orphaned_turn_and_keeps_its_first_input(self):
+        self.env['TZ'] = 'UTC0'
         turn = self.orphan_turn()
-        (self.cwd / 'release').touch()
-        self.cli('up')
-        self.until(lambda: self.metadata('worker')['status'] == 'failed')
-        self.assertFalse(fleet_runtime.group_alive(turn))
+        try:
+            self.assertIsNotNone(self.metadata('worker')['turn_started'])
+            self.cli('up', env={'TZ': 'JST-9'})
+            self.until(lambda: self.metadata('worker')['status'] == 'failed')
+            self.assertFalse(fleet_runtime.group_alive(turn))
+        finally:
+            (self.cwd / 'release').touch()
         self.assertIn('[stuck from claimed sender worker]', self.cli('wait', '--timeout', '5').stdout)
         self.cli('tell', 'worker', 'after the crash')
         self.until(lambda: (self.root / 'agents/worker/final.md').exists())

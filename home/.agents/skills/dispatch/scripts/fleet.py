@@ -179,8 +179,11 @@ def group_alive(pid):
 
 
 def process_start(pid):
+    # ps formats lstart in the caller's locale and timezone; recovery must compare the same format.
+    env = {**os.environ, 'LC_ALL': 'C', 'TZ': 'UTC0'}
     try:
-        out = subprocess.run(['ps', '-o', 'lstart=', '-p', str(pid)], capture_output=True, text=True, timeout=5)
+        out = subprocess.run(['ps', '-o', 'lstart=', '-p', str(pid)], capture_output=True, text=True,
+                             timeout=5, env=env)
     except (OSError, subprocess.TimeoutExpired):
         return None
     return out.stdout.strip() or None
