@@ -1,13 +1,13 @@
 ---
 name: dispatch
-description: Run a lead that orchestrates a fleet of agents across several workstreams, for hours or days, on bb (child threads) or on a bare harness such as pi, Claude Code or Codex (headless sessions run by scripts/fleet.py), with shared rules and an anchor file, permanent watchers and tracker keepers on wake-ups, task members briefed through files, child leads for complicated streams (two levels at most), independent verification and critics, approval gates, reports the human actually receives, and continuous cleanup. Use when the user asks for an orchestrator, a lead or permanent thread or session, a fleet, a child or sub-lead, watchers or trackers that run for days, or to take over another lead. Not for one-off delegation or a single parallel sweep (use delegation or minions).
+description: Run a lead that orchestrates a fleet of agents across several workstreams, for hours or days, on bb (child threads) or on a bare harness such as pi, Claude Code or Codex (headless sessions run by scripts/fleet.py), with shared rules and an anchor file, permanent watchers and tracker keepers on wake-ups, task members briefed through files, child leads for complicated streams (two levels at most), independent verification and critics, approval gates, reports the human actually receives, and continuous cleanup. Use when the user asks for an orchestrator, a lead or permanent thread or session, a fleet, a child or sub-lead, watchers or trackers that run for days, or to take over another lead. Not for one-off delegation or a single parallel sweep (hand those to a subagent directly).
 ---
 
 # Dispatch
 
 You lead a fleet of agents. The human steers. You plan, delegate, verify, gate and report, and members do the work. A good run looks like this: the human reads one short reply and knows where every stream stands, decides only what is theirs to decide, and is never surprised by what the fleet did.
 
-This skill builds on `delegation` (models and task briefs) and `critique`, and on bb also on `minions`, `wakeup`, `journal` and `flare`. Their rules still apply. Only the Guardrails below are hard. Everything else is a default: adapt cadences, models, fleet size, file layout and the risk checklists to the project and to what the human asks for. `references/lessons.md` explains where each rule came from.
+The skill is self-contained: `references/delegation.md` covers models and task messages, and `references/critique.md` covers critic reviews. On bb it also uses bb's own spawning, wake-up, journal and flare tools, and their rules still apply. Only the Guardrails below are hard. Everything else is a default: adapt cadences, models, fleet size, file layout and the risk checklists to the project and to what the human asks for. `references/lessons.md` explains where each rule came from.
 
 ## Running on any harness
 
@@ -50,7 +50,7 @@ When the human asks for an outcome, such as "merge it" or "ship it", the lead ow
 
 ## Setup
 
-At setup, or when you adopt this skill in a running fleet, read `references/fleet-files.md` and `references/briefs.md`, plus `references/members.md` if the fleet will have permanent members, `references/child-leads.md` if it will have child leads, and `references/bare-harness.md` on a bare harness. Read `references/comms.md` before your first packet, tracker, progress number or text the human will send, and `references/risk.md` before any high-risk change. The rules that matter most are repeated in this file. If you are a child lead, follow your charter's setup instead of this one. When taking over another lead, or adopting this skill in a fleet that's already running, follow the takeover or adoption steps in `references/fleet-files.md`. Otherwise, in short:
+At setup, or when you adopt this skill in a running fleet, read `references/fleet-files.md`, `references/delegation.md` and `references/briefs.md`, plus `references/members.md` if the fleet will have permanent members, `references/child-leads.md` if it will have child leads, and `references/bare-harness.md` on a bare harness. Read `references/comms.md` before your first packet, tracker, progress number or text the human will send, and `references/risk.md` before any high-risk change. The rules that matter most are repeated in this file. If you are a child lead, follow your charter's setup instead of this one. When taking over another lead, or adopting this skill in a fleet that's already running, follow the takeover or adoption steps in `references/fleet-files.md`. Otherwise, in short:
 
 1. Create fleet storage with `RULES.md`, `LEAD.md`, `briefs/` and one folder per stream (one workstream). On a bare harness, first follow [Configure fleet.json before init](references/bare-harness.md#configure-fleetjson-before-init). Members on the same machine read the storage directly. Remote members can't, so give them copies (see fleet-files).
 2. Write `RULES.md` and `LEAD.md` from the templates in `references/fleet-files.md` before you start any member, keeping their headings so members can find the gates. `RULES.md`'s `## Authorization` section says which actions are gated, and which routine writes members may make on their own. Add the human's time zone and known preferences. Ask about what you can't infer in one batch of questions, and keep building what doesn't depend on the answers.
@@ -75,9 +75,9 @@ Scale setup to the fleet's life, but every fleet, however short, keeps `RULES.md
 | Role | Lives for | Model | Reports by |
 |---|---|---|---|
 | Watcher, tracker keeper, sanity checker (permanent) | days | the cheapest that can judge relevance; the lead's model if it may recommend a revert or a page | a message to the lead when something is material |
-| Researcher, builder (task) | one job | personas from `delegation`, or a [harness and model](references/bare-harness.md#harness-permissions-and-sessions) | final answer and files |
+| Researcher, builder (task) | one job | per `references/delegation.md`, or a [harness and model](references/bare-harness.md#harness-permissions-and-sessions) | final answer and files |
 | Verifier | one job | a different model family from the producer | final answer |
-| Critics | one review | three model families (`critique`) | report file and final answer |
+| Critics | one review | three model families (`references/critique.md`) | report file and final answer |
 | Writer of a decision document or text the human will send | one job | the lead's own model, or the lead itself for short text | file and final answer |
 | Design or usability work on a UI or site | one job | `ux-designer`, then `ux-reviewer` (elsewhere, the `ux-design` skill) | files and screenshots |
 | Child lead for a complicated stream (see Child leads) | the stream | the lead's model | milestones, decisions and escalations |
@@ -198,6 +198,8 @@ These are hard rules. Relax one only when the human says so in the top lead's se
 
 - `references/bare-harness.md`: how to run a fleet on bare pi, Claude Code or Codex: setup, broker, approvals, wake-ups, member lifecycle, and harness-specific flags and models. Read at setup on a bare harness.
 - `references/fleet-files.md`: storage layout, setup, remote members, takeover, and templates for `RULES.md` and `LEAD.md`. Read at setup.
+- `references/delegation.md`: when to delegate, which model gets which job, and what every task message carries. Read before your first spawn.
+- `references/critique.md`: critics on three model families, screening, the quorum and the report. Read before a critic review.
 - `references/briefs.md`: spawning, the task brief, the permanent member's prompt, steering, the critic brief and the phase pipeline for large batches. Read before writing a brief.
 - `references/members.md`: charters, check prompts, state files, wake-ups, sentinels, liveness and keepers, with skeletons. Read before starting or changing a permanent member.
 - `references/child-leads.md`: when to start a child lead, its charter, depth and approval rules, reporting, and retiring it. Read before starting one, and read it first if you are one.

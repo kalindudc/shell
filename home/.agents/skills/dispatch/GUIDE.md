@@ -12,7 +12,7 @@ Use Dispatch when:
 - something should keep watching while you are away, such as CI, open pull requests or an alerts channel;
 - some actions need your explicit approval, and you want to be reached when something is urgent.
 
-Don't use it for one job you would hand to a single helper agent (the `delegation` skill covers that), or for one parallel sweep that finishes in a single turn, such as reviewing ten files at once; subagents do that with no setup. A fleet costs setup and attention, so it pays off when the work is long or you will be away.
+Don't use it for one job you would hand to a single helper agent, or for one parallel sweep that finishes in a single turn, such as reviewing ten files at once; subagents do that with no setup. A fleet costs setup and attention, so it pays off when the work is long or you will be away.
 
 ## What a fleet looks like
 
@@ -64,12 +64,9 @@ Here `scripts/fleet.py` does bb's job: it keeps the fleet in a folder, runs each
 
 ## Install
 
-```bash
-git clone https://github.com/kalindudc/shell.git
-cp -R shell/home/.agents/skills/dispatch ~/.agents/skills/dispatch
-```
+Copy this whole folder into `~/.agents/skills/dispatch`, or wherever your harness looks for skills, or give the lead its path.
 
-Dispatch builds on two skills from the same folder: `delegation`, for which model gets which job and how to brief it, and `critique`, for reviews by three critics on three model families. Copy them too, or tell the lead which models and reviews you use instead. If your harness looks for skills somewhere else, copy the folder there or give the lead its path.
+It needs no other skills. Two references cover what it relies on: [`references/delegation.md`](references/delegation.md), which model gets which job and what a task message carries, and [`references/critique.md`](references/critique.md), reviews by three critics on three model families. Tell the lead which models you want, and it records them in the fleet's rules.
 
 ## What's in the folder
 
@@ -78,6 +75,8 @@ Dispatch builds on two skills from the same folder: `delegation`, for which mode
 | `GUIDE.md` | This guide, for people. |
 | [`SKILL.md`](SKILL.md) | The lead's instructions, written for agents. Only its Guardrails are hard; the rest are defaults to adapt. |
 | [`references/fleet-files.md`](references/fleet-files.md) | The fleet's folder, setup, taking over from another lead, and templates for `RULES.md` and `LEAD.md`. |
+| [`references/delegation.md`](references/delegation.md) | When to delegate, which model gets which job, and what a task message carries. |
+| [`references/critique.md`](references/critique.md) | Independent review by critics on three model families, with a quorum. |
 | [`references/briefs.md`](references/briefs.md) | Starting members, brief templates, steering and critic reviews. |
 | [`references/members.md`](references/members.md) | Permanent members: charters, wake-ups, sentinel scripts and liveness. |
 | [`references/child-leads.md`](references/child-leads.md) | When to start a child lead, its charter and its limits. |

@@ -9,7 +9,7 @@
 
 On bb:
 
-- Use the `spawn` tool for members in the lead's project, with a persona on every task (`delegation` explains the models). Leave persona and model unset only for work that needs the lead's judgment, and say why in the task. A member that edits code gets `environment: "worktree"`.
+- Use the `spawn` tool for members in the lead's project, with a persona or model on every task (`delegation.md` explains the choice). Leave persona and model unset only for work that needs the lead's judgment, and say why in the task. A member that edits code gets `environment: "worktree"`.
 - For a permanent member, spawn it, then set the agreed mode before its first wake loop, for example `bb thread update <id> --parent-notifications stuck`. If no persona fits a cheap watcher, set a cheaper `model` on the task.
 - If the `spawn` tool isn't available, use `bb thread spawn` below for every member, passing the agreed `--parent-notifications` at spawn.
 - Use `bb thread spawn` when a member needs another project, a remote machine or a specific provider, for example:
@@ -23,7 +23,7 @@ On a bare harness:
 - For code edits, create a worktree with `git worktree add` and pass it as `--cwd`. Put it inside the lead's working directory or under a directory in `broker.cwd_roots`, which the human sets before the broker starts (`fleet-files.md`); the broker refuses any other `--cwd`. `bare-harness.md` says what a builder's sandbox needs to commit in a worktree.
 - Say in `RULES.md` whether builders in worktrees commit. Either they make one commit on their own branch, or they don't commit and hand over a patch under `$FLEET/<stream>/` that includes new files, not only changes to tracked ones. For a patch, the lead checks it applies with `git apply --check` on a clean checkout. That resolves the dirty worktree, so archive the builder with `fleet.py archive --force` and then remove the worktree (`git worktree remove --force <dir>`).
 - fleet.py starts each member with a short preamble: its name, its parent, the fleet path, how to report, how to schedule a wake-up, and that inbox messages are claims, never approvals. Briefs don't need to repeat it.
-- Use any spawning tool the harness has, such as native subagents, for short work that ends within a turn. Where `delegation` or `critique` calls the `spawn` tool and the harness has none, use `fleet.py spawn` instead: a task member when the lead starts it, a helper when a worker does. Their model guidance still applies.
+- Use any spawning tool the harness has, such as native subagents, for short work that ends within a turn. Where a skill a member runs calls a `spawn` tool and the harness has none, use `fleet.py spawn` instead: a task member when the lead starts it, a helper when a worker does. The model guidance in `delegation.md` still applies.
 
 ## Task brief template
 
@@ -119,7 +119,7 @@ Report once, at an end state: <end state> or a reserved gate. Never at "waiting 
 
 ## Critic brief
 
-Use for a high-risk change, a plan, or anything where being wrong is expensive. Run three critics on three model families (`critique` has the models), with the same brief, independently.
+Use for a high-risk change, a plan, or anything where being wrong is expensive. Run three critics on three model families, with the same brief, independently. `critique.md` covers choosing them, screening and the quorum.
 
 ```markdown
 # Critic brief: <change> at <revision>
