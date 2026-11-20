@@ -71,7 +71,7 @@ An automatic revert takes detection and diagnosis out of the path, which is wher
 
 1. First yes, before the change: the human approves one exact revert command at a pinned revision, the triggers with thresholds and durations, the signals the watchdog reads, the window (absolute start and end with time zone), and the undo.
 2. Second yes, right before arming: the lead restates all of that and the human confirms.
-3. The watchdog is a deterministic script run from the lead's environment, never a child's, and never as a wake-up condition. It checks its credentials, signal coverage and target state before arming, periodically while armed, and before firing. If any of them doesn't match, it disarms without running anything, alerts the lead, and the backup operator takes over.
+3. The watchdog is a deterministic script run from the lead's environment, never a member's, and never as a wake-up condition. It checks its credentials, signal coverage and target state before arming, periodically while armed, and before firing. If any of them doesn't match, it disarms without running anything, alerts the lead, and the backup operator takes over.
 4. It runs the revert at most once, logs, pushes a notification and exits. It disarms at the end of the window, after it fires, or when the human says so. Extending the window, re-arming the next day, a changed command, or a failed or unclear attempt each need a fresh two-yes approval.
 5. Test it first in a test environment: one run where a real trigger must fire it, and a quiet hour where it must not. Then run it in shadow mode, printing "would revert", against real traffic to check the thresholds.
 6. Record armed and disarmed in `LEAD.md`, and verify any revert it ran independently.

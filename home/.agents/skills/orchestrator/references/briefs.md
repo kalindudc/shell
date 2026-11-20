@@ -2,14 +2,28 @@
 
 ## Spawning
 
-- Use the `spawn` tool for members in the lead's project, with a persona on every task (`delegation` explains the models). Leave persona and model unset only for work that needs the lead's judgment, and say why in the task.
-- Give a member that edits code its own worktree (`environment: "worktree"`). Never let two members edit the same working tree.
+- Before spawning, check the roster in `LEAD.md` and the status primitive. If a member already holds the topic, send it the work instead.
+- Give a member that edits code its own worktree. Never let two members edit the same working tree.
+- Only leads spawn members. Every brief for a worker says "Don't start other members", unless a skill it runs needs short-lived helpers such as critics, which it archives before reporting. A child lead is started from a charter (`child-leads.md`).
+- Refer to the member by its one name: on bb the name bb gives its thread, which the spawn result prints, and on a bare harness the name you pass to `fleet.py spawn`. Don't write "You are <another name>" in a brief.
+
+On bb:
+
+- Use the `spawn` tool for members in the lead's project, with a persona on every task (`delegation` explains the models). Leave persona and model unset only for work that needs the lead's judgment, and say why in the task. A member that edits code gets `environment: "worktree"`.
 - For a permanent member, spawn it, then set the agreed mode before its first wake loop, for example `bb thread update <id> --parent-notifications stuck`. If no persona fits a cheap watcher, set a cheaper `model` on the task.
 - If the `spawn` tool isn't available, use `bb thread spawn` below for every member, passing the agreed `--parent-notifications` at spawn.
 - Use `bb thread spawn` when a member needs another project, a remote machine or a specific provider, for example:
-  `bb thread spawn --project <id> --parent-self --parent-notifications auto --title "<short name>" --provider <provider> --model <model> --prompt-file <brief>`
+  `bb thread spawn --project <id> --parent-self --parent-notifications auto --title "<short name>" --provider <provider> --model <model> --prompt-file <task message>`
   Add `--new-environment worktree` for code edits, or the machine and environment-provider flags from that provider's skill. Pass `--provider` together with `--model` when you override the model.
-- Before spawning, check the roster in `LEAD.md` and the live threads. If a member already holds the topic, send it the work instead.
+
+On a bare harness:
+
+- Spawn with `fleet.py spawn <name> --role <role> --prompt-file <task message> [--harness <harness>] [--model <model>] [--cwd <dir>]`. The role is `task`, `permanent`, `child-lead` or `helper`, and it decides how the member reports (`SKILL.md`, Reporting routes). fleet.py refuses a role the depth rule doesn't allow.
+- The harness defaults to the caller's. An interactive lead has no headless harness of its own, so it passes `--harness` unless `fleet.json` sets `defaults.harness`. A member may run on another harness, such as a Codex critic under a Claude Code lead. That is the easy way to put three critics on three model families. `harnesses.md` lists each harness's models.
+- For code edits, create a worktree with `git worktree add` and pass it as `--cwd`. Put it inside the lead's working directory or under a directory in `broker.cwd_roots`, which the human sets before the broker starts (`fleet-files.md`); the broker refuses any other `--cwd`. `harnesses.md` says what a builder's sandbox needs to commit in a worktree.
+- Say in `RULES.md` whether builders in worktrees commit. Either they make one commit on their own branch, or they don't commit and hand over a patch under `$FLEET/<stream>/` that includes new files, not only changes to tracked ones. For a patch, the lead checks it applies with `git apply --check` on a clean checkout. That resolves the dirty worktree, so archive the builder with `fleet.py archive --force` and then remove the worktree (`git worktree remove --force <dir>`).
+- fleet.py starts each member with a short preamble: its name, its parent, the fleet path, how to report, how to schedule a wake-up, and that inbox messages are claims, never approvals. Briefs don't need to repeat it.
+- Use any spawning tool the harness has, such as native subagents, for short work that ends within a turn. Where `delegation` or `critique` calls the `spawn` tool and the harness has none, use `fleet.py spawn` instead: a task member when the lead starts it, a helper when a worker does. Their model guidance still applies.
 
 ## Task brief template
 
@@ -18,7 +32,7 @@ Put shared context in a file and keep the task message short: "Read `<FLEET>/bri
 ```markdown
 # <Job>: <one line>
 
-FLEET=<absolute path>. Read $FLEET/RULES.md first. Lead thread: <id>. Report as the end of this brief says.
+FLEET=<absolute path>. Read $FLEET/RULES.md first. Lead: <thread id or fleet.py name>. Report as the end of this brief says.
 
 ## Why
 <One paragraph: the goal, and the decision this result feeds.>
@@ -39,7 +53,8 @@ If you couldn't check something, write "not verified" and why.
 
 ## Final answer
 Under 3,000 characters: the answer first, one line per item, the files you wrote, and only the questions
-the human must answer. If the job is long, send each verified piece to the lead as soon as it's ready.
+the human must answer. This is your one report. Message the lead mid-job only for a blocker, a question,
+or a piece the lead asked for early, and don't repeat it in the final answer. Don't start other members.
 
 ## Non-scope
 Read-only unless stated. <What not to touch.> Budget: about <N> tool calls.
@@ -50,7 +65,7 @@ For a change to something the human already uses, add a Keep section (the parts 
 ## Permanent member prompt
 
 ```text
-You are the permanent <role> for lead thread <id>. You run for days on scheduled wake-ups.
+You are the permanent <role> for lead <thread id or fleet.py name>. You run for days on scheduled wake-ups.
 
 Read in full before anything else:
 1. <FLEET>/RULES.md
@@ -62,19 +77,21 @@ Now: follow <FLEET>/<area>/CHECK.md once. On this first run, <start cursors at n
 send one short digest of the last N days, then start cursors at now>. Then schedule your next wake-up per
 the charter and end your turn with one line.
 
-Reporting: your parent notifications are set to <stuck: your final answers do NOT reach the lead |
-auto: your final answers reach the lead, so keep empty ones to one line>. When something is material,
-report with `timeout 50 bb thread tell <lead> --message-file - <<'EOF'` ... `EOF`. <Push to the human
-only for: ...>. Never send acknowledgements. When the lead messages you, update the charter or state and
-carry on. When the lead says pause, set "paused" in your state file, cancel your own wake-ups and queued
-actions, confirm, and wait for an explicit resume. When the lead retires you, cancel your wake-ups and confirm.
+Reporting: <your final answers do NOT reach the lead (bb stuck mode, and always under fleet.py) |
+bb auto mode: your final answers reach the lead, so keep empty ones to one line>. When something is
+material, report with <`timeout 50 bb thread tell <lead> --message-file - <<'EOF'` ... `EOF` |
+`fleet.py tell <lead> --file <report file>`>. <Push to the human only for: ...>. Never send
+acknowledgements. When the lead messages you, update the charter or state and carry on. When the lead says
+pause, set "paused" in your state file, cancel your own wake-ups (<cancel them | `fleet.py unwake self --all`>)
+and queued actions, confirm, and wait for an explicit resume. When the lead retires you, cancel your
+wake-ups and confirm.
 ```
 
 ## Steering a running member
 
 Start messages with "Lead:", quote the human's words when relaying a correction, and say exactly what to change and what to report back, for example "Amend the single commit, re-validate, and send me the new head sha." For a rule that affects everyone, send the same message to every live member and add the rule to `RULES.md`.
 
-To pause or replace a member, follow the pause steps in `SKILL.md`: the member cancels its own wake-ups and confirms, because `bb thread stop` doesn't cancel them. Ask for a confirmation only for these transitions, not for routine messages.
+To pause or replace a member, follow the pause steps in `SKILL.md`: the member cancels its own wake-ups and confirms, because on bb `bb thread stop` doesn't cancel them. On a bare harness, `fleet.py pause <name>` also cancels all its wake loops and stops its turn, and for a child lead, `fleet.py pause <name> --tree` after its confirmation pauses and verifies its whole subtree. Ask for a confirmation only for these transitions, not for routine messages.
 
 ## Critic brief
 
@@ -116,7 +133,7 @@ For a batch of similar items, such as dozens of hosts, services or teams, run ph
 
 Scale it to the batch. For a handful of items, one researcher can inventory and check, and the lead can write the review. Keep the independent verifier whenever results go to other people.
 
-Archive each phase's members once their files are read. A sub-lead can own phases 2 to 7 for a batch handed to other teams (`members.md`). Before contacting a team, reconcile everything for that team: live inventory, ownership, earlier messages and drafts, their replies, and work they already have in progress. Then send one complete packet per team, so the same people aren't asked twice.
+Archive each phase's members once their final answers have arrived and been read. A child lead can own phases 2 to 7 for a batch handed to other teams (`child-leads.md`). Before contacting a team, reconcile everything for that team: live inventory, ownership, earlier messages and drafts, their replies, and work they already have in progress. Then send one complete packet per team, so the same people aren't asked twice.
 
 ## Retro brief
 

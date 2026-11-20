@@ -7,14 +7,14 @@ The human's attention is the fleet's scarcest resource. The common failures are 
 1. The first sentence is the answer, or the state in one line.
 2. Then the evidence as a block or a few bullets: a table of streams, a list of steps, a verdict table.
 3. Then what happens next and who does it.
-4. Then what the human must decide, as questions in the question panel.
+4. Then what the human must decide, as questions (in the question panel on bb).
 5. A link to the full file for anyone who wants detail.
 
 Keep it to one screen. Don't recap what the human just said or list tool calls. Use the human's time zone. When several member reports arrive together, send one summary.
 
 ## Questions and approvals
 
-- Batch questions in the question panel, a recommended option first, with the context the human needs in each question.
+- Batch questions, a recommended option first, with the context the human needs in each question. On bb, use the question panel. Elsewhere, number them in the reply so the human can answer by number.
 - Keep working on what doesn't depend on the answer, and say briefly what is waiting on it.
 - Gated actions need two explicit yeses (`SKILL.md` Guardrails). The first question shows the exact command, target, effect, why and undo. The second restates it immediately before running. One approval covers one command, run once.
 
@@ -62,7 +62,8 @@ The human asks "what can ship, in what order?" often. Keep `$FLEET/ship/SHIP-LIS
 - Archive a board or section when its work is done, and restore it if the work resumes. Keep finished items visible, folded, because they show progress.
 - Group items the way the human thinks about them, for example by owning team and service, not by batch or date.
 - Compute every number from a data file and show its source and time. Never type a number into a page.
-- Frame progress so it shows the work. A bare ratio of finished items reads like nothing when most of the effort went into building the replacement and moving the hard parts. Show what was built, what was moved and what's left, in the human's units. Keep the headline in a small data file so it can change as the project moves.
+- Progress numbers follow the five rules in `SKILL.md` (Talking to the human): a fixed baseline, a percentage for finished work only, in-flight work beside it, one headline per question, and a label on every number. Keep the headline's definition in a small data file, so it can change without touching the page.
+- Show the size of the work through what was built, what moved and what's left, in the human's units. A bare "X of Y gone" can undersell months of work on the replacement, and "X of Y gone or in flight" can read as inflated. Neither is fixed by changing the ratio: say what was built in a sentence, and give the breakdown.
 
 ## Messages sent as the human
 

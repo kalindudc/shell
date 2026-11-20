@@ -7,7 +7,8 @@
 The registry is a JSON list of {"repo": "owner/name", "number": 123} objects (extra fields are
 ignored). `check` fetches every registered PR with gh, compares the material fields with the
 snapshot and prints one line per change. A PR missing from the snapshot counts as a change.
-Any fetch, parse or coverage failure exits 2, so a broken read is never mistaken for "unchanged".
+A fetch, parse or registry coverage failure exits 2, so a broken read is never mistaken for "unchanged".
+Missing, empty or unrecognized check data is reported as unknown, not a pass.
 `snapshot` writes the current state. With --only, it updates just the PRs you reviewed and keeps
 the rest, so changes you haven't handled yet stay pending.
 """
@@ -20,6 +21,7 @@ from concurrent.futures import ThreadPoolExecutor
 FIELDS = "state,isDraft,reviewDecision,headRefOid,statusCheckRollup"
 FAILED = {"FAILURE", "ERROR", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE"}
 PENDING = {"PENDING", "QUEUED", "IN_PROGRESS", "EXPECTED", "WAITING", "REQUESTED"}
+PASSING = {"SUCCESS", "NEUTRAL", "SKIPPED"}
 
 
 def key(pr):
@@ -27,15 +29,24 @@ def key(pr):
 
 
 def summarize_checks(rollup):
-    failing, pending = [], False
-    for c in rollup or []:
-        name = c.get("name") or c.get("context") or "?"
-        result = (c.get("conclusion") or c.get("state") or c.get("status") or "").upper()
+    if not isinstance(rollup, list) or not rollup:
+        return "unknown", []
+    failing, pending, unknown = [], False, False
+    for check in rollup:
+        if not isinstance(check, dict):
+            unknown = True
+            continue
+        outcome = check.get("conclusion") or check.get("state") or check.get("status")
+        result = outcome.upper() if isinstance(outcome, str) else ""
+        status = check.get("status")
         if result in FAILED:
-            failing.append(name)
-        elif result in PENDING or (c.get("status") or "").upper() in PENDING:
+            name = check.get("name") or check.get("context")
+            failing.append(name if isinstance(name, str) else "?")
+        elif result in PENDING or (isinstance(status, str) and status.upper() in PENDING):
             pending = True
-    overall = "fail" if failing else ("pending" if pending else "pass")
+        elif result not in PASSING:
+            unknown = True
+    overall = "fail" if failing else "unknown" if unknown else "pending" if pending else "pass"
     return overall, sorted(set(failing))
 
 

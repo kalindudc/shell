@@ -23,7 +23,35 @@ This skill distills one lead thread that ran an infrastructure migration for thr
 | The lead nearly re-delegated work other members already had, and owners were nearly asked twice. | Check the roster first; reconcile everything for a team before contacting it. |
 | The human replaced a member and the old one kept running until the human noticed. | Stop, confirm and reconcile before steering. |
 | A deploy was started before two PRs had merged, so it shipped without them. | Pin and verify the revision per target. |
-| Members briefed under one name showed up under bb's generated name. | Use the name bb gives a thread. |
+| Members briefed under one name showed up under bb's generated name. | One name per member: the one bb gives its thread. |
+
+## From the skill's first runs
+
+The skill was then used for four hours in the same lead thread, adopted mid-run, and for a new fleet that fixed a plugin on a memory-constrained laptop.
+
+| What happened | Rule that answers it |
+|---|---|
+| The adopting lead read only the entrypoint and one reference, so it never saw the progress and reporting guidance. | Read every reference once at setup or adoption; the most-corrected rules live in `SKILL.md`. |
+| Progress numbers drew eight corrections in three hours. Counting only finished work read as "barely 1%", and counting finished plus in flight read as a misleading 93%. Two totals side by side confused everyone. | The five progress-number rules: fixed baseline, percentage for finished work only, in-flight beside it, one headline, a label on every number. |
+| 61 of the lead's 90 replies in four hours answered member reports, and about a third of those were progress ticks or repeats of a report already passed on. Members sent a mid-job message and then the same content as their final answer. | No progress ticks; one line at most when a report changes nothing; task members report once, in the final answer. |
+| Old persona names survived adoption, and the human found two names per member confusing. | One name per member everywhere; switch old names on adoption. |
+| The watcher relayed an owning team's own certificate problem, and the lead researched and drafted a fix. The human said not to micromanage delegated threads. | An owner's problem with their own change is theirs; a narrow filter for watchers of delegated work. |
+| A member's final report arrived after the lead had archived it on its early message. | Archive after the final answer arrives. |
+| On a laptop that had already crashed from memory pressure, the lead handed out one test slot at a time, and builders worked in worktrees with one integrator. It worked well. | Scarce-resource slots and the integrator role. |
+| The human asked for a listing name with a likely typo, and the lead applied it exactly without saying so. | Do it as asked, and point out the likely typo in one line. |
+| A short fleet skipped permanent members, the push test and paging, and reported in the thread. That was right for a few hours with the human present. | Scale setup to the fleet's life. |
+| Large delegated batches each had a sub-lead, informally, and one grew 24 helpers. | Child leads with a charter, a member budget and a two-level limit. |
+
+## From making the skill run on any harness
+
+| What happened | Rule that answers it |
+|---|---|
+| Every spawn, message, wake-up and push step was a bb command, so colleagues on bare pi, Claude Code or Codex couldn't run the process. | The skill names primitives. bb keeps its own, and bare harnesses use `scripts/fleet.py` (Running on any harness). |
+| The change needed live tests of the whole process, and the human said: "Make sure the live test is isolated and not on my existing thread." A test inside a real fleet would mix test members, messages and archives with real work. | Test the process itself in isolation: a scratch directory, threads or processes made for the test, cleanup afterwards, and never the human's existing threads or fleets. |
+| The live test's prompt told the lead to use only built-in tools and keep worktrees in the scratch directory, so the bb lead avoided the `spawn` tool and bb-managed worktrees. The human: "The skill shouldn't limit any other user configured tools ... Any available tools are ok." | The primitives are a minimum, not a list of allowed tools. Members keep the human's harness configuration, and flags only grant access or suit headless runs. Isolation decides where a test runs, not which tools it uses. |
+| In the live tests, both Claude Code leads never read the skill: its directory and the fleet's were outside their working directory, and with permission prompts off every read was denied. Builders in worktrees couldn't read their briefs either. | Give each harness access to the skill and fleet directories in `fleet.json` before `init` (`harnesses.md`). |
+| A review found that on a bare harness a relayed approval proves nothing, because anyone on the machine can write an inbox message under any name, and that pausing a child lead left its workers waking. | Both yeses and the run happen in one human session, with no relay by `tell`; `fleet.py pause --tree` after the child lead confirms. |
+| A colleague planning an overnight fleet on bare Codex would have picked an interactive lead that does nothing while they sleep, and couldn't tell where worktrees, flags and wake checks had to be set. A stopped broker left checks looking alive with nobody to deliver their wake-ups. | Two explicit bare entry paths, a headless lead for unattended fleets, `fleet.json` before `init`, and a dead broker counted as a blocker. |
 
 ## What worked, and is kept
 
@@ -39,3 +67,5 @@ This skill distills one lead thread that ran an infrastructure migration for thr
 - Honest pushback when a goal couldn't be met safely.
 - Cleanup rounds with a table of who stays and why.
 - Unrelated urgent work isolated in its own thread, and heavy repository work moved to remote machines.
+- Continuous archiving after the skill was adopted: every task member was archived within minutes of its result, and the human didn't have to ask for cleanup again.
+- A stall check on a watcher's state file between liveness audits, which the adopting lead added on its own.
