@@ -43,6 +43,7 @@ answer = 'PONG' if 'PING!' in prompt else phase + ': ' + prompt
 if 'ENV!' in prompt:
     answer = os.environ.get('FLEET_TEST_MARKER', 'unset')
 print(json.dumps({'type': 'answer', 'text': answer}))
+print(json.dumps({'type': 'late-session', 'id': sid}))
 '''
 
 
@@ -361,22 +362,67 @@ class FleetTests(unittest.TestCase):
         member = self.metadata('worker')
         os.kill(member['runner_pid'], signal.SIGKILL)
         self.until(lambda: not fleet_runtime.lease_held(self.root / 'agents/worker/.runner.lease'))
-        self.assertTrue(fleet_runtime.group_alive(member['turn_pid']))
+        # The broker's own recovery may already have stopped the orphan; either way it must not survive.
         return member['turn_pid']
 
     def test_pause_stops_a_turn_whose_runner_died(self):
         turn = self.orphan_turn()
         self.cli('pause', 'worker', '--tree')
-        self.assertFalse(fleet_runtime.group_alive(turn))
+        self.until(lambda: not fleet_runtime.group_alive(turn))
         self.assertEqual(self.metadata('worker')['status'], 'paused')
         self.assertIsNone(self.metadata('worker')['turn_pid'])
 
     def test_tell_stops_an_orphaned_turn_before_starting_another(self):
         turn = self.orphan_turn()
+        (self.cwd / 'release').touch()
         self.cli('tell', 'worker', 'after the crash')
         self.until(lambda: (self.root / 'agents/worker/final.md').exists())
         self.assertFalse(fleet_runtime.group_alive(turn))
-        self.assertIn('after the crash', (self.root / 'agents/worker/final.md').read_text())
+        final = (self.root / 'agents/worker/final.md').read_text()
+        self.assertTrue(final.startswith('start: '), final[:200])
+        self.assertIn('HOLD!', final)
+        self.assertIn('after the crash', final)
+
+    def late_session_turn(self):
+        # Like Claude Code, this harness reports its session id only when the turn ends.
+        config = json.loads((self.root / 'fleet.json').read_text())
+        config['adapters']['late'] = {**config['adapters']['fake'],
+                                      'session': {'match': {'type': 'late-session'}, 'path': 'id'}}
+        (self.root / 'fleet.json').write_text(json.dumps(config))
+        self.init()
+        self.prompt.write_text('the original brief HOLD!')
+        self.cli('spawn', 'worker', '--as', 'lead', '--role', 'task', '--harness', 'late',
+                 '--prompt-file', str(self.prompt))
+        self.until(lambda: (self.cwd / 'held').exists())
+        return self.metadata('worker')
+
+    def assert_first_turn_input_survives(self, message):
+        time.sleep(.3)
+        member = self.metadata('worker')
+        self.assertEqual(member['runs'], 1, 'an interrupted first turn must not be relaunched by itself')
+        self.assertTrue(member['start_pending'])
+        self.assertIsNone(member['session_id'])
+        (self.cwd / 'release').touch()
+        self.cli('tell', 'worker', message)
+        self.until(lambda: self.metadata('worker')['status'] == 'finished')
+        final = (self.root / 'agents/worker/final.md').read_text()
+        self.assertTrue(final.startswith('start: '), final[:200])
+        for text in ('You are fleet member worker', 'the original brief', message):
+            self.assertIn(text, final)
+
+    def test_stopped_first_turn_keeps_brief_for_the_next_message(self):
+        self.late_session_turn()
+        self.cli('stop', 'worker')
+        self.until(lambda: self.metadata('worker')['status'] == 'idle')
+        self.assert_first_turn_input_survives('after the stop')
+
+    def test_first_turn_whose_runner_died_keeps_brief_for_the_next_message(self):
+        member = self.late_session_turn()
+        os.kill(member['runner_pid'], signal.SIGKILL)
+        self.until(lambda: self.metadata('worker')['status'] == 'failed')
+        self.assertFalse(fleet_runtime.group_alive(member['turn_pid']))
+        self.assertIn('[stuck from claimed sender worker]', self.cli('wait', '--timeout', '5').stdout)
+        self.assert_first_turn_input_survives('after the crash')
 
     def test_failed_launch_keeps_brief_and_queued_messages_for_retry(self):
         config = json.loads((self.root / 'fleet.json').read_text())

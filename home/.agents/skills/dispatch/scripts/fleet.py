@@ -390,10 +390,18 @@ class Fleet:
         if not self.can_launch():
             raise FleetError(BROKER_DOWN)
         if (member['delivery'] != 'resume' or member['status'] in {'paused', 'archived'} or self.running(member)
-                or member.get('launch_failed')):
+                or member.get('input_held')):
             return
         if member['status'] == 'running':
             self.reap_orphan_turn(member)
+            if not member['session_id']:
+                error = ('runner exited during the first turn; its brief and messages are kept, '
+                         'so retry with tell or resume (see runner.log)')
+                self.save(member, status='failed', runner_pid=None, turn_pid=None, input_held=True,
+                          updated_at=time.time(), error=error)
+                if member['parent']:
+                    self.send(self.agent(member['parent']), member['name'], 'stuck', error)
+                return
             self.save(member, status='failed', runner_pid=None, turn_pid=None, updated_at=time.time(),
                       error='runner exited unexpectedly; see runner.log')
         if member['start_pending'] or self.pending(member)[0]:
@@ -444,8 +452,13 @@ class Fleet:
                     self.release_runner(member, lease, 'idle')
                     return
                 messages, cursor = self.pending(member)
+                establishing = not member['session_id']
                 if member['stop_requested']:
-                    self.save(member, start_pending=False, stop_requested=False)
+                    self.save(member, stop_requested=False)
+                    if establishing:
+                        self.save(member, input_held=True)
+                        self.release_runner(member, lease, 'idle')
+                        return
                 starting = member['start_pending']
                 if not (starting or messages):
                     self.release_runner(member, lease, 'idle')
@@ -467,13 +480,15 @@ class Fleet:
                              f'so fix the cause and retry with tell or resume')
                 if proc is None:
                     # Nothing received the brief or the messages, so they stay pending for an explicit retry.
-                    self.save(member, runs=number, status='running', launch_failed=True, updated_at=time.time())
+                    self.save(member, runs=number, status='running', input_held=True, updated_at=time.time())
                 else:
                     if not member['session_id']:
                         member['session_profile'] = {'extra_args': adapter.get('extra_args', []),
                                                      'customized': adapter['customized_extra_args']}
-                    self.save(member, runs=number, start_pending=False, cursor=cursor, turn_pid=proc.pid,
-                              status='running', launch_failed=False, updated_at=time.time())
+                    # Until the harness confirms a session, the first input stays pending so nothing is lost.
+                    taken = {} if establishing else {'start_pending': False, 'cursor': cursor}
+                    self.save(member, runs=number, turn_pid=proc.pid, status='running', input_held=False,
+                              updated_at=time.time(), **taken)
             if proc:
                 code = proc.wait()
                 try:
@@ -494,6 +509,13 @@ class Fleet:
                 stopped = member['stop_requested']
                 status = member['status'] if blocked else 'idle'
                 kind = text = notification = None
+                held = proc is not None and establishing and not captured
+                if held:
+                    member['input_held'] = True
+                    if error:
+                        error += '; the brief and queued messages are kept, so retry with tell or resume'
+                elif proc is not None and establishing:
+                    member.update(start_pending=False, cursor=cursor)
                 if not (blocked or stopped):
                     if error:
                         status, kind, text = 'failed', 'stuck', f'{error} (see {log})'
@@ -508,7 +530,7 @@ class Fleet:
                           updated_at=time.time(), error=error if kind == 'stuck' else None)
                 if kind and member['parent']:
                     self.send(self.agent(member['parent']), name, kind, text)
-                if proc is None or (not pending and notification is None):
+                if proc is None or held or (not pending and notification is None):
                     self.release_runner(member, lease, status)
                     return
             if notification is not None:
@@ -1090,8 +1112,8 @@ def control(fleet, args, request=None):
             if not isinstance(text, str):
                 raise FleetError('invalid brokered message text')
         fleet.send(member, sender['name'], 'message', text)
-        if member.get('launch_failed'):
-            fleet.save(member, launch_failed=False, updated_at=time.time())
+        if member.get('input_held'):
+            fleet.save(member, input_held=False, updated_at=time.time())
     elif command == 'wake':
         if args.every <= 0:
             raise FleetError('--every must be positive')
@@ -1109,8 +1131,8 @@ def control(fleet, args, request=None):
         if member['status'] == 'paused':
             status = member.get('attach_restore_status') or 'idle'
             fleet.save(member, status=status, attach_restore_status=None, updated_at=time.time())
-        if member.get('launch_failed'):
-            fleet.save(member, launch_failed=False, updated_at=time.time())
+        if member.get('input_held'):
+            fleet.save(member, input_held=False, updated_at=time.time())
         fleet.kick(member)
     elif command == 'archive':
         fleet.archive(name, args.force)
