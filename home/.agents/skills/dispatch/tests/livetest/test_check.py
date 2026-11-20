@@ -187,6 +187,19 @@ class CheckerRegressionTests(unittest.TestCase):
         self.assertIn("Bash(python3 -c *)", flags)
         self.assertIn("Bash(python3 -m unittest *)", flags)
 
+    def test_bb_jobs_reads_only_the_roster_threads(self):
+        import sqlite3
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "plugins" / "wakeup" / "data.db"
+            db.parent.mkdir(parents=True)
+            with sqlite3.connect(db) as con:
+                con.execute("CREATE TABLE jobs (id TEXT, thread_id TEXT, state TEXT, data TEXT)")
+                for job_id, thread in (("wk_b", "thr_watch"), ("wk_a", "thr_watch"), ("wk_x", "thr_other")):
+                    con.execute("INSERT INTO jobs VALUES (?, ?, 'delivered', ?)",
+                                (job_id, thread, json.dumps({"kind": "check", "everySeconds": 30})))
+            jobs = check.bb_jobs({"bb_data_dir": tmp}, [{"id": "thr_watch"}, {"id": "thr_lead"}])
+        self.assertEqual([(job["thread"], job["id"]) for job in jobs], [("thr_watch", "wk_a"), ("thr_watch", "wk_b")])
+
     def test_final_evidence_is_not_optional(self):
         self.setup_alert()
         self.assertTrue(self.score()["passed"])

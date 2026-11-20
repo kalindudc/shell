@@ -226,8 +226,8 @@ def bb_jobs(meta, roster):
     db = (Path(meta["bb_data_dir"]) / "plugins" / "wakeup" / "data.db").resolve()
     ids = [row["id"] for row in roster]
     with closing(sqlite3.connect(db.as_uri() + "?mode=ro", uri=True, timeout=5)) as con:
-        rows = con.execute("SELECT thread_id, id, state, data FROM jobs WHERE thread_id IN ("
-                           + ",".join("?" for _ in ids) + ") ORDER BY thread_id, id", ids)
+        rows = [row for thread_id in sorted(set(ids)) for row in con.execute(
+            "SELECT thread_id, id, state, data FROM jobs WHERE thread_id = ? ORDER BY id", (thread_id,))]
         jobs = []
         for thread, job_id, state, data in rows:
             job = json.loads(data)

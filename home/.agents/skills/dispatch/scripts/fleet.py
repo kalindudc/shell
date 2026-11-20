@@ -166,6 +166,28 @@ def kill_group(pid):
             os.killpg(pid, signal.SIGKILL)
 
 
+def group_alive(pid):
+    if not pid:
+        return False
+    try:
+        os.killpg(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def stop_group(pid, timeout=5.0):
+    kill_group(pid)
+    deadline = time.monotonic() + timeout
+    while group_alive(pid):
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(.02)
+    return True
+
+
 def lease_held(path):
     try:
         with path.open('rb') as f:
@@ -355,15 +377,23 @@ class Fleet:
     def running(self, member):
         return bool(member['runner_pid'] and lease_held(self.agents / member['name'] / '.runner.lease'))
 
+    def reap_orphan_turn(self, member):
+        # A harness runs in its own session, so it outlives a runner that dies; running() can't see it.
+        pid = member['turn_pid']
+        if pid and not self.running(member) and group_alive(pid) and not stop_group(pid):
+            raise FleetError(f"{member['name']}: orphaned turn in process group {pid} did not stop; kill it by hand")
+
     def can_launch(self):
         return self.policy is not None and lease_held(self.supervisor_lock)
 
     def kick(self, member):
         if not self.can_launch():
             raise FleetError(BROKER_DOWN)
-        if member['delivery'] != 'resume' or member['status'] in {'paused', 'archived'} or self.running(member):
+        if (member['delivery'] != 'resume' or member['status'] in {'paused', 'archived'} or self.running(member)
+                or member.get('launch_failed')):
             return
         if member['status'] == 'running':
+            self.reap_orphan_turn(member)
             self.save(member, status='failed', runner_pid=None, turn_pid=None, updated_at=time.time(),
                       error='runner exited unexpectedly; see runner.log')
         if member['start_pending'] or self.pending(member)[0]:
@@ -433,12 +463,17 @@ class Fleet:
                     proc = self.launch(member, adapter, '\n\n'.join(sections), log, sid)
                 except (FleetError, OSError, ValueError, KeyError) as exc:
                     proc = None
-                    error = str(exc)
-                if proc is not None and not member['session_id']:
-                    member['session_profile'] = {'extra_args': adapter.get('extra_args', []),
-                                                 'customized': adapter['customized_extra_args']}
-                self.save(member, runs=number, start_pending=False, cursor=cursor, turn_pid=proc.pid if proc else None,
-                          status='running', updated_at=time.time())
+                    error = (f'launch failed: {exc}; the brief and queued messages are kept, '
+                             f'so fix the cause and retry with tell or resume')
+                if proc is None:
+                    # Nothing received the brief or the messages, so they stay pending for an explicit retry.
+                    self.save(member, runs=number, status='running', launch_failed=True, updated_at=time.time())
+                else:
+                    if not member['session_id']:
+                        member['session_profile'] = {'extra_args': adapter.get('extra_args', []),
+                                                     'customized': adapter['customized_extra_args']}
+                    self.save(member, runs=number, start_pending=False, cursor=cursor, turn_pid=proc.pid,
+                              status='running', launch_failed=False, updated_at=time.time())
             if proc:
                 code = proc.wait()
                 try:
@@ -473,7 +508,7 @@ class Fleet:
                           updated_at=time.time(), error=error if kind == 'stuck' else None)
                 if kind and member['parent']:
                     self.send(self.agent(member['parent']), name, kind, text)
-                if not pending and notification is None:
+                if proc is None or (not pending and notification is None):
                     self.release_runner(member, lease, status)
                     return
             if notification is not None:
@@ -493,8 +528,13 @@ class Fleet:
         if self.running(member):
             self.save(member, stop_requested=True, status=status or member['status'], updated_at=time.time())
             kill_group(member['turn_pid'])
-        elif status and member['status'] != 'archived':
-            self.save(member, status=status, updated_at=time.time())
+            return
+        self.reap_orphan_turn(member)
+        changes = {'turn_pid': None, 'runner_pid': None} if member['turn_pid'] else {}
+        if status and member['status'] != 'archived':
+            changes['status'] = status
+        if changes:
+            self.save(member, updated_at=time.time(), **changes)
 
     def subtree(self, root):
         children = {}
@@ -530,6 +570,7 @@ class Fleet:
                 for name in self.subtree(root):
                     member = self.agent(name)
                     if (member['status'] not in {'paused', 'archived'} or self.running(member) or self.attached(name)
+                            or group_alive(member['turn_pid'])
                             or any(lease_held(self.wake_lease(name, loop)) for loop in self.wakes(name))):
                         active.append(name)
             if not active:
@@ -673,7 +714,7 @@ class Fleet:
     def archive(self, name, force):
         member = self.agent(name)
         if not force:
-            if self.running(member):
+            if self.running(member) or group_alive(member['turn_pid']):
                 raise FleetError(f'{name} is running; stop it or use --force')
             if any(other['parent'] == name and other['status'] != 'archived' for other in self.roster()):
                 raise FleetError(f'{name} has unarchived children; archive them first or use --force')
@@ -1049,6 +1090,8 @@ def control(fleet, args, request=None):
             if not isinstance(text, str):
                 raise FleetError('invalid brokered message text')
         fleet.send(member, sender['name'], 'message', text)
+        if member.get('launch_failed'):
+            fleet.save(member, launch_failed=False, updated_at=time.time())
     elif command == 'wake':
         if args.every <= 0:
             raise FleetError('--every must be positive')
@@ -1066,6 +1109,8 @@ def control(fleet, args, request=None):
         if member['status'] == 'paused':
             status = member.get('attach_restore_status') or 'idle'
             fleet.save(member, status=status, attach_restore_status=None, updated_at=time.time())
+        if member.get('launch_failed'):
+            fleet.save(member, launch_failed=False, updated_at=time.time())
         fleet.kick(member)
     elif command == 'archive':
         fleet.archive(name, args.force)

@@ -354,6 +354,57 @@ class FleetTests(unittest.TestCase):
         time.sleep(1)
         self.assertFalse((self.cwd / 'escaped').exists())
 
+    def orphan_turn(self):
+        self.init()
+        self.spawn(role='permanent', prompt='HOLD!')
+        self.until(lambda: (self.cwd / 'held').exists())
+        member = self.metadata('worker')
+        os.kill(member['runner_pid'], signal.SIGKILL)
+        self.until(lambda: not fleet_runtime.lease_held(self.root / 'agents/worker/.runner.lease'))
+        self.assertTrue(fleet_runtime.group_alive(member['turn_pid']))
+        return member['turn_pid']
+
+    def test_pause_stops_a_turn_whose_runner_died(self):
+        turn = self.orphan_turn()
+        self.cli('pause', 'worker', '--tree')
+        self.assertFalse(fleet_runtime.group_alive(turn))
+        self.assertEqual(self.metadata('worker')['status'], 'paused')
+        self.assertIsNone(self.metadata('worker')['turn_pid'])
+
+    def test_tell_stops_an_orphaned_turn_before_starting_another(self):
+        turn = self.orphan_turn()
+        self.cli('tell', 'worker', 'after the crash')
+        self.until(lambda: (self.root / 'agents/worker/final.md').exists())
+        self.assertFalse(fleet_runtime.group_alive(turn))
+        self.assertIn('after the crash', (self.root / 'agents/worker/final.md').read_text())
+
+    def test_failed_launch_keeps_brief_and_queued_messages_for_retry(self):
+        config = json.loads((self.root / 'fleet.json').read_text())
+        fake = config['adapters']['fake']
+        harness = self.cwd / 'harness'
+        config['adapters']['broken'] = {**fake, 'start': [str(harness), *fake['start'][1:]],
+                                        'resume': [str(harness), *fake['resume'][1:]]}
+        (self.root / 'fleet.json').write_text(json.dumps(config))
+        self.init()
+        self.prompt.write_text('the original brief')
+        self.cli('spawn', 'worker', '--as', 'lead', '--role', 'task', '--harness', 'broken',
+                 '--prompt-file', str(self.prompt))
+        self.assertIn('[stuck from claimed sender worker]', self.cli('wait', '--timeout', '5').stdout)
+        self.cli('tell', 'worker', 'queued while broken')
+        self.assertIn('[stuck from claimed sender worker]', self.cli('wait', '--timeout', '5').stdout)
+        self.until(lambda: self.metadata('worker')['status'] == 'failed')
+        self.assertTrue(self.metadata('worker')['start_pending'])
+        time.sleep(.3)
+        self.assertEqual(self.metadata('worker')['runs'], 2, 'the broker must not relaunch a failed launch by itself')
+        harness.symlink_to(sys.executable)
+        self.cli('tell', 'worker', 'Retry now')
+        self.assertIn('[final from claimed sender worker]', self.cli('wait', '--timeout', '5').stdout)
+        final = (self.root / 'agents/worker/final.md').read_text()
+        self.assertTrue(final.startswith('start: '), final[:200])
+        for text in ('the original brief', 'queued while broken', 'Retry now'):
+            self.assertIn(text, final)
+        self.assertEqual(self.metadata('worker')['runs'], 3)
+
     def test_pause_tree_stops_descendant_turns_and_named_wakes(self):
         self.init()
         self.spawn('child', 'child-lead')
