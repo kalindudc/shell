@@ -70,6 +70,8 @@ On the first run, start cursors at now and report nothing older, unless the char
 - Pick the loop by what the member should report. To report on every interval, use a time loop with no `--check` and run the status command in the member's turn, which costs a model turn each time. To wake only on a change, use a sentinel (below). A check fires once and its loop ends, so a command that exits 0 whenever things are fine, such as a plain CI status command, fires on its first run every time it's armed and reports nothing new.
 - At the end of a wake, make sure the next one is pending and end with one line. On bb, schedule it. On a bare harness, leave a time loop armed, because replacing it resets its cadence, and re-arm a `--check` loop after it fires, because it ends on the first exit 0 or at its deadline.
 - A member never stops on its own. Only the lead stops it or changes its cadence.
+- A watch on a goal fires on whatever blocks the goal, not only on success. For a PR that means changes requested, a new review comment, a failing or ejected check and a new head, as well as merged. A check that tests only for success can't see what stops it: one that waited for "merged" passed over a requested change 35 times in 3 hours.
+- A member that watches to an end state reports at an end state, never at an intermediate one such as "waiting on the reviewer". At a deadline with the goal unmet, it acts on what it finds, or hands it to whoever can, and re-arms.
 
 Typical cadences, to confirm with the human: a chat watcher every 10 minutes in working hours, one evening check and none overnight, hourly at weekends, every 1 to 2 minutes in a change window. A rollout watcher every 20 to 30 minutes. A sanity checker a few times a day.
 
@@ -85,7 +87,7 @@ A sentinel is a read-only script that a member runs as a conditional wake-up (`u
 
 For another status command, write a small read-only script in the same shape: run the command, compare its output with a snapshot file the member saved, and exit 0 only when they differ, 1 when they match and 2 when the command fails. Keep the script where members can't write it (Guardrail 6 in `SKILL.md`); the snapshot may live under `$FLEET`.
 
-For PRs, use `scripts/pr-sentinel.py` as is. It reads a registry of `{repo, number}` entries, fetches each PR's state, draft flag, review decision, head and check results, treats missing or unrecognized check data as unknown rather than passing, and compares them with the snapshot:
+For PRs on a forge `gh` can read, use `scripts/pr-sentinel.py` as is. On another forge, write a sentinel in the same shape that covers the same states. It reads a registry of `{repo, number}` entries, fetches each PR's state, draft flag, review decision, head and check results, treats missing or unrecognized check data as unknown rather than passing, and compares them with the snapshot:
 
 ```bash
 SKILL=~/.agents/skills/dispatch   # wherever your harness finds this skill (harnesses.md)

@@ -53,6 +53,15 @@ The skill was then used for four hours in the same lead thread, adopted mid-run,
 | A review found that on a bare harness a relayed approval proves nothing, because anyone on the machine can write an inbox message under any name, and that pausing a child lead left its workers waking. | Both yeses and the run happen in one human session, with no relay by `tell`; `fleet.py pause --tree` after the child lead confirms. |
 | A colleague planning an overnight fleet on bare Codex would have picked an interactive lead that does nothing while they sleep, and couldn't tell where worktrees, flags and wake checks had to be set. A stopped broker left checks looking alive with nobody to deliver their wake-ups. | Two explicit bare entry paths, a headless lead for unattended fleets, `fleet.json` before `init`, and a dead broker counted as a blocker. |
 
+## From the first unattended merge
+
+| What happened | Rule that answers it |
+|---|---|
+| The human asked the lead to "run all CI and if it's self approve then approve and merge otherwise I will figure it out in the morning", then went to sleep. The lead read that as "stop on any obstacle", and wrote "stop on any finding, don't fix" into the merge brief and into its own wake-up prompt. The automated reviewer requested changes 13 minutes after the merge request, with two real, fixable bugs, and nothing was fixed for 8 hours. The human: "Why did you not just get this done, fix it, clear [the reviewer] and merge the PR". | Carrying work to done: a condition reserves only what it names, findings on our own change are ours to fix, no stop in a brief or wake-up prompt the human didn't ask for, and foreseeable forks are asked about before the human leaves. |
+| The lead's overnight wake-up fired only on "merged" or a change of mergeable state. The reviewer blocked the PR 44 seconds after it was armed, the PR stayed blocked, and 35 checks passed over it until the 3-hour deadline. The member that had been watching retired at "waiting on the reviewer". | A watch fires on whatever blocks its goal; report at an end state; at a deadline, act and re-arm. |
+| Both bugs got past the lead's own reviews. The last round of fixes had no critic pass, and the lead knew it. | Run the reviewers you can run before an unattended merge. |
+| In the morning the lead said the PR's branch couldn't be updated because the machine that pushed it was gone, and opened a replacement PR. The branch was still on the forge, and nobody checked. The replacement's approval card then expired unanswered. The human: "Why did you make a new PR??" | Prove a blocker with a read; update what exists rather than replace it. |
+
 ## What worked, and is kept
 
 - A rules file every member reads first, an anchor file for the lead, and briefs as files with a short task message per slice.

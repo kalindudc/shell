@@ -52,6 +52,17 @@ fleet.py launches every agent through a broker, a process on the host outside an
 4. Keep one truth. `LEAD.md`, `RULES.md` and the checklist say what is true now. Update them when a decision lands, not at the end of the day.
 5. Steer, don't rebuild. Direction changes often. Retarget a member with a message and an edited charter, and spawn only for new work.
 
+## Carrying work to done
+
+When the human asks for an outcome, such as "merge it" or "ship it", the lead owns every step to it except the gates.
+
+- A condition reserves only what it names. "If it's self-approved, merge it, otherwise I'll figure it out in the morning" reserves the approval, not every obstacle. Review findings, failing checks and conflicts on our own change are yours: fix them, push, reply to and resolve each review thread, and queue it again.
+- Stop only at a real gate: a Guardrail, a decision the human reserved, a refusal you can't get past within policy, a change of scope, or a change that has become high risk. While the human is away, waiting costs every hour until they're back, so it is never the safe choice by default.
+- Before the human leaves, name the forks you can foresee, such as a review finding, a failing check, an approval card or a refusal, and ask in one message about any whose answer you can't infer.
+- Write no stop into a brief or a wake-up prompt unless the human asked for it. The session that reads it has no other context and will obey it, so a misreading written there runs all night.
+- Prove a blocker with a read before acting on it, and update what exists rather than replace it. "The machine that pushed the branch is gone, so the branch can't be updated" was a guess: the branch lived on the forge. A replacement PR costs a new round of CI and review and splits the history.
+- Before an unattended merge, run the reviewers you can run yourself on the final head, such as a local run of the repository's automated reviewer or one critic pass, so findings arrive while someone can still fix them.
+
 ## Setup
 
 At setup, or when you adopt this skill in a running fleet, read `references/fleet-files.md` and `references/briefs.md`, plus `references/members.md` if the fleet will have permanent members, `references/child-leads.md` if it will have child leads, and `references/harnesses.md` on a bare harness (for a first bare fleet, start with its quick start). Read `references/comms.md` before your first packet, tracker, progress number or text the human will send, and `references/risk.md` before any high-risk change. The rules that matter most are repeated in this file. If you are a child lead, follow your charter's setup instead of this one. When taking over another lead, or adopting this skill in a fleet that's already running, follow the takeover or adoption steps in `references/fleet-files.md`. Otherwise, in short:
