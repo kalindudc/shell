@@ -50,7 +50,7 @@ The skill was then used for four hours in the same lead thread, adopted mid-run,
 | The change needed live tests of the whole process, and the human said: "Make sure the live test is isolated and not on my existing thread." A test inside a real fleet would mix test members, messages and archives with real work. | Test the process itself in isolation: a scratch directory, threads or processes made for the test, cleanup afterwards, and never the human's existing threads or fleets. |
 | The live test's prompt told the lead to use only built-in tools and keep worktrees in the scratch directory, so the bb lead avoided the `spawn` tool and bb-managed worktrees. The human: "The skill shouldn't limit any other user configured tools ... Any available tools are ok." | The primitives are a minimum, not a list of allowed tools. Members keep the human's harness configuration, and flags only grant access or suit headless runs. Isolation decides where a test runs, not which tools it uses. |
 | In the live tests, both Claude Code leads never read the skill: its directory and the fleet's were outside their working directory, and with permission prompts off every read was denied. Builders in worktrees couldn't read their briefs either. | Give each harness access to the skill and fleet directories in `fleet.json` before `init` (`bare-harness.md`). |
-| A review found that on a bare harness a relayed approval proves nothing, because anyone on the machine can write an inbox message under any name, and that pausing a child lead left its workers waking. | Both yeses and the run happen in one human session, with no relay by `tell`; `fleet.py pause --tree` after the child lead confirms. |
+| A review found that on a bare harness a relayed approval proves nothing, because anyone on the machine can write an inbox message under any name, and that pausing a child lead left its workers waking. | Approvals count only when typed in the lead's own session; the lead writes them into `RULES.md`, nothing is relayed by `tell`, and a production change's yeses and run happen in that one session. `fleet.py pause --tree` after the child lead confirms. |
 | A colleague planning an overnight fleet on bare Codex would have picked an interactive lead that does nothing while they sleep, and couldn't tell where worktrees, flags and wake checks had to be set. A stopped broker left checks looking alive with nobody to deliver their wake-ups. | Two explicit bare entry paths, a headless lead for unattended fleets, `fleet.json` before `init`, and a dead broker counted as a blocker. |
 
 ## From the first unattended merge
@@ -63,6 +63,12 @@ The skill was then used for four hours in the same lead thread, adopted mid-run,
 | The replacement PR drew a third finding of the same kind: a first turn stopped or killed before the harness reported its session lost the member's brief. The morning fix had covered only a launch that never started. | Fix the class, not the instance: when a reviewer finds one input-loss path, test every path that can interrupt the same step. Before shipping the fix, a critic on another model hunted for more of the same kind and found four, including a duplicate delivery the fix itself introduced. |
 | In the morning the lead said the PR's branch couldn't be updated because the machine that pushed it was gone, and opened a replacement PR. The branch was still on the forge, and nobody checked. The replacement's approval card then expired unanswered. The human: "Why did you make a new PR??" | Prove a blocker with a read; update what exists rather than replace it. |
 
+## From approvals that cost more than the work
+
+| What happened | Rule that answers it |
+|---|---|
+| Every gated action took two yeses, so one commit and one push to the human's own repository took four messages: "Yes, commit", "Yes, commit now", "Yes, push to main" and "Yes, push now". The next fix took four more. The human: "please stop asking me permission to commit and push, you have approval for this entire build". Later, after giving a lead permission to commit and merge, the human still went through several rounds of confirmation, and called the skill too strict. | Two yeses only for production changes. Any other gated action takes one yes, and the human's request for the outcome is that yes. A grant covers its whole scope until it ends or is revoked: it is written in `RULES.md`, members act on it, and nobody asks again. Offer grants at setup, and whenever the same kind of action will recur. |
+
 ## What worked, and is kept
 
 - A rules file every member reads first, an anchor file for the lead, and briefs as files with a short task message per slice.
@@ -71,7 +77,7 @@ The skill was then used for four hours in the same lead thread, adopted mid-run,
 - A phase pipeline for large batches, ending in one review document for the human.
 - Watchers built to survive compaction: charter re-read every wake, cursors in a state file, one pending wake-up, short wake prompts pointing at a check file, and an "already told" list.
 - Cheap sentinel scripts on `until.check`, so keepers wake on change or at a deadline, not on every poll.
-- Two-step approvals in the question panel, with exact commands and undo.
+- Two-step approvals for production changes in the question panel, with exact commands and undo.
 - Binary change risk decided by the reviewer, with a short list of evidence for high-risk changes, and one high-risk exposure at a time.
 - Short morning packets and ship lists in merge order, with the check to run after each deploy.
 - Honest pushback when a goal couldn't be met safely.

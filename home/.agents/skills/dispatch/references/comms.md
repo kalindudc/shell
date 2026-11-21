@@ -16,7 +16,9 @@ Keep it to one screen. Don't recap what the human just said or list tool calls. 
 
 - Batch questions, a recommended option first, with the context the human needs in each question. On bb, use the question panel. Elsewhere, number them in the reply so the human can answer by number.
 - Keep working on what doesn't depend on the answer, and say briefly what is waiting on it.
-- Gated actions need two explicit yeses (`SKILL.md` Guardrails). The first question shows the exact command, target, effect, why and undo. The second restates it immediately before running. One approval covers one command, run once.
+- Ask for a gated action once, at the level it needs (`SKILL.md` Guardrail 2). A production change gets two questions: the first shows the exact command, target, effect, why and undo, and the second restates it immediately before running, for one run. Anything else gets one question with what, where, the effect and the undo, and the human's yes is final: don't confirm again before running.
+- Never ask for what a grant in `RULES.md` or the human's own request already covers. When the same kind of action will come up again, offer a grant in the question, for example "Merge #412 and the three PRs after it once checks pass? This also covers queuing them again after a fix."
+- When you act under a grant, say what you did in the next update ("merged #412 at 14:05"), not before.
 
 ## Morning packet and end-of-day summary
 

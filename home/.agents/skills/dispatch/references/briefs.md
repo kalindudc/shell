@@ -103,7 +103,8 @@ Use when a member carries a change to an end state, such as merged or deployed, 
 Read RULES.md first. Lead: <lead>. <The human> wants <end state> by <when>: "<their words, verbatim>".
 
 Yours to do without asking: <for example push fixes to the branch, reply to and resolve review threads,
-rerun a flaky check once, queue the merge again after your own fix>.
+rerun a flaky check once, queue the merge again after your own fix>, and everything the grants in RULES.md
+cover for this change.
 Reserved: <only what the human reserved or a Guardrail gates, for example their approval or production>.
 
 At each fork:

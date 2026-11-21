@@ -82,7 +82,7 @@
   <path class="line dash" d="M165 286V251" marker-end="url(#a-stroke)"/>
 
   <path class="approve" d="M171 52H349" marker-end="url(#a-human)"/>
-  <text class="mid strong" x="260" y="44">approvals: two yeses</text>
+  <text class="mid strong" x="260" y="44">approvals and grants</text>
   <path class="push" d="M349 82H171" marker-end="url(#a-push)"/>
   <text class="mid" x="260" y="74">push notification</text>
   <path class="page" d="M349 112H171" marker-end="url(#a-page)"/>

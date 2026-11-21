@@ -60,7 +60,7 @@ State skeleton:
 }
 ```
 
-On the first run, start cursors at now and report nothing older, unless the charter asks for a one-time digest of recent history. Read chat and other systems with the read-only tools the harness provides (search for them, for example `searchTools("slack")` in codemode). Observation is read-only. Any write a member makes needs a standing permission in `RULES.md` or the gate.
+On the first run, start cursors at now and report nothing older, unless the charter asks for a one-time digest of recent history. Read chat and other systems with the read-only tools the harness provides (search for them, for example `searchTools("slack")` in codemode). Observation is read-only. Any write a member makes needs a grant in `RULES.md` or the human's approval through the lead.
 
 ## The loop
 
